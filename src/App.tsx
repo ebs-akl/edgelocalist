@@ -8,6 +8,7 @@ import Landing from "./pages/Landing";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import Settings from "./pages/Settings";
+import GhlCallback from "./pages/GhlCallback";
 import NotFound from "./pages/NotFound";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { supabaseConfigured } from "@/integrations/supabase/client";
@@ -81,6 +82,7 @@ const App = () => {
                   </ProtectedRoute>
                 }
               />
+              <Route path="/ghl-callback" element={<ProtectedRoute><GhlCallback /></ProtectedRoute>} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </AuthProvider>

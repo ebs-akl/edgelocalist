@@ -25,6 +25,7 @@ export default function Dashboard() {
   const [loadingStats, setLoadingStats] = useState(true);
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const [searchesToday, setSearchesToday] = useState(0);
+  const [refreshing, setRefreshing] = useState(false);
 
   const repName = repProfile?.full_name ?? user?.email ?? "Rep";
 
@@ -50,14 +51,46 @@ export default function Dashboard() {
     }
   };
 
+  const handleGhlSync = async () => {
+    if (!user) return;
+    setRefreshing(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      const { data, error } = await supabase.functions.invoke("ghl-sync-contacts", {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+      if (error) throw error;
+      toast({ title: "GHL sync complete", description: `${data?.synced ?? 0} contacts synced.` });
+      await fetchContactStats();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Sync failed";
+      toast({ title: "GHL sync failed", description: msg, variant: "destructive" });
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
   useEffect(() => {
     fetchContactStats();
-    // Load recent searches from localStorage
     const stored = localStorage.getItem(`localist_searches_${user?.id}`);
     if (stored) {
       try { setRecentSearches(JSON.parse(stored)); } catch { /* ignore */ }
     }
-  }, [user?.id]);
+    // Auto-sync GHL on load if connected and not synced recently
+    if (isGhlMode) {
+      const lastSyncKey = `ghl_last_sync_${user?.id}`;
+      const lastSyncTime = localStorage.getItem(lastSyncKey);
+      const hoursSince = lastSyncTime
+        ? (Date.now() - parseInt(lastSyncTime)) / 3600000
+        : Infinity;
+      if (hoursSince > 24) {
+        handleGhlSync().then(() => {
+          localStorage.setItem(lastSyncKey, Date.now().toString());
+        });
+      }
+    }
+  }, [user?.id, isGhlMode]);
 
   const handleSearch = (address: string) => {
     setSearchesToday((n) => n + 1);
@@ -163,6 +196,8 @@ export default function Dashboard() {
             lastSync={lastSync}
             isGhlMode={isGhlMode}
             subscriptionTier={repProfile?.subscription_tier ?? null}
+            onRefresh={isGhlMode ? handleGhlSync : undefined}
+            refreshing={refreshing}
           />
         </div>
 
@@ -237,6 +272,8 @@ export default function Dashboard() {
               lastSync={lastSync}
               isGhlMode={isGhlMode}
               subscriptionTier={repProfile?.subscription_tier ?? null}
+              onRefresh={isGhlMode ? handleGhlSync : undefined}
+              refreshing={refreshing}
             />
           </div>
         </div>
