@@ -75,6 +75,7 @@ interface ParsedContact {
   zip: string;
   poBox: boolean;
   last_order_date: string;
+  last_service_date: string;
   rlt: string;
   biz: string;
   cat: string;
@@ -153,6 +154,7 @@ export default function CsvUploadTab({ onUploaded, contactCount, lastSync }: Pro
             zip: normalize(row, ["zip", "zipcode", "zip_code", "postalcode"]),
             poBox: isPOBox(address1),
             last_order_date: normalize(row, ["lastorderdate", "lastorder"]),
+            last_service_date: normalize(row, ["lastservicedate", "lastservice", "servicedate"]),
             rlt: normalize(row, ["rlt"]),
             biz: normalize(row, ["biz"]),
             cat: normalize(row, ["cat"]),
@@ -220,6 +222,7 @@ export default function CsvUploadTab({ onUploaded, contactCount, lastSync }: Pro
           latitude: c.poBox ? null : (geocodeResults[c.id]?.lat ?? null),
           longitude: c.poBox ? null : (geocodeResults[c.id]?.lng ?? null),
           last_order_date: c.last_order_date || null,
+          last_service_date: c.last_service_date || null,
           rlt: c.rlt || null,
           biz: c.biz || null,
           cat: c.cat || null,
