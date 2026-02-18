@@ -13,6 +13,7 @@ export interface LocalistContact {
   longitude: number | null;
   lifetime_value: number | null;
   last_order_date: string | null;
+  last_service_date: string | null;
   rlt: string | null;
   biz: string | null;
   cat: string | null;
@@ -35,6 +36,7 @@ export interface NearbyContact {
   zip: string;
   lifetime_value: number | null;
   last_order_date: string | null;
+  last_service_date: string | null;
   rlt: string | null;
   biz: string | null;
   cat: string | null;

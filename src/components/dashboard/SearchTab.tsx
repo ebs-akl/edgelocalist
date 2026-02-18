@@ -32,7 +32,7 @@ interface SearchTabProps {
   isGhlMode: boolean;
 }
 
-type SortKey = "distance_miles" | "lifetime_value";
+type SortKey = "distance_miles" | "lifetime_value" | "last_order_date" | "last_service_date";
 
 export default function SearchTab({ repName, recentSearches, onSearch, contactCount, isGhlMode }: SearchTabProps) {
   const { user } = useAuth();
@@ -166,8 +166,21 @@ export default function SearchTab({ repName, recentSearches, onSearch, contactCo
       return !q || `${c.first_name} ${c.last_name} ${c.city}`.toLowerCase().includes(q);
     })
     .sort((a, b) => {
-      const av = sortKey === "lifetime_value" ? (a.lifetime_value ?? 0) : a.distance_miles;
-      const bv = sortKey === "lifetime_value" ? (b.lifetime_value ?? 0) : b.distance_miles;
+      let av: number;
+      let bv: number;
+      if (sortKey === "lifetime_value") {
+        av = a.lifetime_value ?? 0;
+        bv = b.lifetime_value ?? 0;
+      } else if (sortKey === "last_order_date") {
+        av = a.last_order_date ? new Date(a.last_order_date).getTime() : 0;
+        bv = b.last_order_date ? new Date(b.last_order_date).getTime() : 0;
+      } else if (sortKey === "last_service_date") {
+        av = a.last_service_date ? new Date(a.last_service_date).getTime() : 0;
+        bv = b.last_service_date ? new Date(b.last_service_date).getTime() : 0;
+      } else {
+        av = a.distance_miles;
+        bv = b.distance_miles;
+      }
       return sortAsc ? av - bv : bv - av;
     });
 
@@ -275,24 +288,37 @@ export default function SearchTab({ repName, recentSearches, onSearch, contactCo
 
           {filtered.length > 0 && (
             <div className="rounded-lg border overflow-hidden">
-              {/* Table header — col layout: name | dist | ltv | lastorder | actions */}
-              <div className="hidden sm:grid grid-cols-[1fr_90px_90px_85px_160px] gap-3 bg-muted/50 px-4 py-2 text-xs font-medium text-muted-foreground uppercase tracking-wide items-center">
+              {/* Table header — col layout: name | dist | ltv | lastorder | lastservice | actions */}
+              <div className="hidden sm:grid grid-cols-[1fr_80px_80px_80px_85px_160px] gap-2 bg-muted/50 px-4 py-2 text-xs font-medium text-muted-foreground uppercase tracking-wide items-center">
                 <span>Name / City</span>
                 <button
                   className="flex items-center gap-1 hover:text-foreground transition-colors"
                   onClick={() => handleSort("distance_miles")}
                 >
-                  Distance
+                  Dist
                   {sortKey === "distance_miles" && (sortAsc ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />)}
                 </button>
                 <button
                   className="flex items-center gap-1 hover:text-foreground transition-colors"
                   onClick={() => handleSort("lifetime_value")}
                 >
-                  Lifetime $
+                  LTV $
                   {sortKey === "lifetime_value" && (sortAsc ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />)}
                 </button>
-                <span>Last Order</span>
+                <button
+                  className="flex items-center gap-1 hover:text-foreground transition-colors"
+                  onClick={() => handleSort("last_order_date")}
+                >
+                  Last Ord
+                  {sortKey === "last_order_date" && (sortAsc ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />)}
+                </button>
+                <button
+                  className="flex items-center gap-1 hover:text-foreground transition-colors"
+                  onClick={() => handleSort("last_service_date")}
+                >
+                  Last Svc
+                  {sortKey === "last_service_date" && (sortAsc ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />)}
+                </button>
                 <span>Actions</span>
               </div>
 
@@ -301,7 +327,7 @@ export default function SearchTab({ repName, recentSearches, onSearch, contactCo
                 {filtered.map((contact) => (
                   <div
                     key={contact.id}
-                    className="grid sm:grid-cols-[1fr_90px_90px_85px_160px] gap-3 px-4 py-3 hover:bg-muted/30 transition-colors cursor-pointer items-center"
+                    className="grid sm:grid-cols-[1fr_80px_80px_80px_85px_160px] gap-2 px-4 py-3 hover:bg-muted/30 transition-colors cursor-pointer items-center"
                     onClick={() => setSelectedContact(contact)}
                   >
                     {/* Name + city */}
@@ -326,6 +352,13 @@ export default function SearchTab({ repName, recentSearches, onSearch, contactCo
                     <div className="hidden sm:block text-xs text-muted-foreground">
                       {contact.last_order_date
                         ? new Date(contact.last_order_date).toLocaleDateString()
+                        : "—"}
+                    </div>
+
+                    {/* Last service */}
+                    <div className="hidden sm:block text-xs text-muted-foreground">
+                      {contact.last_service_date
+                        ? new Date(contact.last_service_date).toLocaleDateString()
                         : "—"}
                     </div>
 
