@@ -70,18 +70,23 @@ export default function CsvUploadTab({ onUploaded, contactCount, lastSync }: Pro
       complete: async (results) => {
         const rows = results.data;
         const contacts: ParsedContact[] = rows.map((row, i) => {
-          const address = normalize(row, ["address", "street", "streetaddress"]);
+          // "Address 1" → normalizes to "address1"; "Address 2" is the apt/unit line
+          const address1 = normalize(row, ["address1", "address", "street", "streetaddress"]);
+          const address2 = normalize(row, ["address2"]);
+          // Full address stored in DB combines both lines
+          const address = address2 ? `${address1}, ${address2}` : address1;
           return {
             id: `row-${i}`,
             first_name: normalize(row, ["firstname", "first_name", "first"]),
             last_name: normalize(row, ["lastname", "last_name", "last"]),
             phone: formatPhone(normalize(row, ["phone", "phonenumber", "phone_number"])),
             address,
-            street_clean: stripAptFromAddress(address),
+            // Geocode only off Address 1 (already without the apt unit)
+            street_clean: stripAptFromAddress(address1),
             city: normalize(row, ["city"]),
             state: normalize(row, ["state"]),
             zip: normalize(row, ["zip", "zipcode", "zip_code", "postalcode"]),
-            poBox: isPOBox(address),
+            poBox: isPOBox(address1),
           };
         }).filter((c) => c.first_name || c.last_name || c.phone);
 
@@ -302,7 +307,7 @@ export default function CsvUploadTab({ onUploaded, contactCount, lastSync }: Pro
           <span className="text-sm font-medium">Expected CSV columns</span>
         </div>
         <div className="flex flex-wrap gap-2">
-          {["First Name", "Last Name", "Phone", "Address", "City", "State", "ZIP"].map((col) => (
+          {["First Name", "Last Name", "Address 1", "Address 2", "City", "State", "Zip", "Phone", "Email", "Customer #"].map((col) => (
             <Badge key={col} variant="secondary" className="font-mono text-xs">
               {col}
             </Badge>
@@ -311,7 +316,7 @@ export default function CsvUploadTab({ onUploaded, contactCount, lastSync }: Pro
         <div className="flex items-start gap-2 mt-3">
           <AlertCircle className="h-3.5 w-3.5 text-warning shrink-0 mt-0.5" />
           <p className="text-xs text-muted-foreground">
-            PO Boxes are detected and skipped. Apartment numbers are stripped before geocoding but kept in your records.
+            Matches standard Cutco VectorConnect export headers. PO Boxes are skipped; Address 2 is stored but Address 1 is used for geocoding.
           </p>
         </div>
       </div>
