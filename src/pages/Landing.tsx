@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Sheet, SheetContent, SheetTrigger, SheetClose } from "@/components/ui/sheet";
 import { motion } from "framer-motion";
 import { MapPin, Upload, Search, Menu, CheckCircle2, ArrowRight, Zap, BarChart3 } from "lucide-react";
+import heroBg from "@/assets/hero-bg.gif";
 
 const fadeUp = {
   hidden: { opacity: 0, y: 30 },
@@ -163,6 +164,13 @@ export default function Landing() {
 
       {/* Hero */}
       <section className="relative pt-24 pb-16 sm:pt-36 sm:pb-24 overflow-hidden bg-primary">
+        {/* GIF background */}
+        <img
+          src={heroBg}
+          alt=""
+          aria-hidden="true"
+          className="absolute inset-0 w-full h-full object-cover opacity-20 pointer-events-none select-none"
+        />
         <HexBackground />
         <div className="container relative mx-auto px-4 text-center">
           <motion.div
