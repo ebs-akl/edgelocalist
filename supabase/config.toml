@@ -9,3 +9,6 @@ verify_jwt = false
 
 [functions.ghl-lc-call]
 verify_jwt = false
+
+[functions.ghl-group-sms]
+verify_jwt = false

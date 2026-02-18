@@ -2,13 +2,15 @@ import { useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "@/hooks/use-toast";
-import { MapPin, Loader2, Phone, MessageSquare, Map, ExternalLink, ChevronUp, ChevronDown, Filter, Trash2 } from "lucide-react";
+import { MapPin, Loader2, Phone, MessageSquare, Map, ExternalLink, ChevronUp, ChevronDown, Filter, Trash2, Send } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { formatPhoneDisplay, formatCurrency } from "@/lib/contacts";
 import type { NearbyContact } from "@/lib/contacts";
 import ContactDetailModal from "./ContactDetailModal";
+import GroupSmsModal from "./GroupSmsModal";
 import stopBotImg from "@/assets/stop_cutout.png";
 import {
   AlertDialog,
@@ -48,6 +50,9 @@ export default function SearchTab({ repName, recentSearches, onSearch, contactCo
   const [searchCenter, setSearchCenter] = useState<{ lat: number; lng: number } | null>(null);
   const [contactToDelete, setContactToDelete] = useState<NearbyContact | null>(null);
   const [deleting, setDeleting] = useState(false);
+  // Group SMS state
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [groupSmsOpen, setGroupSmsOpen] = useState(false);
 
   const geocodeAddress = async (addr: string): Promise<{ lat: number; lng: number } | null> => {
     if (!MAPBOX_TOKEN) {
@@ -72,7 +77,6 @@ export default function SearchTab({ repName, recentSearches, onSearch, contactCo
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
         const { latitude, longitude } = pos.coords;
-        // Reverse geocode for display
         if (MAPBOX_TOKEN) {
           const res = await fetch(
             `https://api.mapbox.com/geocoding/v5/mapbox.places/${longitude},${latitude}.json?access_token=${MAPBOX_TOKEN}&limit=1`
@@ -102,6 +106,7 @@ export default function SearchTab({ repName, recentSearches, onSearch, contactCo
 
     setLoading(true);
     setSearched(false);
+    setSelectedIds(new Set());
 
     try {
       let center = searchCenter;
@@ -183,6 +188,34 @@ export default function SearchTab({ repName, recentSearches, onSearch, contactCo
       }
       return sortAsc ? av - bv : bv - av;
     });
+
+  // Selection helpers
+  const filteredIds = filtered.map((c) => c.id as string).filter(Boolean);
+  const allSelected = filteredIds.length > 0 && filteredIds.every((id) => selectedIds.has(id));
+  const someSelected = filteredIds.some((id) => selectedIds.has(id));
+
+  const toggleSelectAll = () => {
+    if (allSelected) {
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        filteredIds.forEach((id) => next.delete(id));
+        return next;
+      });
+    } else {
+      setSelectedIds((prev) => new Set([...prev, ...filteredIds]));
+    }
+  };
+
+  const toggleContact = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const selectedContacts = filtered.filter((c) => c.id && selectedIds.has(c.id as string));
 
   return (
     <div className="space-y-4">
@@ -272,50 +305,60 @@ export default function SearchTab({ repName, recentSearches, onSearch, contactCo
                 ? "No contacts found in that area — try a wider radius."
                 : `${results.length} contact${results.length !== 1 ? "s" : ""} within ${radius} miles`}
             </p>
-            {results.length > 0 && (
-              <div className="relative">
-                <Filter className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
-                <Input
-                  value={filter}
-                  onChange={(e) => setFilter(e.target.value)}
-                  placeholder="Filter by name..."
-                  className="pl-8 h-8 text-sm w-40"
-                  style={{ fontSize: "16px" }}
-                />
-              </div>
-            )}
+            <div className="flex items-center gap-2">
+              {/* Group SMS button — GHL mode only, shown when contacts are selected */}
+              {isGhlMode && selectedContacts.length > 0 && (
+                <Button
+                  size="sm"
+                  className="h-8 gap-1.5 text-xs font-semibold"
+                  onClick={() => setGroupSmsOpen(true)}
+                >
+                  <Send className="h-3.5 w-3.5" />
+                  Group Text ({selectedContacts.length})
+                </Button>
+              )}
+              {results.length > 0 && (
+                <div className="relative">
+                  <Filter className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+                  <Input
+                    value={filter}
+                    onChange={(e) => setFilter(e.target.value)}
+                    placeholder="Filter by name..."
+                    className="pl-8 h-8 text-sm w-40"
+                    style={{ fontSize: "16px" }}
+                  />
+                </div>
+              )}
+            </div>
           </div>
 
           {filtered.length > 0 && (
             <div className="rounded-lg border overflow-hidden">
-              {/* Table header — col layout: name | dist | ltv | lastorder | lastservice | actions */}
-              <div className="hidden sm:grid grid-cols-[1fr_80px_80px_80px_85px_160px] gap-2 bg-muted/50 px-4 py-2 text-xs font-medium text-muted-foreground uppercase tracking-wide items-center">
+              {/* Table header */}
+              <div className={`hidden sm:grid gap-2 bg-muted/50 px-4 py-2 text-xs font-medium text-muted-foreground uppercase tracking-wide items-center ${isGhlMode ? "grid-cols-[24px_1fr_80px_80px_80px_85px_160px]" : "grid-cols-[1fr_80px_80px_80px_85px_160px]"}`}>
+                {isGhlMode && (
+                  <Checkbox
+                    checked={allSelected}
+                    onCheckedChange={toggleSelectAll}
+                    className="border-muted-foreground"
+                    aria-label="Select all"
+                    data-state={someSelected && !allSelected ? "indeterminate" : undefined}
+                  />
+                )}
                 <span>Name / City</span>
-                <button
-                  className="flex items-center gap-1 hover:text-foreground transition-colors"
-                  onClick={() => handleSort("distance_miles")}
-                >
+                <button className="flex items-center gap-1 hover:text-foreground transition-colors" onClick={() => handleSort("distance_miles")}>
                   Dist
                   {sortKey === "distance_miles" && (sortAsc ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />)}
                 </button>
-                <button
-                  className="flex items-center gap-1 hover:text-foreground transition-colors"
-                  onClick={() => handleSort("lifetime_value")}
-                >
+                <button className="flex items-center gap-1 hover:text-foreground transition-colors" onClick={() => handleSort("lifetime_value")}>
                   LTV $
                   {sortKey === "lifetime_value" && (sortAsc ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />)}
                 </button>
-                <button
-                  className="flex items-center gap-1 hover:text-foreground transition-colors"
-                  onClick={() => handleSort("last_order_date")}
-                >
+                <button className="flex items-center gap-1 hover:text-foreground transition-colors" onClick={() => handleSort("last_order_date")}>
                   Last Ord
                   {sortKey === "last_order_date" && (sortAsc ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />)}
                 </button>
-                <button
-                  className="flex items-center gap-1 hover:text-foreground transition-colors"
-                  onClick={() => handleSort("last_service_date")}
-                >
+                <button className="flex items-center gap-1 hover:text-foreground transition-colors" onClick={() => handleSort("last_service_date")}>
                   Last Svc
                   {sortKey === "last_service_date" && (sortAsc ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />)}
                 </button>
@@ -324,98 +367,111 @@ export default function SearchTab({ repName, recentSearches, onSearch, contactCo
 
               {/* Rows */}
               <div className="divide-y">
-                {filtered.map((contact) => (
-                  <div
-                    key={contact.id}
-                    className="grid sm:grid-cols-[1fr_80px_80px_80px_85px_160px] gap-2 px-4 py-3 hover:bg-muted/30 transition-colors cursor-pointer items-center"
-                    onClick={() => setSelectedContact(contact)}
-                  >
-                    {/* Name + city */}
-                    <div className="min-w-0">
-                      <p className="font-medium text-sm truncate">
-                        {contact.first_name} {contact.last_name}
-                      </p>
-                      <p className="text-xs text-muted-foreground truncate">{contact.city}, {contact.state}</p>
-                    </div>
-
-                    {/* Distance */}
-                    <div className="hidden sm:block">
-                      <Badge variant="secondary" className="text-xs font-mono">
-                        {contact.distance_miles.toFixed(1)} mi
-                      </Badge>
-                    </div>
-
-                    {/* Lifetime value */}
-                    <div className="hidden sm:block text-sm">{formatCurrency(contact.lifetime_value)}</div>
-
-                    {/* Last order */}
-                    <div className="hidden sm:block text-xs text-muted-foreground">
-                      {contact.last_order_date
-                        ? new Date(contact.last_order_date).toLocaleDateString()
-                        : "—"}
-                    </div>
-
-                    {/* Last service */}
-                    <div className="hidden sm:block text-xs text-muted-foreground">
-                      {contact.last_service_date
-                        ? new Date(contact.last_service_date).toLocaleDateString()
-                        : "—"}
-                    </div>
-
-                    {/* Mobile distance badge */}
-                    <div className="sm:hidden">
-                      <Badge variant="secondary" className="text-xs font-mono">
-                        {contact.distance_miles.toFixed(1)} mi
-                      </Badge>
-                    </div>
-
-                    {/* Action buttons */}
-                    <div className="flex gap-1.5 items-center" onClick={(e) => e.stopPropagation()}>
-                      <a
-                        href={`tel:${contact.phone}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center justify-center h-9 w-9 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary transition-colors"
-                        title="Call"
-                      >
-                        <Phone className="h-4 w-4" />
-                      </a>
-                      <a
-                        href={`sms:${contact.phone}?body=Hi ${encodeURIComponent(contact.first_name)}, this is ${encodeURIComponent(repName)} from Cutco — I'm in your area and wanted to reach out!`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center justify-center h-9 w-9 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary transition-colors"
-                        title="SMS"
-                      >
-                        <MessageSquare className="h-4 w-4" />
-                      </a>
-                      <a
-                        href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(`${contact.address}, ${contact.city}, ${contact.state} ${contact.zip}`)}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center justify-center h-9 w-9 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary transition-colors"
-                        title="Directions"
-                      >
-                        <Map className="h-4 w-4" />
-                      </a>
+                {filtered.map((contact) => {
+                  const cid = contact.id as string;
+                  const isChecked = isGhlMode && selectedIds.has(cid);
+                  return (
+                    <div
+                      key={contact.id}
+                      className={`grid gap-2 px-4 py-3 hover:bg-muted/30 transition-colors items-center ${isGhlMode ? "sm:grid-cols-[24px_1fr_80px_80px_80px_85px_160px]" : "sm:grid-cols-[1fr_80px_80px_80px_85px_160px]"} ${isChecked ? "bg-primary/5" : ""}`}
+                    >
+                      {/* Checkbox (GHL only) */}
                       {isGhlMode && (
-                        <div
-                          className="flex items-center justify-center h-9 w-9 rounded-lg bg-muted hover:bg-muted/80 text-muted-foreground transition-colors"
-                          title="View in GHL"
-                        >
-                          <ExternalLink className="h-4 w-4" />
+                        <div onClick={(e) => e.stopPropagation()}>
+                          <Checkbox
+                            checked={isChecked}
+                            onCheckedChange={() => toggleContact(cid)}
+                            aria-label={`Select ${contact.first_name}`}
+                          />
                         </div>
                       )}
-                      <button
-                        className="flex items-center justify-center h-9 w-9 rounded-lg bg-destructive/10 hover:bg-destructive/20 text-destructive transition-colors"
-                        title="Delete contact"
-                        onClick={() => setContactToDelete(contact)}
+
+                      {/* Name + city — click to open modal */}
+                      <div
+                        className="min-w-0 cursor-pointer"
+                        onClick={() => setSelectedContact(contact)}
                       >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
+                        <p className="font-medium text-sm truncate">
+                          {contact.first_name} {contact.last_name}
+                        </p>
+                        <p className="text-xs text-muted-foreground truncate">{contact.city}, {contact.state}</p>
+                      </div>
+
+                      {/* Distance */}
+                      <div className="hidden sm:block">
+                        <Badge variant="secondary" className="text-xs font-mono">
+                          {contact.distance_miles.toFixed(1)} mi
+                        </Badge>
+                      </div>
+
+                      {/* Lifetime value */}
+                      <div className="hidden sm:block text-sm">{formatCurrency(contact.lifetime_value)}</div>
+
+                      {/* Last order */}
+                      <div className="hidden sm:block text-xs text-muted-foreground">
+                        {contact.last_order_date ? new Date(contact.last_order_date).toLocaleDateString() : "—"}
+                      </div>
+
+                      {/* Last service */}
+                      <div className="hidden sm:block text-xs text-muted-foreground">
+                        {contact.last_service_date ? new Date(contact.last_service_date).toLocaleDateString() : "—"}
+                      </div>
+
+                      {/* Mobile distance badge */}
+                      <div className="sm:hidden">
+                        <Badge variant="secondary" className="text-xs font-mono">
+                          {contact.distance_miles.toFixed(1)} mi
+                        </Badge>
+                      </div>
+
+                      {/* Action buttons */}
+                      <div className="flex gap-1.5 items-center" onClick={(e) => e.stopPropagation()}>
+                        <a
+                          href={`tel:${contact.phone}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center justify-center h-9 w-9 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary transition-colors"
+                          title="Call"
+                        >
+                          <Phone className="h-4 w-4" />
+                        </a>
+                        <a
+                          href={`sms:${contact.phone}?body=Hi ${encodeURIComponent(contact.first_name)}, this is ${encodeURIComponent(repName)} from Cutco — I'm in your area and wanted to reach out!`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center justify-center h-9 w-9 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary transition-colors"
+                          title="SMS"
+                        >
+                          <MessageSquare className="h-4 w-4" />
+                        </a>
+                        <a
+                          href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(`${contact.address}, ${contact.city}, ${contact.state} ${contact.zip}`)}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center justify-center h-9 w-9 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary transition-colors"
+                          title="Directions"
+                        >
+                          <Map className="h-4 w-4" />
+                        </a>
+                        {isGhlMode && (
+                          <div
+                            className="flex items-center justify-center h-9 w-9 rounded-lg bg-muted hover:bg-muted/80 text-muted-foreground transition-colors"
+                            title="View in GHL"
+                          >
+                            <ExternalLink className="h-4 w-4" />
+                          </div>
+                        )}
+                        <button
+                          className="flex items-center justify-center h-9 w-9 rounded-lg bg-destructive/10 hover:bg-destructive/20 text-destructive transition-colors"
+                          title="Delete contact"
+                          onClick={() => setContactToDelete(contact)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}
@@ -455,6 +511,16 @@ export default function SearchTab({ repName, recentSearches, onSearch, contactCo
           repName={repName}
           isGhlMode={isGhlMode}
           onClose={() => setSelectedContact(null)}
+        />
+      )}
+
+      {/* Group SMS modal */}
+      {isGhlMode && (
+        <GroupSmsModal
+          open={groupSmsOpen}
+          onClose={() => setGroupSmsOpen(false)}
+          contacts={selectedContacts}
+          repName={repName}
         />
       )}
     </div>
