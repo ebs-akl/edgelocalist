@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/alert-dialog";
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN;
+console.log("[CsvUpload] MAPBOX_TOKEN present:", !!MAPBOX_TOKEN, "value prefix:", MAPBOX_TOKEN?.substring(0, 8));
 
 async function geocodeAddress(street: string, city: string, state: string, zip: string): Promise<{ lat: number; lng: number } | null> {
   if (!MAPBOX_TOKEN) return null;
