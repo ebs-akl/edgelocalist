@@ -14,6 +14,7 @@ interface UploadStats {
   total: number;
   geocoded: number;
   failed: number;
+  duplicatesRemoved: number;
   lastUpload: string | null;
 }
 
@@ -84,8 +85,20 @@ export default function CsvUploadTab({ onUploaded, contactCount, lastSync }: Pro
           };
         }).filter((c) => c.first_name || c.last_name || c.phone);
 
-        const validContacts = contacts.filter((c) => !c.poBox && c.street_clean && c.city && c.state);
-        const poBoxCount = contacts.filter((c) => c.poBox).length;
+        // Deduplicate by phone (keep last occurrence)
+        const phoneMap = new Map<string, ParsedContact>();
+        for (const c of contacts) {
+          if (c.phone) {
+            phoneMap.set(c.phone, c);
+          } else {
+            phoneMap.set(`no-phone-${Math.random()}`, c);
+          }
+        }
+        const deduped = Array.from(phoneMap.values());
+        const duplicatesRemoved = contacts.length - deduped.length;
+
+        const validContacts = deduped.filter((c) => !c.poBox && c.street_clean && c.city && c.state);
+        const poBoxCount = deduped.filter((c) => c.poBox).length;
 
         const BATCH_SIZE = 500;
         const batches = [];
@@ -138,7 +151,7 @@ export default function CsvUploadTab({ onUploaded, contactCount, lastSync }: Pro
         setProgress(80);
 
         // Upsert all contacts
-        const upsertRows = contacts.map((c) => ({
+        const upsertRows = deduped.map((c) => ({
           rep_id: user.id,
           contact_id: c.phone || `${c.first_name}-${c.last_name}-${Math.random()}`,
           first_name: c.first_name,
@@ -162,9 +175,10 @@ export default function CsvUploadTab({ onUploaded, contactCount, lastSync }: Pro
           toast({ title: "Save failed", description: upsertError.message, variant: "destructive" });
         } else {
           setStats({
-            total: contacts.length,
+            total: deduped.length,
             geocoded: totalGeocoded,
             failed: totalFailed,
+            duplicatesRemoved,
             lastUpload: new Date().toISOString(),
           });
           setProgress(100);
@@ -269,6 +283,15 @@ export default function CsvUploadTab({ onUploaded, contactCount, lastSync }: Pro
               {stats.failed > 0 && `${stats.failed} addresses could not be geocoded.`}
             </span>
           </div>
+          {stats.duplicatesRemoved > 0 && (
+            <div className="flex items-center gap-2 text-warning">
+              <AlertCircle className="h-4 w-4 shrink-0" />
+              <span className="text-sm">
+                {stats.duplicatesRemoved} duplicate phone number
+                {stats.duplicatesRemoved === 1 ? " was" : "s were"} removed from your CSV.
+              </span>
+            </div>
+          )}
         </div>
       )}
 
@@ -286,7 +309,7 @@ export default function CsvUploadTab({ onUploaded, contactCount, lastSync }: Pro
           ))}
         </div>
         <div className="flex items-start gap-2 mt-3">
-          <AlertCircle className="h-3.5 w-3.5 text-amber-500 shrink-0 mt-0.5" />
+          <AlertCircle className="h-3.5 w-3.5 text-warning shrink-0 mt-0.5" />
           <p className="text-xs text-muted-foreground">
             PO Boxes are detected and skipped. Apartment numbers are stripped before geocoding but kept in your records.
           </p>
