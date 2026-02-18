@@ -39,6 +39,13 @@ interface ParsedContact {
   state: string;
   zip: string;
   poBox: boolean;
+  last_order_date: string;
+  rlt: string;
+  biz: string;
+  cat: string;
+  lifetime_value: number | null;
+  order_count: number | null;
+  gift_count: number | null;
 }
 
 function normalize(row: CsvRow, keys: string[]): string {
@@ -75,6 +82,9 @@ export default function CsvUploadTab({ onUploaded, contactCount, lastSync }: Pro
           const address2 = normalize(row, ["address2"]);
           // Full address stored in DB combines both lines
           const address = address2 ? `${address1}, ${address2}` : address1;
+          const rawLifetime = normalize(row, ["lifetime$", "lifetime", "lifetimevalue"]);
+          const rawOrders = normalize(row, ["#orders", "orders", "numberoforders", "numorders"]);
+          const rawGifts = normalize(row, ["#gifts", "gifts", "numberofgifts", "numgifts"]);
           return {
             id: `row-${i}`,
             first_name: normalize(row, ["firstname", "first_name", "first"]),
@@ -87,6 +97,13 @@ export default function CsvUploadTab({ onUploaded, contactCount, lastSync }: Pro
             state: normalize(row, ["state"]),
             zip: normalize(row, ["zip", "zipcode", "zip_code", "postalcode"]),
             poBox: isPOBox(address1),
+            last_order_date: normalize(row, ["lastorderdate", "lastorder"]),
+            rlt: normalize(row, ["rlt"]),
+            biz: normalize(row, ["biz"]),
+            cat: normalize(row, ["cat"]),
+            lifetime_value: rawLifetime ? parseFloat(rawLifetime.replace(/[$,]/g, "")) || null : null,
+            order_count: rawOrders ? parseInt(rawOrders, 10) || null : null,
+            gift_count: rawGifts ? parseInt(rawGifts, 10) || null : null,
           };
         }).filter((c) => c.first_name || c.last_name || c.phone);
 
@@ -168,6 +185,13 @@ export default function CsvUploadTab({ onUploaded, contactCount, lastSync }: Pro
           zip: c.zip,
           latitude: c.poBox ? null : (geocodeResults[c.id]?.lat ?? null),
           longitude: c.poBox ? null : (geocodeResults[c.id]?.lng ?? null),
+          last_order_date: c.last_order_date || null,
+          rlt: c.rlt || null,
+          biz: c.biz || null,
+          cat: c.cat || null,
+          lifetime_value: c.lifetime_value,
+          order_count: c.order_count,
+          gift_count: c.gift_count,
           source: "csv" as const,
           updated_at: new Date().toISOString(),
         }));

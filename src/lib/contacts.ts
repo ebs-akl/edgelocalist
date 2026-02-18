@@ -13,6 +13,11 @@ export interface LocalistContact {
   longitude: number | null;
   lifetime_value: number | null;
   last_order_date: string | null;
+  rlt: string | null;
+  biz: string | null;
+  cat: string | null;
+  order_count: number | null;
+  gift_count: number | null;
   source: 'csv' | 'ghl';
   updated_at: string;
   // Added by nearby_contacts RPC
@@ -30,6 +35,11 @@ export interface NearbyContact {
   zip: string;
   lifetime_value: number | null;
   last_order_date: string | null;
+  rlt: string | null;
+  biz: string | null;
+  cat: string | null;
+  order_count: number | null;
+  gift_count: number | null;
   distance_miles: number;
 }
 
@@ -46,7 +56,7 @@ export function formatPhoneDisplay(raw: string): string {
 
 export function formatCurrency(n: number | null): string {
   if (n == null) return "—";
-  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(n);
+  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n);
 }
 
 export function stripAptFromAddress(address: string): string {
