@@ -1,6 +1,5 @@
 import { useState, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
@@ -9,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { formatPhone, stripAptFromAddress, isPOBox } from "@/lib/contacts";
 import Papa from "papaparse";
+import coffeeBotImg from "@/assets/blue_coffee_bot_cutout.png";
 
 interface UploadStats {
   total: number;
@@ -240,6 +240,31 @@ export default function CsvUploadTab({ onUploaded, contactCount, lastSync }: Pro
     if (file) processFile(file);
   };
 
+  // Full-screen coffee bot loading state
+  if (uploading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-10 px-4 text-center space-y-6">
+        <img
+          src={coffeeBotImg}
+          alt="Coffee Bot mascot"
+          className="w-40 h-40 object-contain drop-shadow-lg"
+        />
+        <div className="space-y-2 max-w-sm">
+          <p className="font-semibold text-base leading-snug">
+            This could take a minute or two depending on your list size.
+          </p>
+          <p className="text-sm text-muted-foreground italic">
+            Coffee is for closers — go grab a cup and we'll have your contacts ready when you get back.
+          </p>
+        </div>
+        <div className="w-full max-w-sm space-y-2">
+          <Progress value={progress} className="h-3" />
+          <p className="text-xs text-muted-foreground">{progressLabel}</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-5">
       {/* Current status */}
@@ -276,7 +301,7 @@ export default function CsvUploadTab({ onUploaded, contactCount, lastSync }: Pro
         onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
         onDragLeave={() => setDragging(false)}
         onDrop={handleDrop}
-        onClick={() => !uploading && fileRef.current?.click()}
+        onClick={() => fileRef.current?.click()}
       >
         <input
           ref={fileRef}
@@ -286,21 +311,9 @@ export default function CsvUploadTab({ onUploaded, contactCount, lastSync }: Pro
           onChange={handleFileChange}
         />
         <Upload className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
-        <p className="font-medium mb-1">
-          {uploading ? progressLabel : "Drop your VectorConnect CSV here"}
-        </p>
-        <p className="text-sm text-muted-foreground">
-          {uploading ? "" : "or click to browse — CSV files only"}
-        </p>
+        <p className="font-medium mb-1">Drop your VectorConnect CSV here</p>
+        <p className="text-sm text-muted-foreground">or click to browse — CSV files only</p>
       </div>
-
-      {/* Progress */}
-      {uploading && (
-        <div className="space-y-2">
-          <Progress value={progress} className="h-2" />
-          <p className="text-xs text-muted-foreground text-center">{progressLabel}</p>
-        </div>
-      )}
 
       {/* Upload results */}
       {stats && !uploading && (

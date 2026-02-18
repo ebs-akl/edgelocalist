@@ -20,7 +20,11 @@ interface GeoResult {
   id: string;
   lat: number | null;
   lng: number | null;
-  source: "census" | "mapbox" | "failed";
+  source: "mapbox" | "failed";
+}
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 async function geocodeWithMapbox(contact: ContactInput): Promise<GeoResult> {
@@ -34,7 +38,7 @@ async function geocodeWithMapbox(contact: ContactInput): Promise<GeoResult> {
     );
     const res = await fetch(
       `https://api.mapbox.com/geocoding/v5/mapbox.places/${query}.json?access_token=${MAPBOX_TOKEN}&country=US&limit=1`,
-      { signal: AbortSignal.timeout(8000) }
+      { signal: AbortSignal.timeout(10000) }
     );
     if (!res.ok) throw new Error(`Mapbox HTTP ${res.status}`);
     const data = await res.json();
@@ -47,90 +51,22 @@ async function geocodeWithMapbox(contact: ContactInput): Promise<GeoResult> {
   }
 }
 
-// Geocode a small batch via Mapbox in parallel (capped at concurrency of 10)
+// Process contacts in small parallel chunks with a delay between chunks to avoid rate limits
 async function geocodeBatchMapbox(contacts: ContactInput[]): Promise<GeoResult[]> {
-  const CONCURRENCY = 10;
+  const CONCURRENCY = 5;   // 5 parallel requests at a time
+  const DELAY_MS = 200;    // 200ms pause between chunks (~25 req/s max)
   const results: GeoResult[] = [];
+
   for (let i = 0; i < contacts.length; i += CONCURRENCY) {
     const chunk = contacts.slice(i, i + CONCURRENCY);
     const chunkResults = await Promise.all(chunk.map(geocodeWithMapbox));
     results.push(...chunkResults);
+    if (i + CONCURRENCY < contacts.length) {
+      await sleep(DELAY_MS);
+    }
   }
+
   return results;
-}
-
-async function geocodeBatchWithCensus(contacts: ContactInput[]): Promise<GeoResult[]> {
-  // Build CSV for Census batch geocoder
-  const csvLines = ["Unique ID,Street address,City,State,ZIP"];
-  for (const c of contacts) {
-    const safeStreet = c.street.replace(/,/g, " ");
-    const safeCity = c.city.replace(/,/g, " ");
-    csvLines.push(`${c.id},${safeStreet},${safeCity},${c.state},${c.zip}`);
-  }
-  const csvBody = csvLines.join("\n");
-
-  const form = new FormData();
-  form.append("addressFile", new Blob([csvBody], { type: "text/csv" }), "addresses.csv");
-  form.append("benchmark", "Public_AR_Current");
-  form.append("returntype", "locations");
-
-  let censusText = "";
-  try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 25000); // 25s timeout for Census
-    const res = await fetch(
-      "https://geocoding.geo.census.gov/geocoder/locations/addressbatch",
-      { method: "POST", body: form, signal: controller.signal }
-    );
-    clearTimeout(timeout);
-    if (!res.ok) throw new Error(`Census HTTP ${res.status}`);
-    censusText = await res.text();
-  } catch (err) {
-    console.warn("Census geocoder failed, falling back to Mapbox for entire batch:", err);
-    return geocodeBatchMapbox(contacts);
-  }
-
-  // Parse Census response CSV
-  const lines = censusText.trim().split("\n");
-  const resultMap: Record<string, GeoResult> = {};
-  const mapboxFallbackNeeded: ContactInput[] = [];
-
-  for (const line of lines) {
-    const parts = line.split(",");
-    const id = parts[0]?.trim();
-    const matchStatus = parts[2]?.trim();
-    const coordStr = parts[5]?.trim();
-
-    if (!id) continue;
-
-    if (matchStatus === "Match" && coordStr) {
-      const [lng, lat] = coordStr.split(",").map(Number);
-      if (!isNaN(lat) && !isNaN(lng)) {
-        resultMap[id] = { id, lat, lng, source: "census" };
-        continue;
-      }
-    }
-
-    // Queue for Mapbox fallback instead of calling immediately
-    const contact = contacts.find((c) => c.id === id);
-    if (contact) mapboxFallbackNeeded.push(contact);
-    else resultMap[id] = { id, lat: null, lng: null, source: "failed" };
-  }
-
-  // Ensure contacts not in Census response are also queued
-  for (const c of contacts) {
-    if (!resultMap[c.id] && !mapboxFallbackNeeded.find((m) => m.id === c.id)) {
-      mapboxFallbackNeeded.push(c);
-    }
-  }
-
-  // Run Mapbox fallbacks in parallel batches
-  if (mapboxFallbackNeeded.length > 0) {
-    const fallbackResults = await geocodeBatchMapbox(mapboxFallbackNeeded);
-    for (const r of fallbackResults) resultMap[r.id] = r;
-  }
-
-  return Object.values(resultMap);
 }
 
 serve(async (req) => {
@@ -148,23 +84,15 @@ serve(async (req) => {
       );
     }
 
-    console.log(`Geocoding ${contacts.length} contacts. MAPBOX_TOKEN present: ${!!MAPBOX_TOKEN}`);
+    console.log(`Geocoding ${contacts.length} contacts via Mapbox. Token present: ${!!MAPBOX_TOKEN}`);
 
-    // Process in sub-batches of 100 (Census handles up to 10k but we want faster failures)
-    const BATCH_SIZE = 100;
-    const allResults: GeoResult[] = [];
+    const results = await geocodeBatchMapbox(contacts);
 
-    for (let i = 0; i < contacts.length; i += BATCH_SIZE) {
-      const batch = contacts.slice(i, i + BATCH_SIZE);
-      const batchResults = await geocodeBatchWithCensus(batch);
-      allResults.push(...batchResults);
-    }
-
-    const geocoded = allResults.filter((r) => r.lat !== null).length;
-    console.log(`Done: ${geocoded}/${allResults.length} geocoded successfully`);
+    const geocoded = results.filter((r) => r.lat !== null).length;
+    console.log(`Done: ${geocoded}/${results.length} geocoded successfully`);
 
     return new Response(
-      JSON.stringify({ results: allResults }),
+      JSON.stringify({ results }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err) {
