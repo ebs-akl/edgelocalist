@@ -3,12 +3,23 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
-import { MapPin, Loader2, Phone, MessageSquare, Map, ExternalLink, ChevronUp, ChevronDown, Filter } from "lucide-react";
+import { MapPin, Loader2, Phone, MessageSquare, Map, ExternalLink, ChevronUp, ChevronDown, Filter, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { formatPhoneDisplay, formatCurrency } from "@/lib/contacts";
 import type { NearbyContact } from "@/lib/contacts";
 import ContactDetailModal from "./ContactDetailModal";
+import stopBotImg from "@/assets/stop_cutout.png";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const MAPBOX_TOKEN = "pk.eyJ1IjoiZWRnZWRtcyIsImEiOiJjbWxvZ25kNjIwOHhpM2dxNjdlcHY3MDFlIn0.vAChp9IlzeKSlI5kxjWPcA";
 const RADIUS_OPTIONS = [10, 25, 50] as const;
@@ -35,6 +46,8 @@ export default function SearchTab({ repName, recentSearches, onSearch, contactCo
   const [sortAsc, setSortAsc] = useState(true);
   const [selectedContact, setSelectedContact] = useState<NearbyContact | null>(null);
   const [searchCenter, setSearchCenter] = useState<{ lat: number; lng: number } | null>(null);
+  const [contactToDelete, setContactToDelete] = useState<NearbyContact | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const geocodeAddress = async (addr: string): Promise<{ lat: number; lng: number } | null> => {
     if (!MAPBOX_TOKEN) {
@@ -124,6 +137,27 @@ export default function SearchTab({ repName, recentSearches, onSearch, contactCo
   const handleSort = (key: SortKey) => {
     if (sortKey === key) setSortAsc((a) => !a);
     else { setSortKey(key); setSortAsc(true); }
+  };
+
+  const handleDeleteContact = async () => {
+    if (!contactToDelete || !user) return;
+    setDeleting(true);
+    try {
+      const { error } = await supabase
+        .from("localist_contacts")
+        .delete()
+        .eq("rep_id", user.id)
+        .eq("id", contactToDelete.id);
+      if (error) throw error;
+      setResults((prev) => prev.filter((c) => c.id !== contactToDelete.id));
+      toast({ title: `${contactToDelete.first_name} ${contactToDelete.last_name} deleted.` });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Delete failed.";
+      toast({ title: "Delete failed", description: message, variant: "destructive" });
+    } finally {
+      setDeleting(false);
+      setContactToDelete(null);
+    }
   };
 
   const filtered = results
@@ -241,8 +275,8 @@ export default function SearchTab({ repName, recentSearches, onSearch, contactCo
 
           {filtered.length > 0 && (
             <div className="rounded-lg border overflow-hidden">
-              {/* Table header */}
-              <div className="hidden sm:grid grid-cols-[1fr_100px_100px_90px_auto] gap-3 bg-muted/50 px-4 py-2 text-xs font-medium text-muted-foreground uppercase tracking-wide">
+              {/* Table header — col layout: name | dist | ltv | lastorder | actions */}
+              <div className="hidden sm:grid grid-cols-[1fr_90px_90px_85px_160px] gap-3 bg-muted/50 px-4 py-2 text-xs font-medium text-muted-foreground uppercase tracking-wide items-center">
                 <span>Name / City</span>
                 <button
                   className="flex items-center gap-1 hover:text-foreground transition-colors"
@@ -267,7 +301,7 @@ export default function SearchTab({ repName, recentSearches, onSearch, contactCo
                 {filtered.map((contact) => (
                   <div
                     key={contact.id}
-                    className="grid sm:grid-cols-[1fr_100px_100px_90px_auto] gap-3 px-4 py-3 hover:bg-muted/30 transition-colors cursor-pointer items-center"
+                    className="grid sm:grid-cols-[1fr_90px_90px_85px_160px] gap-3 px-4 py-3 hover:bg-muted/30 transition-colors cursor-pointer items-center"
                     onClick={() => setSelectedContact(contact)}
                   >
                     {/* Name + city */}
@@ -303,7 +337,7 @@ export default function SearchTab({ repName, recentSearches, onSearch, contactCo
                     </div>
 
                     {/* Action buttons */}
-                    <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex gap-1.5 items-center" onClick={(e) => e.stopPropagation()}>
                       <a
                         href={`tel:${contact.phone}`}
                         target="_blank"
@@ -339,12 +373,45 @@ export default function SearchTab({ repName, recentSearches, onSearch, contactCo
                           <ExternalLink className="h-4 w-4" />
                         </div>
                       )}
+                      <button
+                        className="flex items-center justify-center h-9 w-9 rounded-lg bg-destructive/10 hover:bg-destructive/20 text-destructive transition-colors"
+                        title="Delete contact"
+                        onClick={() => setContactToDelete(contact)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
                     </div>
                   </div>
                 ))}
               </div>
             </div>
           )}
+
+          {/* Delete individual contact confirmation */}
+          <AlertDialog open={!!contactToDelete} onOpenChange={(open) => { if (!open) setContactToDelete(null); }}>
+            <AlertDialogContent className="max-w-sm text-center">
+              <AlertDialogHeader>
+                <div className="flex justify-center mb-2">
+                  <img src={stopBotImg} alt="Stop" className="w-36 h-36 object-contain" />
+                </div>
+                <AlertDialogTitle className="text-2xl font-black tracking-wide text-destructive" style={{ fontFamily: "'Oswald', sans-serif" }}>
+                  STOP!
+                </AlertDialogTitle>
+                <AlertDialogDescription className="text-sm text-foreground">
+                  Are you sure you want to delete <strong>{contactToDelete?.first_name} {contactToDelete?.last_name}</strong>? This cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter className="sm:justify-center gap-2">
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={handleDeleteContact}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                >
+                  {deleting ? "Deleting…" : "Yes, delete"}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
       )}
 
