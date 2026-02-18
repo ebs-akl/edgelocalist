@@ -1,24 +1,52 @@
+import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Phone, MessageSquare, Map, ExternalLink } from "lucide-react";
+import { Phone, MessageSquare, Map, ExternalLink, Loader2 } from "lucide-react";
 import { formatPhoneDisplay, formatCurrency } from "@/lib/contacts";
 import type { NearbyContact } from "@/lib/contacts";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/hooks/use-toast";
 
 interface Props {
-  contact: NearbyContact;
+  contact: NearbyContact & { id?: string };
   repName: string;
   isGhlMode: boolean;
   onClose: () => void;
 }
 
 export default function ContactDetailModal({ contact, repName, isGhlMode, onClose }: Props) {
+  const [lcCalling, setLcCalling] = useState(false);
+
   const smsBody = encodeURIComponent(
     `Hi ${contact.first_name}, this is ${repName} from Cutco — I'm in your area and wanted to reach out!`
   );
   const mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(
     `${contact.address}, ${contact.city}, ${contact.state} ${contact.zip}`
   )}`;
+
+  const handleLcCall = async () => {
+    if (!contact.id) {
+      toast({ title: "Contact ID missing for LC Call", variant: "destructive" });
+      return;
+    }
+    setLcCalling(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Not signed in");
+      const { data, error } = await supabase.functions.invoke("ghl-lc-call", {
+        body: { contact_id: contact.id, to_number: contact.phone },
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+      if (error || !data?.success) throw new Error(data?.error ?? error?.message ?? "Call failed");
+      toast({ title: "LC Call initiated!", description: `Calling ${formatPhoneDisplay(contact.phone)}` });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "LC Call failed";
+      toast({ title: "LC Call failed", description: msg, variant: "destructive" });
+    } finally {
+      setLcCalling(false);
+    }
+  };
 
   return (
     <Dialog open onOpenChange={onClose}>
@@ -57,6 +85,16 @@ export default function ContactDetailModal({ contact, repName, isGhlMode, onClos
               </p>
             </div>
           </div>
+
+          {/* Last Service Date */}
+          {contact.last_service_date && (
+            <div className="rounded-lg bg-muted/50 p-3 flex justify-between items-center">
+              <span className="text-xs text-muted-foreground">Last Service Date</span>
+              <span className="text-sm font-medium">
+                {new Date(contact.last_service_date).toLocaleDateString()}
+              </span>
+            </div>
+          )}
 
           {/* Cutco metrics */}
           <div className="rounded-lg border p-3 space-y-2">
@@ -115,9 +153,18 @@ export default function ContactDetailModal({ contact, repName, isGhlMode, onClos
           </a>
 
           {isGhlMode && (
-            <Button className="w-full min-h-[48px]" variant="outline">
-              <ExternalLink className="mr-2 h-4 w-4" />
-              View in GHL
+            <Button
+              className="w-full min-h-[48px]"
+              variant="outline"
+              onClick={handleLcCall}
+              disabled={lcCalling}
+            >
+              {lcCalling ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <ExternalLink className="mr-2 h-4 w-4" />
+              )}
+              {lcCalling ? "Initiating Call…" : "LC Call"}
             </Button>
           )}
         </div>

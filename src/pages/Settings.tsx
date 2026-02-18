@@ -5,12 +5,30 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
-import { LogOut, MapPin, ArrowLeft, ExternalLink } from "lucide-react";
+import { LogOut, MapPin, ArrowLeft, ExternalLink, Link2, Unlink } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
+const GHL_CLIENT_ID = import.meta.env.VITE_GHL_CLIENT_ID as string;
+const REDIRECT_URI = `${window.location.origin}/ghl-callback`;
+
 export default function Settings() {
-  const { user, repProfile, signOut, isGhlMode } = useAuth();
+  const { user, repProfile, signOut, isGhlMode, refreshProfile } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [connecting, setConnecting] = useState(false);
+
+  const handleConnectGHL = () => {
+    if (!GHL_CLIENT_ID) {
+      toast({ title: "GHL Client ID not configured", variant: "destructive" });
+      return;
+    }
+    const params = new URLSearchParams({
+      response_type: "code",
+      client_id: GHL_CLIENT_ID,
+      redirect_uri: REDIRECT_URI,
+      scope: "contacts.readonly contacts.write locations.readonly conversations/message.write",
+    });
+    window.location.href = `https://marketplace.leadconnectorhq.com/oauth/chooselocation?${params}`;
+  };
 
   const handleManageBilling = async () => {
     setLoading(true);
@@ -104,31 +122,48 @@ export default function Settings() {
           </CardContent>
         </Card>
 
-        {/* GHL connection status */}
-        {isGhlMode && (
-          <Card>
-            <CardHeader>
-              <CardTitle style={{ fontFamily: "'Oswald', sans-serif" }}>GoHighLevel Connection</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="flex items-center gap-2">
-                <div className="h-2.5 w-2.5 rounded-full bg-success animate-pulse" />
-                <span className="text-sm font-medium">Connected</span>
-              </div>
-              <div className="text-sm text-muted-foreground">
-                Location ID: <span className="font-mono">{repProfile?.ghl_location_id}</span>
-              </div>
-              <Button
-                variant="destructive"
-                size="sm"
-                className="min-h-[44px]"
-                onClick={() => toast({ title: "To disconnect GHL, contact support@edgedms.com" })}
-              >
-                Disconnect GHL
-              </Button>
-            </CardContent>
-          </Card>
-        )}
+        {/* GHL connection */}
+        <Card>
+          <CardHeader>
+            <CardTitle style={{ fontFamily: "'Oswald', sans-serif" }}>GoHighLevel Connection</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {isGhlMode ? (
+              <>
+                <div className="flex items-center gap-2">
+                  <div className="h-2.5 w-2.5 rounded-full bg-success animate-pulse" />
+                  <span className="text-sm font-medium">Connected</span>
+                </div>
+                <div className="text-sm text-muted-foreground">
+                  Location ID: <span className="font-mono">{repProfile?.ghl_location_id}</span>
+                </div>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  className="min-h-[44px]"
+                  onClick={() => toast({ title: "To disconnect GHL, contact support@edgedms.com" })}
+                >
+                  <Unlink className="mr-2 h-4 w-4" />
+                  Disconnect GHL
+                </Button>
+              </>
+            ) : (
+              <>
+                <p className="text-sm text-muted-foreground">
+                  Connect your GoHighLevel account to automatically sync contacts and enable LC Calls.
+                </p>
+                <Button
+                  onClick={handleConnectGHL}
+                  disabled={connecting}
+                  className="w-full min-h-[44px]"
+                >
+                  <Link2 className="mr-2 h-4 w-4" />
+                  {connecting ? "Connecting…" : "Connect GoHighLevel"}
+                </Button>
+              </>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Sign out */}
         <Card>

@@ -10,6 +10,7 @@ export interface RepProfile {
   subscription_tier: 'standalone' | 'edgedms' | null;
   ghl_location_id: string | null;
   ghl_access_token: string | null;
+  ghl_refresh_token: string | null;
   stripe_customer_id: string | null;
 }
 
