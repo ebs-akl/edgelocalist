@@ -10,7 +10,7 @@ import { formatPhoneDisplay, formatCurrency } from "@/lib/contacts";
 import type { NearbyContact } from "@/lib/contacts";
 import ContactDetailModal from "./ContactDetailModal";
 
-const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN;
+const MAPBOX_TOKEN = "pk.eyJ1IjoiZWRnZWRtcyIsImEiOiJjbWxvZ25kNjIwOHhpM2dxNjdlcHY3MDFlIn0.vAChp9IlzeKSlI5kxjWPcA";
 const RADIUS_OPTIONS = [10, 25, 50] as const;
 
 interface SearchTabProps {
