@@ -8,7 +8,7 @@ import { toast } from "@/hooks/use-toast";
 import { LogOut, MapPin, ArrowLeft, ExternalLink, Link2, Unlink } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
-const GHL_CLIENT_ID = import.meta.env.VITE_GHL_CLIENT_ID as string;
+const GHL_CLIENT_ID = (import.meta.env.VITE_GHL_CLIENT_ID ?? "") as string;
 const REDIRECT_URI = `${window.location.origin}/ghl-callback`;
 
 export default function Settings() {
