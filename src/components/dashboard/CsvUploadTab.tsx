@@ -3,12 +3,24 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
-import { Upload, RefreshCw, FileText, CheckCircle2, AlertCircle } from "lucide-react";
+import { Upload, RefreshCw, FileText, CheckCircle2, AlertCircle, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { formatPhone, stripAptFromAddress, isPOBox } from "@/lib/contacts";
 import Papa from "papaparse";
 import coffeeBotImg from "@/assets/blue_coffee_bot_cutout.png";
+import stopBotImg from "@/assets/stop_cutout.png";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 interface UploadStats {
   total: number;
@@ -61,9 +73,29 @@ export default function CsvUploadTab({ onUploaded, contactCount, lastSync }: Pro
   const fileRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [stats, setStats] = useState<UploadStats | null>(null);
   const [progress, setProgress] = useState(0);
   const [progressLabel, setProgressLabel] = useState("");
+
+  const handleDeleteAll = async () => {
+    if (!user) return;
+    setDeleting(true);
+    try {
+      const { error } = await supabase
+        .from("localist_contacts")
+        .delete()
+        .eq("rep_id", user.id);
+      if (error) throw error;
+      toast({ title: "All contacts deleted." });
+      setStats(null);
+      onUploaded();
+    } catch (err: any) {
+      toast({ title: "Delete failed", description: err.message, variant: "destructive" });
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   const processFile = useCallback(async (file: File) => {
     if (!user) return;
@@ -281,15 +313,52 @@ export default function CsvUploadTab({ onUploaded, contactCount, lastSync }: Pro
               )}
             </div>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => fileRef.current?.click()}
-            disabled={uploading}
-          >
-            <RefreshCw className="h-3.5 w-3.5 mr-1" />
-            Re-upload
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => fileRef.current?.click()}
+              disabled={uploading || deleting}
+            >
+              <RefreshCw className="h-3.5 w-3.5 mr-1" />
+              Re-upload
+            </Button>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={uploading || deleting}
+                  className="text-destructive border-destructive/40 hover:bg-destructive hover:text-destructive-foreground"
+                >
+                  <Trash2 className="h-3.5 w-3.5 mr-1" />
+                  Delete All
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent className="max-w-sm text-center">
+                <AlertDialogHeader>
+                  <div className="flex justify-center mb-2">
+                    <img src={stopBotImg} alt="Stop" className="w-36 h-36 object-contain" />
+                  </div>
+                  <AlertDialogTitle className="text-2xl font-black tracking-wide text-destructive" style={{ fontFamily: "'Oswald', sans-serif" }}>
+                    STOP!
+                  </AlertDialogTitle>
+                  <AlertDialogDescription className="text-sm text-foreground">
+                    This cannot be undone. Are you sure you want to delete <strong>all</strong> of your contacts?
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter className="sm:justify-center gap-2">
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={handleDeleteAll}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  >
+                    {deleting ? "Deleting…" : "Yes, delete all"}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
         </div>
       )}
 
