@@ -22,6 +22,29 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
+const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN;
+
+async function geocodeAddress(street: string, city: string, state: string, zip: string): Promise<{ lat: number; lng: number } | null> {
+  if (!MAPBOX_TOKEN) return null;
+  try {
+    const query = encodeURIComponent(`${street} ${city} ${state} ${zip}`);
+    const res = await fetch(
+      `https://api.mapbox.com/geocoding/v5/mapbox.places/${query}.json?access_token=${MAPBOX_TOKEN}&country=US&limit=1`
+    );
+    if (!res.ok) return null;
+    const data = await res.json();
+    const [lng, lat] = data?.features?.[0]?.center ?? [];
+    if (lat && lng) return { lat, lng };
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 interface UploadStats {
   total: number;
   geocoded: number;
@@ -154,52 +177,29 @@ export default function CsvUploadTab({ onUploaded, contactCount, lastSync }: Pro
         const validContacts = deduped.filter((c) => !c.poBox && c.street_clean && c.city && c.state);
         const poBoxCount = deduped.filter((c) => c.poBox).length;
 
-        const BATCH_SIZE = 500;
-        const batches = [];
-        for (let i = 0; i < validContacts.length; i += BATCH_SIZE) {
-          batches.push(validContacts.slice(i, i + BATCH_SIZE));
-        }
-
         let totalGeocoded = 0;
         let totalFailed = poBoxCount;
-
         const geocodeResults: Record<string, { lat: number | null; lng: number | null }> = {};
 
-        for (let b = 0; b < batches.length; b++) {
-          const batch = batches[b];
-          const startIdx = b * BATCH_SIZE;
-          setProgressLabel(`Geocoding ${startIdx + 1}–${startIdx + batch.length} of ${validContacts.length}...`);
-          setProgress(Math.round((b / batches.length) * 70));
+        // Geocode directly from browser using VITE_MAPBOX_ACCESS_TOKEN (same as SearchTab)
+        // Process in chunks of 5 with a 200ms delay to avoid rate limits
+        const CONCURRENCY = 5;
+        const DELAY_MS = 250;
 
-          try {
-            const { data, error } = await supabase.functions.invoke("geocode-contacts", {
-              body: {
-                contacts: batch.map((c) => ({
-                  id: c.id,
-                  street: c.street_clean,
-                  city: c.city,
-                  state: c.state,
-                  zip: c.zip,
-                })),
-              },
-            });
+        for (let i = 0; i < validContacts.length; i += CONCURRENCY) {
+          const chunk = validContacts.slice(i, i + CONCURRENCY);
+          setProgressLabel(`Geocoding ${i + 1}–${Math.min(i + CONCURRENCY, validContacts.length)} of ${validContacts.length}...`);
+          setProgress(Math.round((i / validContacts.length) * 70));
 
-            if (error) throw error;
+          await Promise.all(chunk.map(async (c) => {
+            const result = await geocodeAddress(c.street_clean, c.city, c.state, c.zip);
+            geocodeResults[c.id] = { lat: result?.lat ?? null, lng: result?.lng ?? null };
+            if (result) totalGeocoded++;
+            else totalFailed++;
+          }));
 
-          for (const r of data?.results ?? []) {
-              // Strip any extra quotes the edge function may wrap around IDs
-              const cleanId = (r.id as string).replace(/^"|"$/g, "");
-              geocodeResults[cleanId] = { lat: r.lat, lng: r.lng };
-              if (r.lat != null) totalGeocoded++;
-              else totalFailed++;
-            }
-          } catch (err) {
-            console.error("Geocode batch error:", err);
-            // Mark all in batch as failed
-            for (const c of batch) {
-              geocodeResults[c.id] = { lat: null, lng: null };
-              totalFailed++;
-            }
+          if (i + CONCURRENCY < validContacts.length) {
+            await sleep(DELAY_MS);
           }
         }
 
