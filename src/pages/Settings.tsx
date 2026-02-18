@@ -8,26 +8,25 @@ import { toast } from "@/hooks/use-toast";
 import { LogOut, MapPin, ArrowLeft, ExternalLink, Link2, Unlink } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
-const GHL_CLIENT_ID = (import.meta.env.VITE_GHL_CLIENT_ID ?? "") as string;
-const REDIRECT_URI = `${window.location.origin}/ghl-callback`;
-
 export default function Settings() {
   const { user, repProfile, signOut, isGhlMode, refreshProfile } = useAuth();
   const [loading, setLoading] = useState(false);
   const [connecting, setConnecting] = useState(false);
 
-  const handleConnectGHL = () => {
-    if (!GHL_CLIENT_ID) {
-      toast({ title: "GHL Client ID not configured", variant: "destructive" });
-      return;
+  const handleConnectGHL = async () => {
+    setConnecting(true);
+    try {
+      const redirectUri = `${window.location.origin}/ghl-callback`;
+      const { data, error } = await supabase.functions.invoke("ghl-get-auth-url", {
+        body: { redirect_uri: redirectUri },
+      });
+      if (error || !data?.url) throw new Error(data?.error ?? error?.message ?? "Failed to get auth URL");
+      window.location.href = data.url;
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Something went wrong";
+      toast({ title: "GHL connection error", description: msg, variant: "destructive" });
+      setConnecting(false);
     }
-    const params = new URLSearchParams({
-      response_type: "code",
-      client_id: GHL_CLIENT_ID,
-      redirect_uri: REDIRECT_URI,
-      scope: "contacts.readonly contacts.write locations.readonly conversations/message.write",
-    });
-    window.location.href = `https://marketplace.leadconnectorhq.com/oauth/chooselocation?${params}`;
   };
 
   const handleManageBilling = async () => {
