@@ -30,7 +30,7 @@ export default function GhlCallback() {
           return;
         }
 
-        const redirectUri = `${window.location.origin}/ghl-callback`;
+        const redirectUri = `${window.location.origin}${window.location.pathname}`;
 
         const { data, error } = await supabase.functions.invoke("ghl-oauth-callback", {
           body: { code, redirect_uri: redirectUri },

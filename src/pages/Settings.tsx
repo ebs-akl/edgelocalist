@@ -8,7 +8,8 @@ import { toast } from "@/hooks/use-toast";
 import { LogOut, MapPin, ArrowLeft, ExternalLink, Link2, Unlink } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
-const GHL_CLIENT_ID = import.meta.env.VITE_GHL_CLIENT_ID as string | undefined;
+const GHL_CLIENT_ID = "69924ed31d05050c3a7e5757-mlr00xb6";
+const GHL_REDIRECT_PATH = "/localist-setup";
 
 export default function Settings() {
   const { user, repProfile, signOut, isGhlMode, refreshProfile } = useAuth();
@@ -16,15 +17,12 @@ export default function Settings() {
   const [connecting, setConnecting] = useState(false);
 
   const handleConnectGHL = () => {
-    if (!GHL_CLIENT_ID) {
-      toast({ title: "GHL Client ID not configured", variant: "destructive" });
-      return;
-    }
+    const redirectUri = `${window.location.origin}${GHL_REDIRECT_PATH}`;
     const params = new URLSearchParams({
       response_type: "code",
       client_id: GHL_CLIENT_ID,
-      redirect_uri: `${window.location.origin}/ghl-callback`,
-      scope: "contacts.readonly contacts.write locations.readonly conversations/message.write",
+      redirect_uri: redirectUri,
+      scope: "contacts.readonly contacts.write users.readonly locations.readonly conversations/message.write",
     });
     window.location.href = `https://marketplace.leadconnectorhq.com/oauth/chooselocation?${params}`;
   };
