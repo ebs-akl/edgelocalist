@@ -1,102 +1,101 @@
 
-# Database Migration Plan: PostGIS + Tables + RLS + RPC
+## Fix: Client-Side Deduplication + Duplicate Warning in CSV Upload
 
-## Overview
+### Problem
+When a CSV contains duplicate phone numbers, the Supabase upsert throws:
+> `ON CONFLICT DO UPDATE command cannot affect a row a second time`
 
-This migration creates everything the app needs to store contacts and run radius-based search. It runs as a single migration file in Supabase. There are no code changes — all the frontend code is already written and waiting for this schema.
+This happens because `contact_id` is set to the phone number, so two rows with the same phone in a single upsert batch conflict with each other — Postgres can't update the same row twice in one statement.
 
----
-
-## What gets created
-
-### 1. Enable PostGIS extension
-PostGIS adds geospatial support to Postgres. It is required for the radius search. Enabled once per project.
-
-### 2. `localist_reps` table
-Stores one row per signed-up rep. The `id` column matches `auth.users.id` so Supabase auth and the profile stay in sync.
-
-| Column | Type | Notes |
-|---|---|---|
-| id | uuid | Primary key, foreign key → auth.users |
-| email | text | |
-| full_name | text | |
-| subscription_tier | text | `'standalone'` or `'edgedms'` |
-| ghl_location_id | text | Null for standalone reps |
-| ghl_access_token | text | Null for standalone reps |
-| stripe_customer_id | text | |
-| created_at | timestamptz | |
-
-**RLS rules:**
-- Authenticated users can only `SELECT`, `INSERT`, `UPDATE`, and `DELETE` their own row (`id = auth.uid()`).
-- A trigger auto-creates a row in this table when a new user signs up via Supabase Auth.
-
-### 3. `localist_contacts` table
-Stores all customer contacts uploaded via CSV or synced from GHL. Each rep owns their own contacts.
-
-| Column | Type | Notes |
-|---|---|---|
-| id | uuid | Primary key |
-| rep_id | uuid | Foreign key → localist_reps |
-| contact_id | text | Deduplication key (phone number or generated) |
-| first_name | text | |
-| last_name | text | |
-| phone | text | |
-| address | text | |
-| city | text | |
-| state | text | |
-| zip | text | |
-| latitude | double precision | Null until geocoded |
-| longitude | double precision | Null until geocoded |
-| location | geometry(Point, 4326) | PostGIS column — computed from lat/lng |
-| lifetime_value | numeric | Optional, from CSV |
-| last_order_date | date | Optional, from CSV |
-| source | text | `'csv'` or `'ghl'` |
-| updated_at | timestamptz | Updated on every upsert |
-
-A unique constraint on `(rep_id, contact_id)` drives the upsert conflict resolution the CSV upload already uses.
-
-A spatial index on `location` makes radius queries fast even with tens of thousands of rows.
-
-A trigger auto-updates the `location` geometry column whenever `latitude` or `longitude` changes.
-
-**RLS rules:**
-- Authenticated users can only `SELECT`, `INSERT`, `UPDATE`, and `DELETE` rows where `rep_id = auth.uid()`.
-
-### 4. `nearby_contacts` RPC function
-This is the SQL function the Search tab calls. It takes a center point and a radius in miles, and returns all contacts within range sorted by distance.
-
-**Parameters:**
-- `rep` — the calling user's UUID
-- `center_lat` — latitude of the search center
-- `center_lng` — longitude of the search center
-- `radius_miles` — search radius (10, 25, or 50)
-
-**Returns:** rows matching `NearbyContact` — `id`, `first_name`, `last_name`, `phone`, `address`, `city`, `state`, `zip`, `lifetime_value`, `last_order_date`, and `distance_miles`.
-
-The function uses `ST_DWithin` on a geography cast (which natively understands meters/miles) for accuracy and speed. It is `SECURITY DEFINER` so it enforces its own `rep = auth.uid()` check internally and bypasses RLS — this is safe because the function itself constrains the query to the calling user's data.
-
-### 5. Auto-create rep profile trigger
-When a new user signs up through Supabase Auth (`auth.users` gets a new row), a trigger fires and inserts a matching row into `localist_reps` using the email from the auth record. This means reps land on the dashboard with a profile already in place.
+### What Will Change
+**File**: `src/components/dashboard/CsvUploadTab.tsx`
 
 ---
 
-## Implementation
+### Step 1 — Add `duplicatesRemoved` to `UploadStats`
 
-One migration file: `supabase/migrations/[timestamp]_init_localist_schema.sql`
+Extend the `UploadStats` interface with one new field:
 
-**Order of operations inside the migration (must be sequential):**
-1. Enable PostGIS
-2. Create `localist_reps` table + RLS policies
-3. Create `localist_contacts` table + spatial index + geometry trigger + RLS policies
-4. Create `nearby_contacts` RPC function
-5. Create the `handle_new_user` trigger on `auth.users`
+```ts
+interface UploadStats {
+  total: number;
+  geocoded: number;
+  failed: number;
+  duplicatesRemoved: number;   // NEW
+  lastUpload: string | null;
+}
+```
 
 ---
 
-## Technical Notes
+### Step 2 — Deduplicate after parsing, before geocoding
 
-- The `location` geometry column is kept in sync by a `BEFORE INSERT OR UPDATE` trigger so the geocode edge function only needs to write `latitude` and `longitude` — the PostGIS column updates automatically.
-- The `nearby_contacts` function casts coordinates to `geography` type (not `geometry`) so that `ST_DWithin` distance is in meters (converted from miles), giving accurate real-world distances rather than flat-plane approximations.
-- RLS is enabled on both tables. All policies use `auth.uid()` directly — no separate roles table is needed here because reps only ever access their own data (no admin cross-access pattern).
-- The existing `CsvUploadTab` upsert call uses `onConflict: "rep_id,contact_id"` — this matches the unique constraint being created.
-- No frontend code changes are required. Everything is already written.
+Immediately after the `contacts` array is built (line 85), add a deduplication pass that iterates in reverse and keeps only the **last** occurrence of each phone number (blank phones are kept as-is since they fall back to a random ID and don't conflict):
+
+```ts
+// Deduplicate by phone (keep last occurrence)
+const phoneMap = new Map<string, ParsedContact>();
+for (const c of contacts) {
+  if (c.phone) {
+    phoneMap.set(c.phone, c);   // later rows overwrite earlier ones
+  } else {
+    phoneMap.set(`no-phone-${Math.random()}`, c); // keep no-phone rows
+  }
+}
+const deduped = Array.from(phoneMap.values());
+const duplicatesRemoved = contacts.length - deduped.length;
+```
+
+All downstream logic (`validContacts`, batching, geocoding, upsert) then operates on `deduped` instead of `contacts`.
+
+---
+
+### Step 3 — Surface `duplicatesRemoved` in the stats
+
+Pass `duplicatesRemoved` into `setStats(...)`:
+
+```ts
+setStats({
+  total: deduped.length,
+  geocoded: totalGeocoded,
+  failed: totalFailed,
+  duplicatesRemoved,
+  lastUpload: new Date().toISOString(),
+});
+```
+
+---
+
+### Step 4 — Show the warning banner in the upload results UI
+
+In the "Upload results" section (currently lines 263–273), add a second row below the success line that only renders when `duplicatesRemoved > 0`:
+
+```tsx
+{stats.duplicatesRemoved > 0 && (
+  <div className="flex items-center gap-2 text-amber-600">
+    <AlertCircle className="h-4 w-4 shrink-0" />
+    <span className="text-sm">
+      {stats.duplicatesRemoved} duplicate phone number
+      {stats.duplicatesRemoved === 1 ? " was" : "s were"} removed from your CSV.
+    </span>
+  </div>
+)}
+```
+
+`AlertCircle` is already imported, so no new imports are needed.
+
+---
+
+### Result After Change
+
+The upload completion card will look like:
+
+```
+✓ 847 contacts ready.  3 addresses could not be geocoded.
+⚠ 12 duplicate phone numbers were removed from your CSV.
+```
+
+Reps immediately understand why their imported count is lower than the row count in their spreadsheet — no confusion, no support tickets.
+
+### No Database Changes Required
+The upsert conflict key (`rep_id,contact_id`) stays the same. Deduplication is purely client-side.
