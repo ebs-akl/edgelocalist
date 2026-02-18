@@ -10,42 +10,84 @@ import Dashboard from "./pages/Dashboard";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 import ProtectedRoute from "./components/ProtectedRoute";
+import { supabaseConfigured } from "@/integrations/supabase/client";
+import { MapPin, AlertTriangle } from "lucide-react";
 
 const queryClient = new QueryClient();
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <AuthProvider>
-          <Routes>
-            <Route path="/" element={<Landing />} />
-            <Route path="/auth" element={<Auth />} />
-            <Route
-              path="/dashboard"
-              element={
-                <ProtectedRoute>
-                  <Dashboard />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/settings"
-              element={
-                <ProtectedRoute>
-                  <Settings />
-                </ProtectedRoute>
-              }
-            />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </AuthProvider>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+function MissingCredentials() {
+  return (
+    <div className="min-h-screen bg-background flex items-center justify-center px-4">
+      <div className="max-w-md w-full text-center space-y-4">
+        <div className="flex items-center justify-center gap-2 mb-6">
+          <MapPin className="h-7 w-7 text-primary" />
+          <span className="text-2xl font-bold" style={{ fontFamily: "'Oswald', sans-serif" }}>
+            EdgeLocalist
+          </span>
+        </div>
+        <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-6 space-y-3">
+          <div className="flex items-center justify-center gap-2 text-destructive">
+            <AlertTriangle className="h-5 w-5" />
+            <span className="font-semibold">Supabase credentials missing</span>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            The app needs <code className="bg-muted px-1 rounded text-xs">VITE_SUPABASE_URL</code> and{" "}
+            <code className="bg-muted px-1 rounded text-xs">VITE_SUPABASE_ANON_KEY</code> to connect to the database.
+          </p>
+          <ol className="text-sm text-left text-muted-foreground space-y-1 list-decimal list-inside">
+            <li>Open Project → Settings → Secrets</li>
+            <li>Add <strong>VITE_SUPABASE_URL</strong> — your Supabase project URL</li>
+            <li>Add <strong>VITE_SUPABASE_ANON_KEY</strong> — your Supabase anon/public key</li>
+            <li>Reload the preview</li>
+          </ol>
+          <p className="text-xs text-muted-foreground">
+            Find these values in your Supabase dashboard under{" "}
+            <strong>Project Settings → API</strong>.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const App = () => {
+  if (!supabaseConfigured) {
+    return <MissingCredentials />;
+  }
+
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <AuthProvider>
+            <Routes>
+              <Route path="/" element={<Landing />} />
+              <Route path="/auth" element={<Auth />} />
+              <Route
+                path="/dashboard"
+                element={
+                  <ProtectedRoute>
+                    <Dashboard />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/settings"
+                element={
+                  <ProtectedRoute>
+                    <Settings />
+                  </ProtectedRoute>
+                }
+              />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </AuthProvider>
+        </BrowserRouter>
+      </TooltipProvider>
+    </QueryClientProvider>
+  );
+};
 
 export default App;
