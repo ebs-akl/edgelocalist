@@ -1,0 +1,2 @@
+[functions.geocode-contacts]
+verify_jwt = false
