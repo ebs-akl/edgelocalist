@@ -1,4 +1,4 @@
-// Supabase client — credentials injected at build time via VITE_ env vars
+// Supabase client — credentials injected at build time via VITE_ env vars (updated)
 import { createClient } from '@supabase/supabase-js';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string | undefined;
