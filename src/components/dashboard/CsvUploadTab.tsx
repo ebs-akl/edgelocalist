@@ -186,8 +186,10 @@ export default function CsvUploadTab({ onUploaded, contactCount, lastSync }: Pro
 
             if (error) throw error;
 
-            for (const r of data?.results ?? []) {
-              geocodeResults[r.id] = { lat: r.lat, lng: r.lng };
+          for (const r of data?.results ?? []) {
+              // Strip any extra quotes the edge function may wrap around IDs
+              const cleanId = (r.id as string).replace(/^"|"$/g, "");
+              geocodeResults[cleanId] = { lat: r.lat, lng: r.lng };
               if (r.lat != null) totalGeocoded++;
               else totalFailed++;
             }
