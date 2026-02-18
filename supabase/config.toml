@@ -12,3 +12,6 @@ verify_jwt = false
 
 [functions.ghl-group-sms]
 verify_jwt = false
+
+[functions.ghl-get-auth-url]
+verify_jwt = false
