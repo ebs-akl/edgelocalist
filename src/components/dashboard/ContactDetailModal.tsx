@@ -1,7 +1,7 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Phone, MessageSquare, Map, ExternalLink, X } from "lucide-react";
+import { Phone, MessageSquare, Map, ExternalLink } from "lucide-react";
 import { formatPhoneDisplay, formatCurrency } from "@/lib/contacts";
 import type { NearbyContact } from "@/lib/contacts";
 
@@ -38,14 +38,14 @@ export default function ContactDetailModal({ contact, repName, isGhlMode, onClos
             </p>
           </div>
 
-          {/* Stats row */}
-          <div className="grid grid-cols-3 gap-3">
+          {/* Primary stats */}
+          <div className="grid grid-cols-3 gap-2">
             <div className="rounded-lg bg-muted/50 p-3 text-center">
               <p className="text-xs text-muted-foreground mb-0.5">Distance</p>
               <p className="font-bold text-sm font-mono">{contact.distance_miles.toFixed(1)} mi</p>
             </div>
             <div className="rounded-lg bg-muted/50 p-3 text-center">
-              <p className="text-xs text-muted-foreground mb-0.5">Lifetime</p>
+              <p className="text-xs text-muted-foreground mb-0.5">Lifetime $</p>
               <p className="font-bold text-sm">{formatCurrency(contact.lifetime_value)}</p>
             </div>
             <div className="rounded-lg bg-muted/50 p-3 text-center">
@@ -55,6 +55,33 @@ export default function ContactDetailModal({ contact, repName, isGhlMode, onClos
                   ? new Date(contact.last_order_date).toLocaleDateString()
                   : "—"}
               </p>
+            </div>
+          </div>
+
+          {/* Cutco metrics */}
+          <div className="rounded-lg border p-3 space-y-2">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Cutco Metrics</p>
+            <div className="grid grid-cols-2 gap-x-6 gap-y-1.5 text-sm">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Orders</span>
+                <span className="font-medium">{contact.order_count ?? "—"}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Gifts</span>
+                <span className="font-medium">{contact.gift_count ?? "—"}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">RLT</span>
+                <span className="font-medium">{contact.rlt || "—"}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">BIZ</span>
+                <span className="font-medium">{contact.biz || "—"}</span>
+              </div>
+              <div className="flex justify-between col-span-2">
+                <span className="text-muted-foreground">CAT</span>
+                <span className="font-medium">{contact.cat || "—"}</span>
+              </div>
             </div>
           </div>
 
