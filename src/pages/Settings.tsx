@@ -9,7 +9,8 @@ import { LogOut, MapPin, ArrowLeft, ExternalLink, Link2, Unlink } from "lucide-r
 import { supabase } from "@/integrations/supabase/client";
 
 const GHL_CLIENT_ID = "69924ed31d05050c3a7e5757-mlr00xb6";
-const GHL_REDIRECT_PATH = "/localist-setup";
+const GHL_VERSION_ID = "69924ed31d05050c3a7e5757";
+const GHL_REDIRECT_URI = "https://automatedknifelife.com/localist-setup";
 
 export default function Settings() {
   const { user, repProfile, signOut, isGhlMode, refreshProfile } = useAuth();
@@ -17,13 +18,12 @@ export default function Settings() {
   const [connecting, setConnecting] = useState(false);
 
   const handleConnectGHL = () => {
-    const redirectUri = `${window.location.origin}${GHL_REDIRECT_PATH}`;
     const params = new URLSearchParams({
       response_type: "code",
       client_id: GHL_CLIENT_ID,
-      redirect_uri: redirectUri,
+      redirect_uri: GHL_REDIRECT_URI,
       scope: "contacts.readonly contacts.write users.readonly locations.readonly conversations/message.write",
-      version_id: GHL_CLIENT_ID,
+      version_id: GHL_VERSION_ID,
     });
     window.location.href = `https://marketplace.gohighlevel.com/oauth/chooselocation?${params}`;
   };
