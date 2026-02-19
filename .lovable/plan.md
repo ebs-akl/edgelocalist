@@ -1,18 +1,18 @@
 
 
-## Fix GHL Redirect URI Domain
+## Update GHL Credentials
 
-The redirect URI needs to use `edgelocalist.app` instead of `edgelocalist.com`, while keeping the `/leadconnector/oauth` path from the GHL Marketplace configuration.
+### 1. Frontend Code Change
+- **`src/pages/Settings.tsx`** (line 12): Update `GHL_CLIENT_ID` from `69924ed31d05050c3a7e5757-mlr00xb6` to `69924ed31d05050c3a7e5757-mltvd3g6`
 
-**Final redirect URI**: `https://edgelocalist.app/leadconnector/oauth`
+### 2. Supabase Secrets
+- Update `GHL_CLIENT_ID` secret to `69924ed31d05050c3a7e5757-mltvd3g6`
+- Update `GHL_CLIENT_SECRET` secret to your new client secret (please provide it)
 
-### Changes
+### 3. Redeploy Edge Functions
+After secrets are updated, redeploy `ghl-oauth-callback` and `ghl-get-auth-url` so they pick up the new credentials.
 
-1. **`src/pages/Settings.tsx`** -- Update `GHL_REDIRECT_URI` constant to `https://edgelocalist.app/leadconnector/oauth`
-
-2. **`src/pages/GhlCallback.tsx`** -- Update the `redirectUri` variable used in the token exchange to `https://edgelocalist.app/leadconnector/oauth`
-
-3. **GHL Marketplace App** -- You will need to update the Redirect URI field in your GHL Marketplace App settings to match: `https://edgelocalist.app/leadconnector/oauth`
-
-Three lines of code total. No other files need changes -- the route in `App.tsx` (`/leadconnector/oauth`) and the edge function are path-based and domain-agnostic.
+### 4. GHL Marketplace App
+Confirm your Marketplace App redirect URI is set to exactly:
+`https://edgelocalist.app/leadconnector/oauth` (with the letter "o", not zero)
 
