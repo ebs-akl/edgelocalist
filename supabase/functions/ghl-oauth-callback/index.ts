@@ -37,7 +37,10 @@ serve(async (req) => {
     // Exchange code for tokens
     const tokenRes = await fetch("https://services.leadconnectorhq.com/oauth/token", {
       method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        "Version": "2021-07-28",
+      },
       body: new URLSearchParams({
         client_id: GHL_CLIENT_ID,
         client_secret: GHL_CLIENT_SECRET,
