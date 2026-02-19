@@ -6,6 +6,7 @@ import { Sheet, SheetContent, SheetTrigger, SheetClose } from "@/components/ui/s
 import { motion } from "framer-motion";
 import { MapPin, Upload, Search, Menu, CheckCircle2, ArrowRight, Zap, BarChart3 } from "lucide-react";
 import heroBg from "@/assets/hero-bg.gif";
+import aklLogo from "@/assets/AKL_With_White.png";
 
 const fadeUp = {
   hidden: { opacity: 0, y: 30 },
@@ -114,11 +115,8 @@ export default function Landing() {
       {/* Nav */}
       <nav className="fixed top-0 left-0 right-0 z-50 border-b bg-background/80 backdrop-blur-md">
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
-          <div className="flex items-center gap-2">
-            <MapPin className="h-6 w-6 text-primary" />
-            <span className="font-bold text-lg" style={{ fontFamily: "'Oswald', sans-serif" }}>
-              EdgeLocalist
-            </span>
+          <div className="flex items-center">
+            <img src={aklLogo} alt="Automated Knife Life" className="h-10 w-auto object-contain" />
           </div>
 
           {/* Desktop nav */}
@@ -373,11 +371,8 @@ export default function Landing() {
       {/* Footer */}
       <footer className="border-t py-8 bg-background">
         <div className="container mx-auto px-4 text-center">
-          <div className="flex items-center justify-center gap-2 mb-3">
-            <MapPin className="h-5 w-5 text-primary" />
-            <span className="font-bold" style={{ fontFamily: "'Oswald', sans-serif" }}>
-              EdgeLocalist
-            </span>
+          <div className="flex items-center justify-center mb-4">
+            <img src={aklLogo} alt="Automated Knife Life" className="h-16 w-auto object-contain" />
           </div>
           <p className="text-sm text-muted-foreground">
             © {new Date().getFullYear()} Edge Branding Solutions · Part of the EdgeDMS Platform

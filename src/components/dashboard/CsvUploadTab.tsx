@@ -8,7 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { formatPhone, stripAptFromAddress, isPOBox } from "@/lib/contacts";
 import Papa from "papaparse";
-import coffeeBotImg from "@/assets/blue_coffee_bot_cutout.png";
+import coffeeBotImg from "@/assets/Coffee_Edgar.gif";
 import stopBotImg from "@/assets/stop_cutout.png";
 import {
   AlertDialog,
