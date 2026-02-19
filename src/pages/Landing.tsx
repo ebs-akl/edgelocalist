@@ -13,70 +13,70 @@ const fadeUp = {
   visible: (i: number) => ({
     opacity: 1,
     y: 0,
-    transition: { delay: i * 0.1, duration: 0.5, ease: "easeOut" as const },
-  }),
+    transition: { delay: i * 0.1, duration: 0.5, ease: "easeOut" as const }
+  })
 };
 
 const stats = [
-  { label: "Contacts Searchable", value: "500K+" },
-  { label: "Reps Active", value: "85+" },
-  { label: "Searches / Day", value: "1,200+" },
-  { label: "Accuracy Rate", value: "99.1%" },
-];
+{ label: "Contacts Searchable", value: "500K+" },
+{ label: "Reps Active", value: "85+" },
+{ label: "Searches / Day", value: "1,200+" },
+{ label: "Accuracy Rate", value: "99.1%" }];
+
 
 const features = [
-  {
-    icon: Upload,
-    title: "CSV Upload",
-    description:
-      "Export contacts from VectorConnect, upload once, and we geocode every address automatically. Re-upload anytime to refresh.",
-  },
-  {
-    icon: MapPin,
-    title: "Radius Search",
-    description:
-      "Type any address or tap GPS. Choose 10, 25, or 50 miles. Every customer in range appears instantly — sorted by distance.",
-  },
-  {
-    icon: Search,
-    title: "One-Tap Actions",
-    description:
-      "Call, text, or get directions to any contact with a single tap. Pre-filled SMS messages save you time in the field.",
-  },
-];
+{
+  icon: Upload,
+  title: "CSV Upload",
+  description:
+  "Export contacts from VectorConnect, upload once, and we geocode every address automatically. Re-upload anytime to refresh."
+},
+{
+  icon: MapPin,
+  title: "Radius Search",
+  description:
+  "Type any address or tap GPS. Choose 10, 25, or 50 miles. Every customer in range appears instantly — sorted by distance."
+},
+{
+  icon: Search,
+  title: "One-Tap Actions",
+  description:
+  "Call, text, or get directions to any contact with a single tap. Pre-filled SMS messages save you time in the field."
+}];
+
 
 const pricingPlans = [
-  {
-    name: "Standalone",
-    price: "$9",
-    period: "/mo",
-    description: "Perfect for reps who want radius search without a full CRM.",
-    features: [
-      "CSV Upload from VectorConnect",
-      "Radius Search (10/25/50 mi)",
-      "Call & SMS one-tap actions",
-      "Lifetime value tracking",
-      "Unlimited searches",
-    ],
-    cta: "Start Free Trial",
-    highlighted: false,
-  },
-  {
-    name: "EdgeDMS",
-    price: "$97",
-    period: "/mo",
-    description: "Included in the full EdgeDMS platform with GHL sync.",
-    features: [
-      "Everything in Standalone",
-      "Auto-sync from GoHighLevel",
-      "LC Call integration",
-      "24-hour contact refresh",
-      "Full EdgeDMS suite",
-    ],
-    cta: "Get EdgeDMS",
-    highlighted: true,
-  },
-];
+{
+  name: "Standalone",
+  price: "$9",
+  period: "/mo",
+  description: "Perfect for reps who want radius search without a full CRM.",
+  features: [
+  "CSV Upload from VectorConnect",
+  "Radius Search (10/25/50 mi)",
+  "Call & SMS one-tap actions",
+  "Lifetime value tracking",
+  "Unlimited searches"],
+
+  cta: "Start Free Trial",
+  highlighted: false
+},
+{
+  name: "EdgeDMS",
+  price: "$97",
+  period: "/mo",
+  description: "Included in the full EdgeDMS platform with GHL sync.",
+  features: [
+  "Everything in Standalone",
+  "Auto-sync from GoHighLevel",
+  "LC Call integration",
+  "24-hour contact refresh",
+  "Full EdgeDMS suite"],
+
+  cta: "Get EdgeDMS",
+  highlighted: true
+}];
+
 
 // Hexagon SVG pattern background component
 function HexBackground() {
@@ -84,27 +84,27 @@ function HexBackground() {
     <svg
       className="absolute inset-0 w-full h-full opacity-10"
       xmlns="http://www.w3.org/2000/svg"
-      aria-hidden="true"
-    >
+      aria-hidden="true">
+
       <defs>
         <pattern id="hex" x="0" y="0" width="56" height="100" patternUnits="userSpaceOnUse">
           <polygon
             points="28,2 54,16 54,84 28,98 2,84 2,16"
             fill="none"
             stroke="currentColor"
-            strokeWidth="1"
-          />
+            strokeWidth="1" />
+
           <polygon
             points="56,52 82,66 82,134 56,148 30,134 30,66"
             fill="none"
             stroke="currentColor"
-            strokeWidth="1"
-          />
+            strokeWidth="1" />
+
         </pattern>
       </defs>
       <rect width="100%" height="100%" fill="url(#hex)" className="text-primary-foreground" />
-    </svg>
-  );
+    </svg>);
+
 }
 
 export default function Landing() {
@@ -116,7 +116,7 @@ export default function Landing() {
       <nav className="fixed top-0 left-0 right-0 z-50 border-b bg-background/80 backdrop-blur-md">
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
           <div className="flex items-center">
-            <img src={aklLogo} alt="Automated Knife Life" className="h-10 w-auto object-contain" />
+            <img alt="Automated Knife Life" className="h-10 w-auto object-contain" src="/lovable-uploads/36fd507d-e7a8-484e-bdf1-b0b75b66dc59.png" />
           </div>
 
           {/* Desktop nav */}
@@ -167,15 +167,15 @@ export default function Landing() {
           src={heroBg}
           alt=""
           aria-hidden="true"
-          className="absolute inset-0 w-full h-full object-cover opacity-20 pointer-events-none select-none"
-        />
+          className="absolute inset-0 w-full h-full object-cover opacity-20 pointer-events-none select-none" />
+
         <HexBackground />
         <div className="container relative mx-auto px-4 text-center">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-          >
+            transition={{ duration: 0.6 }}>
+
             <div className="inline-flex items-center gap-2 mb-5 rounded-full bg-primary-foreground/15 px-4 py-1.5 border border-primary-foreground/20">
               <Zap className="h-4 w-4 text-primary-foreground" />
               <span className="text-sm font-medium text-primary-foreground">Part of the EdgeDMS Platform</span>
@@ -183,8 +183,8 @@ export default function Landing() {
 
             <h1
               className="mb-5 text-4xl text-primary-foreground sm:text-5xl lg:text-7xl uppercase leading-none"
-              style={{ fontFamily: "'Anton', sans-serif", letterSpacing: "0.03em" }}
-            >
+              style={{ fontFamily: "'Anton', sans-serif", letterSpacing: "0.03em" }}>
+
               YOUR CUTCO CUSTOMERS.
               <br />
               <span className="text-primary-foreground/75">FOUND IN SECONDS.</span>
@@ -200,16 +200,16 @@ export default function Landing() {
                 <Button
                   size="lg"
                   className="text-base px-8 min-h-[48px]"
-                  style={{ backgroundColor: "#34dfdf", color: "#0a1a1a" }}
-                >
+                  style={{ backgroundColor: "#34dfdf", color: "#0a1a1a" }}>
+
                   Start Free Trial <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
               </Link>
               <Button
                 size="lg"
                 variant="outline"
-                className="border-primary-foreground/30 text-primary-foreground hover:bg-primary-foreground/10 min-h-[48px]"
-              >
+                className="border-primary-foreground/30 text-primary-foreground hover:bg-primary-foreground/10 min-h-[48px]">
+
                 Watch Demo
               </Button>
             </div>
@@ -220,22 +220,22 @@ export default function Landing() {
             initial={{ opacity: 0, y: 40 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3, duration: 0.6 }}
-            className="mt-16 grid grid-cols-2 sm:grid-cols-4 gap-4 max-w-3xl mx-auto"
-          >
-            {stats.map((stat) => (
-              <div
-                key={stat.label}
-                className="rounded-lg bg-primary-foreground/10 p-4 backdrop-blur-sm border border-primary-foreground/20"
-              >
+            className="mt-16 grid grid-cols-2 sm:grid-cols-4 gap-4 max-w-3xl mx-auto">
+
+            {stats.map((stat) =>
+            <div
+              key={stat.label}
+              className="rounded-lg bg-primary-foreground/10 p-4 backdrop-blur-sm border border-primary-foreground/20">
+
                 <div
-                  className="text-2xl font-bold text-primary-foreground"
-                  style={{ fontFamily: "'Oswald', sans-serif" }}
-                >
+                className="text-2xl font-bold text-primary-foreground"
+                style={{ fontFamily: "'Oswald', sans-serif" }}>
+
                   {stat.value}
                 </div>
                 <div className="text-xs text-primary-foreground/60">{stat.label}</div>
               </div>
-            ))}
+            )}
           </motion.div>
         </div>
       </section>
@@ -252,15 +252,15 @@ export default function Landing() {
             </p>
           </div>
           <div className="grid gap-6 sm:grid-cols-3">
-            {features.map((f, i) => (
-              <motion.div
-                key={f.title}
-                custom={i}
-                initial="hidden"
-                whileInView="visible"
-                viewport={{ once: true, margin: "-50px" }}
-                variants={fadeUp}
-              >
+            {features.map((f, i) =>
+            <motion.div
+              key={f.title}
+              custom={i}
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true, margin: "-50px" }}
+              variants={fadeUp}>
+
                 <Card className="h-full border-border/60 hover:border-primary/40 transition-colors">
                   <CardContent className="p-6">
                     <div className="mb-4 inline-flex h-11 w-11 items-center justify-center rounded-lg bg-primary text-primary-foreground">
@@ -273,7 +273,7 @@ export default function Landing() {
                   </CardContent>
                 </Card>
               </motion.div>
-            ))}
+            )}
           </div>
         </div>
       </section>
@@ -286,8 +286,8 @@ export default function Landing() {
             whileInView="visible"
             viewport={{ once: true }}
             variants={fadeUp}
-            custom={0}
-          >
+            custom={0}>
+
             <div className="inline-flex items-center gap-2 mb-4 rounded-full bg-primary/10 px-4 py-1.5 text-sm font-medium text-primary">
               <BarChart3 className="h-4 w-4" /> Part of the EdgeDMS Platform
             </div>
@@ -312,28 +312,28 @@ export default function Landing() {
             </h2>
           </div>
           <div className="grid gap-6 sm:grid-cols-2 max-w-3xl mx-auto">
-            {pricingPlans.map((plan, i) => (
-              <motion.div
-                key={plan.name}
-                custom={i}
-                initial="hidden"
-                whileInView="visible"
-                viewport={{ once: true }}
-                variants={fadeUp}
-              >
+            {pricingPlans.map((plan, i) =>
+            <motion.div
+              key={plan.name}
+              custom={i}
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true }}
+              variants={fadeUp}>
+
                 <Card
-                  className={`h-full ${
-                    plan.highlighted
-                      ? "border-primary ring-2 ring-primary/20"
-                      : "border-border/60"
-                  }`}
-                >
+                className={`h-full ${
+                plan.highlighted ?
+                "border-primary ring-2 ring-primary/20" :
+                "border-border/60"}`
+                }>
+
                   <CardContent className="p-6">
-                    {plan.highlighted && (
-                      <div className="mb-3 inline-block rounded-full bg-primary px-3 py-0.5 text-xs font-semibold text-primary-foreground">
+                    {plan.highlighted &&
+                  <div className="mb-3 inline-block rounded-full bg-primary px-3 py-0.5 text-xs font-semibold text-primary-foreground">
                         Most Popular
                       </div>
-                    )}
+                  }
                     <h3 className="text-2xl font-bold mb-1" style={{ fontFamily: "'Oswald', sans-serif" }}>
                       {plan.name}
                     </h3>
@@ -345,25 +345,25 @@ export default function Landing() {
                     </div>
                     <p className="text-sm text-muted-foreground mb-5">{plan.description}</p>
                     <ul className="space-y-2 mb-6">
-                      {plan.features.map((feat) => (
-                        <li key={feat} className="flex items-center gap-2 text-sm">
+                      {plan.features.map((feat) =>
+                    <li key={feat} className="flex items-center gap-2 text-sm">
                           <CheckCircle2 className="h-4 w-4 text-success shrink-0" />
                           {feat}
                         </li>
-                      ))}
+                    )}
                     </ul>
                     <Link to="/auth">
                       <Button
-                        className="w-full min-h-[44px]"
-                        variant={plan.highlighted ? "default" : "outline"}
-                      >
+                      className="w-full min-h-[44px]"
+                      variant={plan.highlighted ? "default" : "outline"}>
+
                         {plan.cta}
                       </Button>
                     </Link>
                   </CardContent>
                 </Card>
               </motion.div>
-            ))}
+            )}
           </div>
         </div>
       </section>
@@ -382,6 +382,6 @@ export default function Landing() {
           </p>
         </div>
       </footer>
-    </div>
-  );
+    </div>);
+
 }
