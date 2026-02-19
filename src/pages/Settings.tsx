@@ -9,8 +9,8 @@ import { LogOut, ArrowLeft, ExternalLink, Link2, Unlink } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import localistLogo from "@/assets/Localist_Logo-2.png";
 
-const GHL_CLIENT_ID = "69924ed31d05050c3a7e5757-mltvd3g6";
-const GHL_REDIRECT_URI = "https://edgelocalist.app/leadconnector/oauth";
+const GHL_CLIENT_ID = "69924ed31d05050c3a7e5757-mlr00xb6";
+const GHL_REDIRECT_URI = "https://edgelocalist.app/callback";
 
 export default function Settings() {
   const { user, repProfile, signOut, isGhlMode, refreshProfile } = useAuth();
