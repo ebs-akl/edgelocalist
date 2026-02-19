@@ -9,6 +9,42 @@ const corsHeaders = {
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
+/**
+ * Resolve GHL credentials via Bearer token or location_id.
+ */
+async function resolveCredentials(
+  supabase: ReturnType<typeof createClient>,
+  authHeader: string | null,
+  locationId: string | null,
+): Promise<{ repName: string; accessToken: string; ghlLocationId: string } | { error: string; status: number }> {
+  if (authHeader?.startsWith("Bearer ")) {
+    const { data: { user }, error } = await supabase.auth.getUser(authHeader.replace("Bearer ", ""));
+    if (error || !user) return { error: "Could not verify user", status: 401 };
+
+    const { data: rep } = await supabase
+      .from("localist_reps")
+      .select("ghl_access_token, ghl_location_id, full_name")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    if (!rep?.ghl_access_token || !rep?.ghl_location_id) return { error: "GHL not connected", status: 400 };
+    return { repName: rep.full_name ?? "your rep", accessToken: rep.ghl_access_token, ghlLocationId: rep.ghl_location_id };
+  }
+
+  if (locationId) {
+    const { data: rep } = await supabase
+      .from("localist_reps")
+      .select("ghl_access_token, ghl_location_id, full_name")
+      .eq("ghl_location_id", locationId)
+      .maybeSingle();
+
+    if (!rep?.ghl_access_token) return { error: "No rep found for this location_id", status: 400 };
+    return { repName: rep.full_name ?? "your rep", accessToken: rep.ghl_access_token, ghlLocationId: rep.ghl_location_id! };
+  }
+
+  return { error: "Missing Authorization header or location_id", status: 401 };
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -19,30 +55,12 @@ serve(async (req) => {
 
   if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
     return new Response(JSON.stringify({ error: "Missing server configuration" }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
-
-  const authHeader = req.headers.get("Authorization");
-  if (!authHeader) {
-    return new Response(JSON.stringify({ error: "Missing Authorization header" }), {
-      status: 401,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-
-  const { data: { user }, error: userError } = await supabase.auth.getUser(
-    authHeader.replace("Bearer ", "")
-  );
-  if (userError || !user) {
-    return new Response(JSON.stringify({ error: "Could not verify user" }), {
-      status: 401,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
+  const authHeader = req.headers.get("Authorization");
 
   interface ContactPayload {
     contact_id: string;
@@ -51,40 +69,34 @@ serve(async (req) => {
     phone: string;
   }
 
-  const { contacts, message_template } = await req.json() as {
+  const body = await req.json() as {
     contacts: ContactPayload[];
-    message_template: string; // template with {{first_name}} and {{city}} placeholders
+    message_template: string;
+    location_id?: string;
   };
+
+  const { contacts, message_template, location_id } = body;
 
   if (!contacts?.length || !message_template) {
     return new Response(JSON.stringify({ error: "Missing contacts or message_template" }), {
-      status: 400,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 
-  // Load GHL credentials
-  const { data: rep } = await supabase
-    .from("localist_reps")
-    .select("ghl_access_token, ghl_location_id, full_name")
-    .eq("id", user.id)
-    .maybeSingle();
-
-  if (!rep?.ghl_access_token || !rep?.ghl_location_id) {
-    return new Response(JSON.stringify({ error: "GHL not connected" }), {
-      status: 400,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+  const creds = await resolveCredentials(supabase, authHeader, location_id || null);
+  if ("error" in creds) {
+    return new Response(JSON.stringify({ error: creds.error }), {
+      status: creds.status, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 
   const results: { contact_id: string; success: boolean; error?: string }[] = [];
 
   for (const contact of contacts) {
-    // Personalise message
-    const body = message_template
+    const msgBody = message_template
       .replace(/\{\{first_name\}\}/g, contact.first_name)
       .replace(/\{\{city\}\}/g, contact.city)
-      .replace(/\{\{rep_name\}\}/g, rep.full_name ?? "your rep");
+      .replace(/\{\{rep_name\}\}/g, creds.repName);
 
     try {
       const res = await fetch(
@@ -92,15 +104,15 @@ serve(async (req) => {
         {
           method: "POST",
           headers: {
-            Authorization: `Bearer ${rep.ghl_access_token}`,
+            Authorization: `Bearer ${creds.accessToken}`,
             Version: "2021-04-15",
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
             type: "SMS",
             contactId: contact.contact_id,
-            locationId: rep.ghl_location_id,
-            message: body,
+            locationId: creds.ghlLocationId,
+            message: msgBody,
           }),
         }
       );
@@ -118,7 +130,6 @@ serve(async (req) => {
       results.push({ contact_id: contact.contact_id, success: false, error: String(err) });
     }
 
-    // Throttle: 1–2 second random delay between sends to mimic organic 1:1 messaging
     const delay = 1000 + Math.random() * 1000;
     await sleep(delay);
   }
