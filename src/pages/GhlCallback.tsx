@@ -38,7 +38,10 @@ export default function GhlCallback() {
         });
 
         if (error || !data?.success) {
-          throw new Error(data?.error ?? error?.message ?? "Unknown error");
+          const detail = data?.details ? ` | GHL says: ${data.details}` : "";
+          const clientId = data?.client_id_used ? ` | client_id: ${data.client_id_used}` : "";
+          const redirectUri = data?.redirect_uri_used ? ` | redirect_uri: ${data.redirect_uri_used}` : "";
+          throw new Error((data?.error ?? error?.message ?? "Unknown error") + detail + clientId + redirectUri);
         }
 
         await refreshProfile();

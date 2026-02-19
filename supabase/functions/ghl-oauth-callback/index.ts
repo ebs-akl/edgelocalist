@@ -52,8 +52,15 @@ serve(async (req) => {
 
     if (!tokenRes.ok) {
       const errBody = await tokenRes.text();
-      console.error("GHL token exchange failed:", errBody);
-      return new Response(JSON.stringify({ error: "Token exchange failed", details: errBody }), {
+      console.error("GHL token exchange failed. Status:", tokenRes.status, "Body:", errBody);
+      console.error("Request used client_id:", GHL_CLIENT_ID, "redirect_uri:", redirect_uri);
+      return new Response(JSON.stringify({ 
+        error: "Token exchange failed", 
+        details: errBody,
+        status: tokenRes.status,
+        client_id_used: GHL_CLIENT_ID,
+        redirect_uri_used: redirect_uri,
+      }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
