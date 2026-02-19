@@ -30,7 +30,7 @@ export default function GhlCallback() {
           return;
         }
 
-        const redirectUri = "https://edgelocalist.app/callback";
+        const redirectUri = "https://edgelocalist.com/leadconnector/oauth";
 
         const { data, error } = await supabase.functions.invoke("ghl-oauth-callback", {
           body: { code, redirect_uri: redirectUri },
