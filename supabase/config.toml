@@ -1,17 +1,1 @@
-[functions.geocode-contacts]
-verify_jwt = false
-
-[functions.ghl-oauth-callback]
-verify_jwt = false
-
-[functions.ghl-sync-contacts]
-verify_jwt = false
-
-[functions.ghl-lc-call]
-verify_jwt = false
-
-[functions.ghl-group-sms]
-verify_jwt = false
-
-[functions.ghl-get-auth-url]
-verify_jwt = false
+project_id = "kimyzwmniidwnixezqdi"
