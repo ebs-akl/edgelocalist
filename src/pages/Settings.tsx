@@ -23,8 +23,9 @@ export default function Settings() {
       client_id: GHL_CLIENT_ID,
       redirect_uri: redirectUri,
       scope: "contacts.readonly contacts.write users.readonly locations.readonly conversations/message.write",
+      version_id: GHL_CLIENT_ID,
     });
-    window.location.href = `https://marketplace.leadconnectorhq.com/oauth/chooselocation?${params}`;
+    window.location.href = `https://marketplace.gohighlevel.com/oauth/chooselocation?${params}`;
   };
 
   const handleManageBilling = async () => {
