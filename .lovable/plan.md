@@ -1,18 +1,16 @@
 
 
-## Update GHL Credentials
+## Redeploy Edge Functions to Apply New Client Secret
 
-### 1. Frontend Code Change
-- **`src/pages/Settings.tsx`** (line 12): Update `GHL_CLIENT_ID` from `69924ed31d05050c3a7e5757-mlr00xb6` to `69924ed31d05050c3a7e5757-mltvd3g6`
+Since you've updated the `GHL_CLIENT_SECRET` in Supabase, the edge functions need to be redeployed so they pick up the new value.
 
-### 2. Supabase Secrets
-- Update `GHL_CLIENT_ID` secret to `69924ed31d05050c3a7e5757-mltvd3g6`
-- Update `GHL_CLIENT_SECRET` secret to your new client secret (please provide it)
+### Steps
+1. Redeploy `ghl-oauth-callback` and `ghl-get-auth-url` edge functions
+2. Test the OAuth flow again by clicking "Connect GoHighLevel" on the Settings page
 
-### 3. Redeploy Edge Functions
-After secrets are updated, redeploy `ghl-oauth-callback` and `ghl-get-auth-url` so they pick up the new credentials.
+### Verification
+After redeployment, confirm the redirect URI in your GHL Marketplace App is exactly:
+`https://edgelocalist.app/leadconnector/oauth`
 
-### 4. GHL Marketplace App
-Confirm your Marketplace App redirect URI is set to exactly:
-`https://edgelocalist.app/leadconnector/oauth` (with the letter "o", not zero)
+Then test the full connection flow end-to-end.
 
