@@ -7,6 +7,7 @@ import { formatPhoneDisplay, formatCurrency } from "@/lib/contacts";
 import type { NearbyContact } from "@/lib/contacts";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface Props {
   contact: NearbyContact & { id?: string };
@@ -16,6 +17,7 @@ interface Props {
 }
 
 export default function ContactDetailModal({ contact, repName, isGhlMode, onClose }: Props) {
+  const { ghlLocationId } = useAuth();
   const [lcCalling, setLcCalling] = useState(false);
 
   const smsBody = encodeURIComponent(
@@ -32,11 +34,22 @@ export default function ContactDetailModal({ contact, repName, isGhlMode, onClos
     }
     setLcCalling(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error("Not signed in");
+      const body: Record<string, string> = { contact_id: contact.id, to_number: contact.phone };
+      const headers: Record<string, string> = {};
+
+      if (ghlLocationId) {
+        // GHL iframe mode — pass location_id, no Bearer token needed
+        body.location_id = ghlLocationId;
+      } else {
+        // Standalone mode — use Supabase session
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) throw new Error("Not signed in");
+        headers.Authorization = `Bearer ${session.access_token}`;
+      }
+
       const { data, error } = await supabase.functions.invoke("ghl-lc-call", {
-        body: { contact_id: contact.id, to_number: contact.phone },
-        headers: { Authorization: `Bearer ${session.access_token}` },
+        body,
+        headers,
       });
       if (error || !data?.success) throw new Error(data?.error ?? error?.message ?? "Call failed");
       toast({ title: "LC Call initiated!", description: `Calling ${formatPhoneDisplay(contact.phone)}` });

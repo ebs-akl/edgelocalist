@@ -16,6 +16,46 @@ function getCustomField(contact: Record<string, unknown>, fieldId: string): stri
   return fields.find((f) => f.id === fieldId)?.value ?? null;
 }
 
+/**
+ * Resolve GHL credentials via either:
+ *   1. Bearer token → Supabase auth → localist_reps by user id
+ *   2. location_id in body → localist_reps by ghl_location_id
+ */
+async function resolveCredentials(
+  supabase: ReturnType<typeof createClient>,
+  authHeader: string | null,
+  locationId: string | null,
+): Promise<{ repId: string; accessToken: string; ghlLocationId: string } | { error: string; status: number }> {
+  // Pathway A: Bearer token (standalone mode)
+  if (authHeader?.startsWith("Bearer ")) {
+    const { data: { user }, error } = await supabase.auth.getUser(authHeader.replace("Bearer ", ""));
+    if (error || !user) return { error: "Could not verify user", status: 401 };
+
+    const { data: rep } = await supabase
+      .from("localist_reps")
+      .select("ghl_access_token, ghl_location_id")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    if (!rep?.ghl_access_token || !rep?.ghl_location_id) return { error: "GHL not connected", status: 400 };
+    return { repId: user.id, accessToken: rep.ghl_access_token, ghlLocationId: rep.ghl_location_id };
+  }
+
+  // Pathway B: location_id (GHL iframe mode)
+  if (locationId) {
+    const { data: rep } = await supabase
+      .from("localist_reps")
+      .select("id, ghl_access_token, ghl_location_id")
+      .eq("ghl_location_id", locationId)
+      .maybeSingle();
+
+    if (!rep?.ghl_access_token) return { error: "No rep found for this location_id", status: 400 };
+    return { repId: rep.id, accessToken: rep.ghl_access_token, ghlLocationId: rep.ghl_location_id! };
+  }
+
+  return { error: "Missing Authorization header or location_id", status: 401 };
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -26,44 +66,40 @@ serve(async (req) => {
 
   if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
     return new Response(JSON.stringify({ error: "Missing server configuration" }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
-
-  const authHeader = req.headers.get("Authorization");
-  if (!authHeader) {
-    return new Response(JSON.stringify({ error: "Missing Authorization header" }), {
-      status: 401,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+  const authHeader = req.headers.get("Authorization");
 
-  // Verify user
-  const { data: { user }, error: userError } = await supabase.auth.getUser(
-    authHeader.replace("Bearer ", "")
-  );
-  if (userError || !user) {
-    return new Response(JSON.stringify({ error: "Could not verify user" }), {
-      status: 401,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+  // Parse body (may contain location_id and/or stats_only)
+  let body: Record<string, unknown> = {};
+  try { body = await req.json(); } catch { /* no body is fine for GET-like calls */ }
+
+  const locationId = (body.location_id as string) || null;
+  const statsOnly = !!(body.stats_only);
+
+  const creds = await resolveCredentials(supabase, authHeader, locationId);
+  if ("error" in creds) {
+    return new Response(JSON.stringify({ error: creds.error }), {
+      status: creds.status, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 
-  // Load rep profile for GHL credentials
-  const { data: rep, error: repError } = await supabase
-    .from("localist_reps")
-    .select("ghl_access_token, ghl_location_id")
-    .eq("id", user.id)
-    .maybeSingle();
+  // Stats-only mode: return contact count and last sync for this rep
+  if (statsOnly) {
+    const { count, data } = await supabase
+      .from("localist_contacts")
+      .select("updated_at", { count: "exact", head: false })
+      .eq("rep_id", creds.repId)
+      .order("updated_at", { ascending: false })
+      .limit(1);
 
-  if (repError || !rep?.ghl_access_token || !rep?.ghl_location_id) {
-    return new Response(JSON.stringify({ error: "GHL not connected" }), {
-      status: 400,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return new Response(JSON.stringify({
+      count: count ?? 0,
+      last_sync: data?.[0]?.updated_at ?? null,
+    }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 
   try {
@@ -74,10 +110,10 @@ serve(async (req) => {
 
     while (true) {
       const ghlRes = await fetch(
-        `https://services.leadconnectorhq.com/contacts/?locationId=${rep.ghl_location_id}&limit=${limit}&skip=${(page - 1) * limit}`,
+        `https://services.leadconnectorhq.com/contacts/?locationId=${creds.ghlLocationId}&limit=${limit}&skip=${(page - 1) * limit}`,
         {
           headers: {
-            Authorization: `Bearer ${rep.ghl_access_token}`,
+            Authorization: `Bearer ${creds.accessToken}`,
             Version: "2021-07-28",
           },
           signal: AbortSignal.timeout(20000),
@@ -96,8 +132,6 @@ serve(async (req) => {
 
       if (contacts.length < limit) break;
       page++;
-
-      // Safety cap
       if (page > 100) break;
     }
 
@@ -109,7 +143,6 @@ serve(async (req) => {
       });
     }
 
-    // Map GHL contacts → localist_contacts format
     const rows = allContacts.map((c) => {
       const latStr = getCustomField(c, LAT_FIELD_ID);
       const lngStr = getCustomField(c, LNG_FIELD_ID);
@@ -117,7 +150,7 @@ serve(async (req) => {
       const lng = lngStr ? parseFloat(lngStr) : null;
 
       return {
-        rep_id: user.id,
+        rep_id: creds.repId,
         contact_id: c.id as string,
         first_name: (c.firstName as string) ?? "",
         last_name: (c.lastName as string) ?? "",
@@ -130,13 +163,11 @@ serve(async (req) => {
         longitude: isNaN(lng!) ? null : lng,
         lifetime_value: null,
         last_order_date: null,
-        last_service_date: null,
         source: "ghl" as const,
         updated_at: new Date().toISOString(),
       };
     });
 
-    // Upsert in batches of 500
     const BATCH_SIZE = 500;
     let totalUpserted = 0;
     for (let i = 0; i < rows.length; i += BATCH_SIZE) {
@@ -158,8 +189,7 @@ serve(async (req) => {
   } catch (err) {
     console.error("ghl-sync-contacts error:", err);
     return new Response(JSON.stringify({ error: String(err) }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 });
