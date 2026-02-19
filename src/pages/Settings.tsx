@@ -10,7 +10,6 @@ import { supabase } from "@/integrations/supabase/client";
 import localistLogo from "@/assets/Localist_Logo-2.png";
 
 const GHL_CLIENT_ID = "69924ed31d05050c3a7e5757-mlr00xb6";
-const GHL_VERSION_ID = "69924ed31d05050c3a7e5757";
 const GHL_REDIRECT_URI = "https://edgelocalist.app/callback";
 
 export default function Settings() {
@@ -24,7 +23,6 @@ export default function Settings() {
       client_id: GHL_CLIENT_ID,
       redirect_uri: GHL_REDIRECT_URI,
       scope: "contacts.readonly contacts.write users.readonly locations.readonly conversations/message.write",
-      version_id: GHL_VERSION_ID,
     });
     window.location.href = `https://marketplace.gohighlevel.com/oauth/chooselocation?${params}`;
   };
