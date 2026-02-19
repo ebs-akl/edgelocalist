@@ -161,25 +161,24 @@ serve(async (req) => {
         zip: (c.postalCode as string) ?? "",
         latitude: isNaN(lat!) ? null : lat,
         longitude: isNaN(lng!) ? null : lng,
-        lifetime_value: null,
-        last_order_date: null,
-        source: "ghl" as const,
-        updated_at: new Date().toISOString(),
       };
     });
 
-    const BATCH_SIZE = 500;
+    // Smart upsert: matches on phone to merge CSV→GHL contacts,
+    // preserves existing geocoded coordinates, upgrades source to 'ghl'
+    const BATCH_SIZE = 200;
     let totalUpserted = 0;
     for (let i = 0; i < rows.length; i += BATCH_SIZE) {
       const batch = rows.slice(i, i + BATCH_SIZE);
-      const { error: upsertError } = await supabase
-        .from("localist_contacts")
-        .upsert(batch, { onConflict: "rep_id,contact_id" });
+      const { data, error: rpcError } = await supabase.rpc(
+        "smart_upsert_ghl_contacts",
+        { p_contacts: JSON.stringify(batch) }
+      );
 
-      if (upsertError) {
-        console.error("Upsert error:", upsertError);
+      if (rpcError) {
+        console.error("Smart upsert error:", rpcError);
       } else {
-        totalUpserted += batch.length;
+        totalUpserted += (data as number) ?? batch.length;
       }
     }
 
