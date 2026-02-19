@@ -5,8 +5,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
-import { LogOut, MapPin, ArrowLeft, ExternalLink, Link2, Unlink } from "lucide-react";
+import { LogOut, ArrowLeft, ExternalLink, Link2, Unlink } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import localistLogo from "@/assets/Localist_Logo.png";
 
 const GHL_CLIENT_ID = "69924ed31d05050c3a7e5757-mlr00xb6";
 const GHL_VERSION_ID = "69924ed31d05050c3a7e5757";
@@ -51,11 +52,8 @@ export default function Settings() {
       {/* Header */}
       <nav className="fixed top-0 left-0 right-0 z-50 border-b bg-background/80 backdrop-blur-md">
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
-          <Link to="/dashboard" className="flex items-center gap-2">
-            <MapPin className="h-6 w-6 text-primary" />
-            <span className="font-bold text-lg" style={{ fontFamily: "'Oswald', sans-serif" }}>
-              EdgeLocalist
-            </span>
+          <Link to="/dashboard" className="flex items-center">
+            <img src={localistLogo} alt="EdgeLocalist" className="h-10 w-auto object-contain" />
           </Link>
           <Button variant="ghost" size="sm" onClick={signOut}>
             <LogOut className="h-4 w-4 mr-1" />

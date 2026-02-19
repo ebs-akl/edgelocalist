@@ -7,7 +7,8 @@ import { Sheet, SheetContent, SheetTrigger, SheetClose } from "@/components/ui/s
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { LogOut, Menu, MapPin, Users, Settings } from "lucide-react";
+import { LogOut, Menu, Settings } from "lucide-react";
+import localistLogo from "@/assets/Localist_Logo.png";
 import SearchTab from "@/components/dashboard/SearchTab";
 import CsvUploadTab from "@/components/dashboard/CsvUploadTab";
 import LocalistControlPanel from "@/components/dashboard/LocalistControlPanel";
@@ -113,11 +114,8 @@ export default function Dashboard() {
       {/* Header */}
       <nav className="fixed top-0 left-0 right-0 z-50 border-b bg-background/80 backdrop-blur-md">
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
-          <Link to="/" className="flex items-center gap-2">
-            <MapPin className="h-6 w-6 text-primary" />
-            <span className="font-bold text-lg" style={{ fontFamily: "'Oswald', sans-serif" }}>
-              EdgeLocalist
-            </span>
+          <Link to="/" className="flex items-center">
+            <img src={localistLogo} alt="EdgeLocalist" className="h-10 w-auto object-contain" />
           </Link>
 
           {/* Desktop nav */}
