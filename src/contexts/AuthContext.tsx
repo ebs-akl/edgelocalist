@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import type { User, Session } from "@supabase/supabase-js";
 
@@ -19,29 +19,61 @@ interface AuthState {
   loading: boolean;
   repProfile: RepProfile | null;
   loadingProfile: boolean;
+  /** Set when the app is loaded inside a GHL iframe with ?location_id=... */
+  ghlLocationId: string | null;
 }
 
 interface AuthContextType extends AuthState {
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
+  /** True when running inside GHL iframe (location_id present) */
   isGhlMode: boolean;
+  /** True when user logged in via email/password without GHL context */
   isStandaloneMode: boolean;
+  /** True when user is authenticated by either pathway */
+  isAuthenticated: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+/**
+ * Read ?location_id from the current URL (works both on initial load and SPA nav).
+ * We read from window.location so it works before React Router mounts.
+ */
+function getLocationIdFromUrl(): string | null {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    return params.get("location_id") || null;
+  } catch {
+    return null;
+  }
+}
+
+const initialGhlLocationId = getLocationIdFromUrl();
+
 const DEFAULT_STATE: AuthState = {
   user: null,
   session: null,
-  loading: true,
+  loading: !initialGhlLocationId, // if GHL mode, we don't need to wait for Supabase auth
   repProfile: null,
   loadingProfile: false,
+  ghlLocationId: initialGhlLocationId,
 };
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AuthState>(DEFAULT_STATE);
   const navigate = useNavigate();
 
+  // Also check search params via React Router (for SPA navigations)
+  const [searchParams] = useSearchParams();
+  useEffect(() => {
+    const locId = searchParams.get("location_id");
+    if (locId && locId !== state.ghlLocationId) {
+      setState((s) => ({ ...s, ghlLocationId: locId, loading: false }));
+    }
+  }, [searchParams]);
+
+  // ── Supabase auth (Pathway B: Standalone) ──
   const fetchRepProfile = useCallback(async (userId: string | undefined) => {
     if (!userId) {
       setState((s) => ({ ...s, repProfile: null, loadingProfile: false }));
@@ -65,6 +97,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [state.user?.id, fetchRepProfile]);
 
   useEffect(() => {
+    // Skip Supabase auth listener when in GHL embedded mode
+    if (state.ghlLocationId) return;
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setState((s) => ({ ...s, session, user: session?.user ?? null, loading: false }));
       setTimeout(() => fetchRepProfile(session?.user?.id), 0);
@@ -76,19 +111,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     return () => subscription.unsubscribe();
-  }, [fetchRepProfile]);
+  }, [fetchRepProfile, state.ghlLocationId]);
 
   const signOut = useCallback(async () => {
     await supabase.auth.signOut();
-    setState({ ...DEFAULT_STATE, loading: false });
+    setState({ ...DEFAULT_STATE, loading: false, ghlLocationId: null });
     navigate("/auth", { replace: true });
   }, [navigate]);
 
-  const isGhlMode = !!(state.repProfile?.subscription_tier === 'edgedms' && state.repProfile?.ghl_location_id);
-  const isStandaloneMode = state.repProfile?.subscription_tier === 'standalone' || !isGhlMode;
+  // ── Derived mode flags ──
+  const isGhlMode = !!state.ghlLocationId;
+  const isStandaloneMode = !isGhlMode && !!state.user;
+  const isAuthenticated = isGhlMode || !!state.user;
 
   return (
-    <AuthContext.Provider value={{ ...state, signOut, refreshProfile, isGhlMode, isStandaloneMode }}>
+    <AuthContext.Provider
+      value={{ ...state, signOut, refreshProfile, isGhlMode, isStandaloneMode, isAuthenticated }}
+    >
       {children}
     </AuthContext.Provider>
   );

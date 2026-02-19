@@ -20,7 +20,7 @@ interface StatCard {
 }
 
 export default function Dashboard() {
-  const { user, repProfile, signOut, isGhlMode } = useAuth();
+  const { user, repProfile, signOut, isGhlMode, ghlLocationId } = useAuth();
   const [contactCount, setContactCount] = useState(0);
   const [lastSync, setLastSync] = useState<string | null>(null);
   const [loadingStats, setLoadingStats] = useState(true);
@@ -28,22 +28,35 @@ export default function Dashboard() {
   const [searchesToday, setSearchesToday] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
 
+  const userId = user?.id ?? ghlLocationId ?? "unknown";
   const repName = repProfile?.full_name ?? user?.email ?? "Rep";
 
   const fetchContactStats = async () => {
-    if (!user) return;
+    if (!user && !ghlLocationId) return;
     setLoadingStats(true);
     try {
-      const { count, data } = await supabase
-        .from("localist_contacts")
-        .select("updated_at", { count: "exact", head: false })
-        .eq("rep_id", user.id)
-        .order("updated_at", { ascending: false })
-        .limit(1);
+      if (isGhlMode && ghlLocationId) {
+        // GHL mode: fetch stats via edge function proxy
+        const { data, error } = await supabase.functions.invoke("ghl-sync-contacts", {
+          body: { location_id: ghlLocationId, stats_only: true },
+        });
+        if (!error && data) {
+          setContactCount(data.count ?? 0);
+          setLastSync(data.last_sync ?? null);
+        }
+      } else if (user) {
+        // Standalone mode: query Supabase directly
+        const { count, data } = await supabase
+          .from("localist_contacts")
+          .select("updated_at", { count: "exact", head: false })
+          .eq("rep_id", user.id)
+          .order("updated_at", { ascending: false })
+          .limit(1);
 
-      setContactCount(count ?? 0);
-      if (data && data.length > 0) {
-        setLastSync(data[0].updated_at);
+        setContactCount(count ?? 0);
+        if (data && data.length > 0) {
+          setLastSync(data[0].updated_at);
+        }
       }
     } catch (err) {
       console.error("Failed to load contact stats:", err);
@@ -53,13 +66,11 @@ export default function Dashboard() {
   };
 
   const handleGhlSync = async () => {
-    if (!user) return;
+    if (!ghlLocationId) return;
     setRefreshing(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
       const { data, error } = await supabase.functions.invoke("ghl-sync-contacts", {
-        headers: { Authorization: `Bearer ${session.access_token}` },
+        body: { location_id: ghlLocationId },
       });
       if (error) throw error;
       toast({ title: "GHL sync complete", description: `${data?.synced ?? 0} contacts synced.` });
@@ -74,13 +85,13 @@ export default function Dashboard() {
 
   useEffect(() => {
     fetchContactStats();
-    const stored = localStorage.getItem(`localist_searches_${user?.id}`);
+    const stored = localStorage.getItem(`localist_searches_${userId}`);
     if (stored) {
       try { setRecentSearches(JSON.parse(stored)); } catch { /* ignore */ }
     }
     // Auto-sync GHL on load if connected and not synced recently
-    if (isGhlMode) {
-      const lastSyncKey = `ghl_last_sync_${user?.id}`;
+    if (isGhlMode && ghlLocationId) {
+      const lastSyncKey = `ghl_last_sync_${ghlLocationId}`;
       const lastSyncTime = localStorage.getItem(lastSyncKey);
       const hoursSince = lastSyncTime
         ? (Date.now() - parseInt(lastSyncTime)) / 3600000
@@ -91,13 +102,13 @@ export default function Dashboard() {
         });
       }
     }
-  }, [user?.id, isGhlMode]);
+  }, [userId, isGhlMode]);
 
   const handleSearch = (address: string) => {
     setSearchesToday((n) => n + 1);
     setRecentSearches((prev) => {
       const next = [address, ...prev.filter((s) => s !== address)].slice(0, 10);
-      localStorage.setItem(`localist_searches_${user?.id}`, JSON.stringify(next));
+      localStorage.setItem(`localist_searches_${userId}`, JSON.stringify(next));
       return next;
     });
   };
@@ -118,48 +129,51 @@ export default function Dashboard() {
             <img src={localistLogo} alt="EdgeLocalist" className="h-10 w-auto object-contain" />
           </Link>
 
-          {/* Desktop nav */}
-          <div className="hidden sm:flex items-center gap-3">
-            <Link to="/settings">
-              <Button variant="ghost" size="sm">
-                <Settings className="h-4 w-4 mr-1" />
-                Settings
-              </Button>
-            </Link>
-            <Button variant="ghost" size="sm" onClick={signOut}>
-              <LogOut className="h-4 w-4 mr-1" />
-              Sign Out
-            </Button>
-          </div>
-
-          {/* Mobile nav */}
-          <div className="sm:hidden">
-            <Sheet>
-              <SheetTrigger asChild>
-                <Button variant="ghost" size="icon">
-                  <Menu className="h-5 w-5" />
+          {!isGhlMode && (
+            <>
+              <div className="hidden sm:flex items-center gap-3">
+                <Link to="/settings">
+                  <Button variant="ghost" size="sm">
+                    <Settings className="h-4 w-4 mr-1" />
+                    Settings
+                  </Button>
+                </Link>
+                <Button variant="ghost" size="sm" onClick={signOut}>
+                  <LogOut className="h-4 w-4 mr-1" />
+                  Sign Out
                 </Button>
-              </SheetTrigger>
-              <SheetContent side="right" className="w-64">
-                <div className="flex flex-col gap-4 mt-8">
-                  <Link to="/settings" className="w-full">
-                    <SheetClose asChild>
-                      <Button variant="ghost" className="w-full justify-start">
-                        <Settings className="h-4 w-4 mr-2" />
-                        Settings
-                      </Button>
-                    </SheetClose>
-                  </Link>
-                  <SheetClose asChild>
-                    <Button variant="ghost" className="w-full justify-start" onClick={signOut}>
-                      <LogOut className="h-4 w-4 mr-2" />
-                      Sign Out
+              </div>
+
+              {/* Mobile nav */}
+              <div className="sm:hidden">
+                <Sheet>
+                  <SheetTrigger asChild>
+                    <Button variant="ghost" size="icon">
+                      <Menu className="h-5 w-5" />
                     </Button>
-                  </SheetClose>
-                </div>
-              </SheetContent>
-            </Sheet>
-          </div>
+                  </SheetTrigger>
+                  <SheetContent side="right" className="w-64">
+                    <div className="flex flex-col gap-4 mt-8">
+                      <Link to="/settings" className="w-full">
+                        <SheetClose asChild>
+                          <Button variant="ghost" className="w-full justify-start">
+                            <Settings className="h-4 w-4 mr-2" />
+                            Settings
+                          </Button>
+                        </SheetClose>
+                      </Link>
+                      <SheetClose asChild>
+                        <Button variant="ghost" className="w-full justify-start" onClick={signOut}>
+                          <LogOut className="h-4 w-4 mr-2" />
+                          Sign Out
+                        </Button>
+                      </SheetClose>
+                    </div>
+                  </SheetContent>
+                </Sheet>
+              </div>
+            </>
+          )}
         </div>
       </nav>
 
