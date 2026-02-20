@@ -124,8 +124,8 @@ export default function Settings() {
 
             {/* Rep Number (read-only once set) */}
             <div className="flex items-center justify-between text-sm min-h-[36px]">
-              <Label className="text-muted-foreground">Rep Number</Label>
-              <span className="font-medium font-mono">{repProfile?.rep_number ?? "—"}</span>
+              <Label className="text-muted-foreground">Rep Number (8-digit ID)</Label>
+              <span className="font-medium font-mono tracking-wide">{repProfile?.rep_number ?? "—"}</span>
             </div>
 
             <div className="flex justify-between text-sm">
