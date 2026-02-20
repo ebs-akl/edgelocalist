@@ -9,7 +9,6 @@ export interface RepProfile {
   full_name: string;
   subscription_tier: 'standalone' | 'edgedms' | null;
   ghl_location_id: string | null;
-  ghl_access_token: string | null;
   stripe_customer_id: string | null;
 }
 
@@ -83,7 +82,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const { data } = await supabase
         .from("localist_reps")
-        .select("*")
+        .select("id, email, full_name, subscription_tier, ghl_location_id, stripe_customer_id, created_at")
         .eq("id", userId)
         .maybeSingle();
       setState((s) => ({ ...s, repProfile: data as RepProfile | null, loadingProfile: false }));

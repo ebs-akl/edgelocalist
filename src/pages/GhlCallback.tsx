@@ -38,10 +38,8 @@ export default function GhlCallback() {
         });
 
         if (error || !data?.success) {
-          const detail = data?.details ? ` | GHL says: ${data.details}` : "";
-          const clientId = data?.client_id_used ? ` | client_id: ${data.client_id_used}` : "";
-          const redirectUri = data?.redirect_uri_used ? ` | redirect_uri: ${data.redirect_uri_used}` : "";
-          throw new Error((data?.error ?? error?.message ?? "Unknown error") + detail + clientId + redirectUri);
+          console.error("GHL OAuth failed:", { error: data?.error, details: data?.details });
+          throw new Error("Could not connect to GoHighLevel. Please try again or contact support.");
         }
 
         await refreshProfile();
