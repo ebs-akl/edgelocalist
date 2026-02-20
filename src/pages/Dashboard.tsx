@@ -105,33 +105,28 @@ export default function Dashboard() {
     }
   };
 
-  // ── Account Merge Handshake ──
-  // If both location_id and rep_num are present, claim old CSV contacts
+  // ── Account Merge Handshake (server-side) ──
+  // If both location_id and rep_num are present, call edge function to claim orphaned contacts
   useEffect(() => {
-    if (!ghlLocationId || !ghlRepNum) return;
+    if (!ghlLocationId || !ghlRepNum || !ssoPayload) return;
     const mergeKey = `merge_done_${ghlLocationId}_${ghlRepNum}`;
     if (localStorage.getItem(mergeKey)) return;
 
     (async () => {
       try {
-        const { data, error } = await supabase
-          .from("localist_contacts")
-          .update({ location_id: ghlLocationId })
-          .eq("rep_number", ghlRepNum)
-          .is("location_id", null)
-          .select("id");
+        const { data, error } = await supabase.functions.invoke("ghl-merge-contacts", {
+          body: { sso_payload: ssoPayload, rep_number: ghlRepNum.trim() },
+        });
 
-        const count = data?.length ?? 0;
-
-        if (!error && (count ?? 0) > 0) {
-          toast({ title: "Contacts linked!", description: `${count} existing contacts were connected to your CRM.` });
+        if (!error && data?.merged > 0) {
+          toast({ title: "Contacts linked!", description: `${data.merged} existing contacts were connected to your CRM.` });
         }
         localStorage.setItem(mergeKey, Date.now().toString());
-      } catch (err) {
-        console.error("Merge handshake failed:", err);
+      } catch {
+        // Merge failed silently – not critical
       }
     })();
-  }, [ghlLocationId, ghlRepNum]);
+  }, [ghlLocationId, ghlRepNum, ssoPayload]);
 
   useEffect(() => {
     fetchContactStats();
