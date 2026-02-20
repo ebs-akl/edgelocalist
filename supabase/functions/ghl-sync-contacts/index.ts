@@ -1,10 +1,11 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import CryptoJS from "npm:crypto-js";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, x-ghl-secret",
+    "authorization, x-client-info, apikey, content-type",
 };
 
 // GHL custom field IDs for lat/lng
@@ -16,6 +17,28 @@ const LOCATION_ID_RE = /^[a-zA-Z0-9]{5,50}$/;
 function getCustomField(contact: Record<string, unknown>, fieldId: string): string | null {
   const fields = contact.customFields as Array<{ id: string; value: string }> ?? [];
   return fields.find((f) => f.id === fieldId)?.value ?? null;
+}
+
+/**
+ * Decrypt the SSO payload from GHL Custom Page handshake.
+ * Returns the locationId or null on failure.
+ */
+function decryptSsoPayload(ssoPayload: string): string | null {
+  const ssoKey = Deno.env.get("GHL_SSO_KEY");
+  if (!ssoKey) {
+    console.error("GHL_SSO_KEY not configured");
+    return null;
+  }
+  try {
+    const bytes = CryptoJS.AES.decrypt(ssoPayload, ssoKey);
+    const decryptedString = bytes.toString(CryptoJS.enc.Utf8);
+    if (!decryptedString) return null;
+    const decryptedData = JSON.parse(decryptedString);
+    return decryptedData.locationId ?? null;
+  } catch (err) {
+    console.error("SSO decryption failed:", err);
+    return null;
+  }
 }
 
 serve(async (req) => {
@@ -38,22 +61,26 @@ serve(async (req) => {
   let body: Record<string, unknown> = {};
   try { body = await req.json(); } catch { /* no body is fine */ }
 
-  const locationId = typeof body.location_id === "string" ? body.location_id : null;
+  // ── Resolve location_id: prefer SSO payload, fall back to raw location_id ──
+  let locationId: string | null = null;
+
+  if (typeof body.sso_payload === "string" && body.sso_payload) {
+    locationId = decryptSsoPayload(body.sso_payload);
+    if (!locationId) {
+      return new Response(JSON.stringify({ error: "Cryptographic verification failed" }), {
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+  } else if (typeof body.location_id === "string") {
+    locationId = body.location_id;
+  }
+
   const statsOnly = !!(body.stats_only);
 
   // Validate location_id
   if (!locationId || !LOCATION_ID_RE.test(locationId)) {
     return new Response(JSON.stringify({ error: "Missing or invalid location_id" }), {
       status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
-
-  // Validate shared secret
-  const sharedSecret = Deno.env.get("GHL_SHARED_SECRET");
-  const providedSecret = req.headers.get("x-ghl-secret");
-  if (!sharedSecret || providedSecret !== sharedSecret) {
-    return new Response(JSON.stringify({ error: "Unauthorized" }), {
-      status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 

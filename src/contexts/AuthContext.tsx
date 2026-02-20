@@ -22,11 +22,14 @@ interface AuthState {
   ghlLocationId: string | null;
   /** Rep number from URL (?rep_num=...) used for account merge handshake */
   ghlRepNum: string | null;
+  /** Encrypted SSO payload from GHL Custom Page handshake */
+  ssoPayload: string | null;
 }
 
 interface AuthContextType extends AuthState {
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
+  setSsoPayload: (payload: string | null) => void;
   /** True when running inside GHL iframe (location_id present) */
   isGhlMode: boolean;
   /** True when user logged in via email/password without GHL context */
@@ -70,6 +73,7 @@ const DEFAULT_STATE: AuthState = {
   loadingProfile: false,
   ghlLocationId: initialGhlLocationId,
   ghlRepNum: initialGhlRepNum,
+  ssoPayload: null,
 };
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -133,6 +137,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     navigate("/auth", { replace: true });
   }, [navigate]);
 
+  const setSsoPayload = useCallback((payload: string | null) => {
+    setState((s) => ({ ...s, ssoPayload: payload }));
+  }, []);
+
   // ── Derived mode flags ──
   const isGhlMode = !!state.ghlLocationId;
   const isStandaloneMode = !isGhlMode && !!state.user;
@@ -140,7 +148,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ ...state, signOut, refreshProfile, isGhlMode, isStandaloneMode, isAuthenticated }}
+      value={{ ...state, signOut, refreshProfile, setSsoPayload, isGhlMode, isStandaloneMode, isAuthenticated }}
     >
       {children}
     </AuthContext.Provider>
