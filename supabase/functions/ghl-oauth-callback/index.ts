@@ -120,19 +120,39 @@ serve(async (req) => {
       ? new Date(Date.now() + tokenData.expires_in * 1000).toISOString()
       : null;
 
-    // Upsert by ghl_location_id (works for both authenticated and marketplace installs)
-    const { error: upsertError } = await supabaseAdmin
+    // 1. Check if this location already exists
+    const { data: existingRow } = await supabaseAdmin
       .from("localist_reps")
-      .upsert({
-        ghl_location_id: locationId,
-        ghl_access_token: access_token,
-        ghl_refresh_token: refresh_token ?? null,
-        ghl_expires_at: expiresAt,
-        subscription_tier: "edgedms",
-      }, { onConflict: "ghl_location_id" });
+      .select("id")
+      .eq("ghl_location_id", locationId)
+      .maybeSingle();
 
-    if (upsertError) {
-      console.error("DB upsert error:", upsertError);
+    const tokenPayload = {
+      ghl_location_id: locationId,
+      ghl_access_token: access_token,
+      ghl_refresh_token: refresh_token ?? null,
+      ghl_expires_at: expiresAt,
+      subscription_tier: "edgedms",
+    };
+
+    let saveError;
+    if (existingRow) {
+      // 2a. UPDATE existing row
+      const { error } = await supabaseAdmin
+        .from("localist_reps")
+        .update(tokenPayload)
+        .eq("id", existingRow.id);
+      saveError = error;
+    } else {
+      // 2b. INSERT new row with generated UUID
+      const { error } = await supabaseAdmin
+        .from("localist_reps")
+        .insert({ ...tokenPayload, id: crypto.randomUUID() });
+      saveError = error;
+    }
+
+    if (saveError) {
+      console.error("DB save error:", saveError);
       return new Response(JSON.stringify({ error: "Failed to save credentials" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
