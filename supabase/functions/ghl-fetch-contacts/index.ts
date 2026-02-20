@@ -132,7 +132,49 @@ serve(async (req) => {
     }
 
     const ghlData = await ghlRes.json();
-    const contacts = ghlData.contacts ?? [];
+    const contacts: Record<string, unknown>[] = ghlData.contacts ?? [];
+
+    // --- Smart Upsert into localist_contacts ---
+    if (contacts.length > 0) {
+      // Resolve rep_id for this location
+      const { data: repRow } = await supabase
+        .from("localist_reps")
+        .select("id")
+        .eq("ghl_location_id", ghlLocationId)
+        .maybeSingle();
+
+      if (repRow) {
+        const rows = contacts.map((c) => ({
+          rep_id: repRow.id,
+          contact_id: (c.id as string) ?? "",
+          first_name: (c.firstName as string) ?? "",
+          last_name: (c.lastName as string) ?? "",
+          phone: ((c.phone as string) ?? "").replace(/\D/g, ""),
+          address: (c.address1 as string) ?? "",
+          city: (c.city as string) ?? "",
+          state: (c.state as string) ?? "",
+          zip: (c.postalCode as string) ?? "",
+          latitude: null as number | null,
+          longitude: null as number | null,
+        }));
+
+        // Use the smart_upsert_ghl_contacts RPC which:
+        // - Matches by rep_id + phone to find existing CSV records
+        // - Preserves existing lat/lng when present
+        // - Sets source = 'ghl' and links ghl contact_id
+        const BATCH_SIZE = 200;
+        for (let i = 0; i < rows.length; i += BATCH_SIZE) {
+          const batch = rows.slice(i, i + BATCH_SIZE);
+          const { error: rpcError } = await supabase.rpc(
+            "smart_upsert_ghl_contacts",
+            { p_rep_id: repRow.id, p_contacts: JSON.stringify(batch) }
+          );
+          if (rpcError) {
+            console.error("Smart upsert error:", rpcError);
+          }
+        }
+      }
+    }
 
     return new Response(JSON.stringify({ contacts, meta: ghlData.meta ?? {} }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
