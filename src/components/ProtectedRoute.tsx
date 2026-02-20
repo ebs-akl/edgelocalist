@@ -1,16 +1,39 @@
 import { Navigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Loader2 } from "lucide-react";
 import type { ReactNode } from "react";
 
 interface ProtectedRouteProps {
   children: ReactNode;
 }
 
+function isInIframe(): boolean {
+  try {
+    return window.self !== window.top;
+  } catch {
+    return true;
+  }
+}
+
 export default function ProtectedRoute({ children }: ProtectedRouteProps) {
   const { isAuthenticated, loading } = useAuth();
 
   if (loading) {
+    // If in iframe, show GHL-specific loading message instead of skeleton
+    if (isInIframe()) {
+      return (
+        <div className="min-h-screen bg-background flex items-center justify-center">
+          <div className="text-center space-y-3">
+            <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
+            <p className="text-sm text-muted-foreground font-medium">
+              Establishing Secure Connection to HighLevel...
+            </p>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="space-y-4 w-64">
@@ -22,7 +45,20 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
     );
   }
 
+  // Strict iframe guard: never redirect to /auth when in an iframe
   if (!isAuthenticated) {
+    if (isInIframe()) {
+      return (
+        <div className="min-h-screen bg-background flex items-center justify-center">
+          <div className="text-center space-y-3">
+            <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
+            <p className="text-sm text-muted-foreground font-medium">
+              Establishing Secure Connection to HighLevel...
+            </p>
+          </div>
+        </div>
+      );
+    }
     return <Navigate to="/auth" replace />;
   }
 
