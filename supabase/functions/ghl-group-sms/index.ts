@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import CryptoJS from "npm:crypto-js";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -10,16 +11,26 @@ const corsHeaders = {
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const PHONE_RE = /^\+?[0-9]{7,15}$/;
+const LOCATION_ID_RE = /^[a-zA-Z0-9]{5,50}$/;
 
-/**
- * Resolve GHL credentials via Bearer token or location_id.
- */
+function decryptSsoPayload(ssoPayload: string): string | null {
+  const ssoKey = Deno.env.get("GHL_SSO_KEY");
+  if (!ssoKey) { console.error("GHL_SSO_KEY not configured"); return null; }
+  try {
+    const bytes = CryptoJS.AES.decrypt(ssoPayload, ssoKey);
+    const decryptedString = bytes.toString(CryptoJS.enc.Utf8);
+    if (!decryptedString) return null;
+    const decryptedData = JSON.parse(decryptedString);
+    return decryptedData.locationId ?? null;
+  } catch (err) { console.error("SSO decryption failed:", err); return null; }
+}
+
 async function resolveCredentials(
   supabase: ReturnType<typeof createClient>,
   authHeader: string | null,
-  locationId: string | null,
-  headers?: Record<string, string | null> | null,
+  body: Record<string, unknown>,
 ): Promise<{ repName: string; accessToken: string; ghlLocationId: string } | { error: string; status: number }> {
+  // 1. Bearer token auth (standalone mode)
   if (authHeader?.startsWith("Bearer ")) {
     const { data: { user }, error } = await supabase.auth.getUser(authHeader.replace("Bearer ", ""));
     if (error || !user) return { error: "Could not verify user", status: 401 };
@@ -34,12 +45,11 @@ async function resolveCredentials(
     return { repName: rep.full_name ?? "your rep", accessToken: rep.ghl_access_token, ghlLocationId: rep.ghl_location_id };
   }
 
-  if (locationId) {
-    const sharedSecret = Deno.env.get("GHL_SHARED_SECRET");
-    const providedSecret = (headers as Record<string, string | null> | null)?.["x-ghl-secret"] ?? null;
-    if (!sharedSecret || providedSecret !== sharedSecret) {
-      return { error: "Unauthorized", status: 401 };
-    }
+  // 2. SSO payload auth (GHL iframe mode)
+  if (typeof body.sso_payload === "string" && body.sso_payload) {
+    const locationId = decryptSsoPayload(body.sso_payload);
+    if (!locationId) return { error: "Cryptographic verification failed", status: 401 };
+    if (!LOCATION_ID_RE.test(locationId)) return { error: "Invalid location_id", status: 400 };
 
     const { data: rep } = await supabase
       .from("localist_reps")
@@ -54,11 +64,9 @@ async function resolveCredentials(
   return { error: "Missing authorization", status: 401 };
 }
 
-// Only allow known placeholders in templates
 const ALLOWED_PLACEHOLDERS = new Set(["first_name", "city", "rep_name"]);
 
 function sanitizeTemplate(template: string): string {
-  // Strip any placeholder that isn't in the allowed set
   return template.replace(/\{\{(\w+)\}\}/g, (match, name) => {
     return ALLOWED_PLACEHOLDERS.has(name) ? match : "";
   });
@@ -92,9 +100,7 @@ serve(async (req) => {
 
   const contacts = rawBody.contacts;
   const message_template = typeof rawBody.message_template === "string" ? rawBody.message_template : "";
-  const location_id = typeof rawBody.location_id === "string" ? rawBody.location_id : undefined;
 
-  // Validate contacts array
   if (!Array.isArray(contacts) || contacts.length === 0) {
     return new Response(JSON.stringify({ error: "Missing or empty contacts array" }), {
       status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -113,7 +119,6 @@ serve(async (req) => {
     });
   }
 
-  // Validate each contact has required fields
   interface ContactPayload {
     contact_id: string;
     first_name: string;
@@ -141,11 +146,9 @@ serve(async (req) => {
     });
   }
 
-  // Sanitize template to only allow known placeholders
   const safeTemplate = sanitizeTemplate(message_template);
 
-  const reqHeaders: Record<string, string | null> = { "x-ghl-secret": req.headers.get("x-ghl-secret") };
-  const creds = await resolveCredentials(supabase, authHeader, location_id || null, reqHeaders);
+  const creds = await resolveCredentials(supabase, authHeader, rawBody);
   if ("error" in creds) {
     return new Response(JSON.stringify({ error: creds.error }), {
       status: creds.status, headers: { ...corsHeaders, "Content-Type": "application/json" },
