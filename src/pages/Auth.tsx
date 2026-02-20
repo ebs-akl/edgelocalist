@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "@/hooks/use-toast";
 import { Loader2, MapPin } from "lucide-react";
+import Footer from "@/components/Footer";
 
 export default function Auth() {
   const [isLogin, setIsLogin] = useState(true);
@@ -87,124 +88,127 @@ export default function Auth() {
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center px-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <div className="flex items-center justify-center gap-2 mb-2">
-            <MapPin className="h-7 w-7 text-primary" />
-            <span className="text-2xl font-bold" style={{ fontFamily: "'Oswald', sans-serif" }}>
-              EdgeLocalist
-            </span>
-          </div>
-          <CardTitle className="text-base font-normal">
-            {forgotPassword
-              ? "Reset your password"
-              : isLogin
-              ? "Sign in to your dashboard"
-              : "Create your account"}
-          </CardTitle>
-          <CardDescription className="text-xs">
-            <a href="mailto:support@edgedms.com" className="text-primary hover:underline">
-              Need help? Contact support
-            </a>
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {forgotPassword ? (
-            <form onSubmit={handleForgotPassword} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="reset-email">Email</Label>
-                <Input
-                  id="reset-email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="you@example.com"
-                  style={{ fontSize: "16px" }}
-                  required
-                />
-              </div>
-              <Button type="submit" className="w-full min-h-[44px]" disabled={loading}>
-                {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Send Reset Link
-              </Button>
-              <p className="text-center text-sm text-muted-foreground">
-                <button
-                  type="button"
-                  onClick={() => setForgotPassword(false)}
-                  className="text-primary hover:underline font-medium"
-                >
-                  Back to sign in
-                </button>
-              </p>
-            </form>
-          ) : (
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {!isLogin && (
+    <div className="min-h-screen bg-background flex flex-col">
+      <div className="flex-1 flex items-center justify-center px-4">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <div className="flex items-center justify-center gap-2 mb-2">
+              <MapPin className="h-7 w-7 text-primary" />
+              <span className="text-2xl font-bold" style={{ fontFamily: "'Oswald', sans-serif" }}>
+                EdgeLocalist
+              </span>
+            </div>
+            <CardTitle className="text-base font-normal">
+              {forgotPassword
+                ? "Reset your password"
+                : isLogin
+                ? "Sign in to your dashboard"
+                : "Create your account"}
+            </CardTitle>
+            <CardDescription className="text-xs">
+              <a href="mailto:support@edgedms.com" className="text-primary hover:underline">
+                Need help? Contact support
+              </a>
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {forgotPassword ? (
+              <form onSubmit={handleForgotPassword} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="fullName">Full Name</Label>
+                  <Label htmlFor="reset-email">Email</Label>
                   <Input
-                    id="fullName"
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                    placeholder="Jane Smith"
+                    id="reset-email"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="you@example.com"
                     style={{ fontSize: "16px" }}
+                    required
                   />
                 </div>
-              )}
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="you@example.com"
-                  style={{ fontSize: "16px" }}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  style={{ fontSize: "16px" }}
-                  required
-                />
-              </div>
-              {isLogin && (
-                <div className="flex justify-end -mt-2">
+                <Button type="submit" className="w-full min-h-[44px]" disabled={loading}>
+                  {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Send Reset Link
+                </Button>
+                <p className="text-center text-sm text-muted-foreground">
                   <button
                     type="button"
-                    onClick={() => setForgotPassword(true)}
-                    className="text-xs text-muted-foreground hover:text-primary hover:underline"
+                    onClick={() => setForgotPassword(false)}
+                    className="text-primary hover:underline font-medium"
                   >
-                    Forgot password?
+                    Back to sign in
                   </button>
+                </p>
+              </form>
+            ) : (
+              <form onSubmit={handleSubmit} className="space-y-4">
+                {!isLogin && (
+                  <div className="space-y-2">
+                    <Label htmlFor="fullName">Full Name</Label>
+                    <Input
+                      id="fullName"
+                      value={fullName}
+                      onChange={(e) => setFullName(e.target.value)}
+                      placeholder="Jane Smith"
+                      style={{ fontSize: "16px" }}
+                    />
+                  </div>
+                )}
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="you@example.com"
+                    style={{ fontSize: "16px" }}
+                    required
+                  />
                 </div>
-              )}
-              <Button type="submit" className="w-full min-h-[44px]" disabled={loading}>
-                {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {isLogin ? "Sign In" : "Create Account"}
-              </Button>
-              <p className="text-center text-sm text-muted-foreground">
-                {isLogin ? "No account? " : "Already have one? "}
-                <button
-                  type="button"
-                  onClick={() => setIsLogin(!isLogin)}
-                  className="text-primary hover:underline font-medium"
-                >
-                  {isLogin ? "Sign up free" : "Sign in"}
-                </button>
-              </p>
-            </form>
-          )}
-        </CardContent>
-      </Card>
+                <div className="space-y-2">
+                  <Label htmlFor="password">Password</Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="••••••••"
+                    style={{ fontSize: "16px" }}
+                    required
+                  />
+                </div>
+                {isLogin && (
+                  <div className="flex justify-end -mt-2">
+                    <button
+                      type="button"
+                      onClick={() => setForgotPassword(true)}
+                      className="text-xs text-muted-foreground hover:text-primary hover:underline"
+                    >
+                      Forgot password?
+                    </button>
+                  </div>
+                )}
+                <Button type="submit" className="w-full min-h-[44px]" disabled={loading}>
+                  {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  {isLogin ? "Sign In" : "Create Account"}
+                </Button>
+                <p className="text-center text-sm text-muted-foreground">
+                  {isLogin ? "No account? " : "Already have one? "}
+                  <button
+                    type="button"
+                    onClick={() => setIsLogin(!isLogin)}
+                    className="text-primary hover:underline font-medium"
+                  >
+                    {isLogin ? "Sign up free" : "Sign in"}
+                  </button>
+                </p>
+              </form>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+      <Footer />
     </div>
   );
 }

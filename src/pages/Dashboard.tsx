@@ -13,6 +13,7 @@ import SearchTab from "@/components/dashboard/SearchTab";
 import CsvUploadTab from "@/components/dashboard/CsvUploadTab";
 import LocalistControlPanel from "@/components/dashboard/LocalistControlPanel";
 import { Skeleton } from "@/components/ui/skeleton";
+import Footer from "@/components/Footer";
 
 interface StatCard {
   label: string;
@@ -329,6 +330,7 @@ export default function Dashboard() {
           </div>
         </div>
       </main>
+      <Footer />
     </div>
   );
 }

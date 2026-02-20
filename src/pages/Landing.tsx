@@ -7,6 +7,7 @@ import { motion } from "framer-motion";
 import { MapPin, Upload, Search, Menu, CheckCircle2, ArrowRight, Zap, BarChart3 } from "lucide-react";
 import heroBg from "@/assets/hero-bg.gif";
 import aklLogo from "@/assets/AKL_With_White.png";
+import Footer from "@/components/Footer";
 
 const fadeUp = {
   hidden: { opacity: 0, y: 30 },
@@ -379,6 +380,11 @@ export default function Landing() {
           </p>
           <p className="text-xs text-muted-foreground mt-1">
             Built for Cutco / Vector Marketing representatives
+          </p>
+          <p className="text-[11px] text-muted-foreground/70 max-w-xl mx-auto leading-relaxed mt-3">
+            EdgeDMS is an independent digital services provider and is not affiliated with, associated,
+            authorized, endorsed by, or in any way officially connected with Cutco Corporation, or any
+            of its subsidiaries or its affiliates.
           </p>
         </div>
       </footer>
