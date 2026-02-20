@@ -113,57 +113,49 @@ serve(async (req) => {
       });
     }
 
-    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    // Try to identify user from Authorization header first, then fall back to locationId lookup
-    const authHeader = req.headers.get("Authorization");
-    let userId: string | null = null;
+    // Calculate expiry timestamp
+    const expiresAt = tokenData.expires_in
+      ? new Date(Date.now() + tokenData.expires_in * 1000).toISOString()
+      : null;
 
-    if (authHeader) {
-      const { data: { user }, error: userError } = await supabase.auth.getUser(
-        authHeader.replace("Bearer ", "")
-      );
-      if (!userError && user) {
-        userId = user.id;
-      }
+    // Upsert by ghl_location_id (works for both authenticated and marketplace installs)
+    const { error: upsertError } = await supabaseAdmin
+      .from("localist_reps")
+      .upsert({
+        ghl_location_id: locationId,
+        ghl_access_token: access_token,
+        ghl_refresh_token: refresh_token ?? null,
+        ghl_expires_at: expiresAt,
+        subscription_tier: "edgedms",
+      }, { onConflict: "ghl_location_id" });
+
+    if (upsertError) {
+      console.error("DB upsert error:", upsertError);
+      return new Response(JSON.stringify({ error: "Failed to save credentials" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
-    if (userId) {
-      // Authenticated user — update by user id
-      const { error: updateError } = await supabase
-        .from("localist_reps")
-        .update({
-          ghl_access_token: access_token,
-          ghl_refresh_token: refresh_token ?? null,
-          ghl_location_id: locationId,
-          subscription_tier: "edgedms",
-        })
-        .eq("id", userId);
-
-      if (updateError) {
-        console.error("DB update error (by user):", updateError);
-        return new Response(JSON.stringify({ error: "Failed to save credentials" }), {
-          status: 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-    } else {
-      // Unauthenticated (GHL Marketplace install) — upsert by locationId
-      const { error: upsertError } = await supabase
-        .from("localist_reps")
-        .update({
-          ghl_access_token: access_token,
-          ghl_refresh_token: refresh_token ?? null,
-          subscription_tier: "edgedms",
-        })
-        .eq("ghl_location_id", locationId);
-
-      if (upsertError) {
-        console.error("DB update error (by location):", upsertError);
-        return new Response(JSON.stringify({ error: "Failed to save credentials" }), {
-          status: 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+    // If authenticated user, also link their row by user id
+    const authHeader = req.headers.get("Authorization");
+    if (authHeader) {
+      const { data: { user } } = await supabaseAdmin.auth.getUser(
+        authHeader.replace("Bearer ", "")
+      );
+      if (user) {
+        await supabaseAdmin
+          .from("localist_reps")
+          .update({
+            ghl_access_token: access_token,
+            ghl_refresh_token: refresh_token ?? null,
+            ghl_location_id: locationId,
+            ghl_expires_at: expiresAt,
+            subscription_tier: "edgedms",
+          })
+          .eq("id", user.id);
       }
     }
 
