@@ -112,8 +112,11 @@ export type Database = {
           email: string | null
           full_name: string | null
           ghl_access_token: string | null
+          ghl_expires_at: string | null
           ghl_location_id: string | null
+          ghl_refresh_token: string | null
           id: string
+          location_id: string | null
           stripe_customer_id: string | null
           subscription_tier: string | null
         }
@@ -122,8 +125,11 @@ export type Database = {
           email?: string | null
           full_name?: string | null
           ghl_access_token?: string | null
+          ghl_expires_at?: string | null
           ghl_location_id?: string | null
+          ghl_refresh_token?: string | null
           id: string
+          location_id?: string | null
           stripe_customer_id?: string | null
           subscription_tier?: string | null
         }
@@ -132,8 +138,11 @@ export type Database = {
           email?: string | null
           full_name?: string | null
           ghl_access_token?: string | null
+          ghl_expires_at?: string | null
           ghl_location_id?: string | null
+          ghl_refresh_token?: string | null
           id?: string
+          location_id?: string | null
           stripe_customer_id?: string | null
           subscription_tier?: string | null
         }
