@@ -18,30 +18,23 @@ export default function Settings() {
   const { user, repProfile, signOut, isGhlMode, refreshProfile } = useAuth();
   const [loading, setLoading] = useState(false);
 
-  const [editing, setEditing] = useState<"name" | "rep" | null>(null);
+  const [editing, setEditing] = useState<"name" | null>(null);
   const [editName, setEditName] = useState(repProfile?.full_name ?? "");
-  const [editRep, setEditRep] = useState(repProfile?.rep_number ?? "");
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     setEditName(repProfile?.full_name ?? "");
-    setEditRep(repProfile?.rep_number ?? "");
   }, [repProfile]);
 
-  const handleSave = async (field: "name" | "rep") => {
-    const value = field === "name" ? editName.trim() : editRep.trim();
-    if (field === "name" && !value) {
+  const handleSave = async () => {
+    const value = editName.trim();
+    if (!value) {
       toast({ title: "Name cannot be empty", variant: "destructive" });
-      return;
-    }
-    if (field === "rep" && value && !/^\d{8}$/.test(value)) {
-      toast({ title: "Rep Number must be exactly 8 digits", variant: "destructive" });
       return;
     }
     setSaving(true);
     try {
-      const update = field === "name" ? { full_name: value } : { rep_number: value || null };
-      const { error } = await supabase.from("localist_reps").update(update).eq("id", user!.id);
+      const { error } = await supabase.from("localist_reps").update({ full_name: value }).eq("id", user!.id);
       if (error) throw error;
       await refreshProfile();
       setEditing(null);
@@ -56,7 +49,6 @@ export default function Settings() {
 
   const cancelEdit = () => {
     setEditName(repProfile?.full_name ?? "");
-    setEditRep(repProfile?.rep_number ?? "");
     setEditing(null);
   };
 
@@ -109,7 +101,7 @@ export default function Settings() {
               {editing === "name" ? (
                 <div className="flex items-center gap-2">
                   <Input value={editName} onChange={(e) => setEditName(e.target.value)} className="h-8 w-48" maxLength={100} autoFocus />
-                  <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => handleSave("name")} disabled={saving}>
+                  <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => handleSave()} disabled={saving}>
                     {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
                   </Button>
                   <Button size="icon" variant="ghost" className="h-7 w-7" onClick={cancelEdit} disabled={saving}>
@@ -130,25 +122,10 @@ export default function Settings() {
               <span className="font-medium">{user?.email}</span>
             </div>
 
-            {/* Rep Number */}
+            {/* Rep Number (read-only once set) */}
             <div className="flex items-center justify-between text-sm min-h-[36px]">
               <Label className="text-muted-foreground">Rep Number</Label>
-              {editing === "rep" ? (
-                <div className="flex items-center gap-2">
-                  <Input value={editRep} onChange={(e) => setEditRep(e.target.value.replace(/\D/g, "").slice(0, 8))} className="h-8 w-36 font-mono" placeholder="12345678" maxLength={8} autoFocus />
-                  <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => handleSave("rep")} disabled={saving}>
-                    {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
-                  </Button>
-                  <Button size="icon" variant="ghost" className="h-7 w-7" onClick={cancelEdit} disabled={saving}>
-                    <X className="h-3.5 w-3.5" />
-                  </Button>
-                </div>
-              ) : (
-                <button onClick={() => setEditing("rep")} className="inline-flex items-center gap-1.5 font-medium hover:text-primary transition-colors">
-                  {repProfile?.rep_number ?? "—"}
-                  <Pencil className="h-3 w-3 text-muted-foreground" />
-                </button>
-              )}
+              <span className="font-medium font-mono">{repProfile?.rep_number ?? "—"}</span>
             </div>
 
             <div className="flex justify-between text-sm">

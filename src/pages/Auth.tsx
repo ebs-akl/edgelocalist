@@ -31,9 +31,21 @@ export default function Auth() {
       toast({ title: "Missing fields", description: "Please enter email and password.", variant: "destructive" });
       return;
     }
-    if (!isLogin && repNumber.trim() && !/^\d{8}$/.test(repNumber.trim())) {
-      toast({ title: "Invalid Rep Number", description: "Rep number must be exactly 8 digits.", variant: "destructive" });
-      return;
+    if (!isLogin) {
+      if (!repNumber.trim() || !/^\d{8}$/.test(repNumber.trim())) {
+        toast({ title: "Rep Number Required", description: "Enter your 8-digit Cutco rep number.", variant: "destructive" });
+        return;
+      }
+      // Check uniqueness before signup
+      const { data: existing } = await supabase
+        .from("localist_reps")
+        .select("id")
+        .eq("rep_number", repNumber.trim())
+        .maybeSingle();
+      if (existing) {
+        toast({ title: "Rep Number Taken", description: "That rep number is already registered. Contact support if this is yours.", variant: "destructive" });
+        return;
+      }
     }
     setLoading(true);
     try {
@@ -48,14 +60,13 @@ export default function Auth() {
           options: { emailRedirectTo: `${window.location.origin}/auth` },
         });
         if (error) throw error;
-        // Create localist_reps record
         if (data.user) {
           await supabase.from("localist_reps").upsert({
             id: data.user.id,
             email,
             full_name: fullName.trim() || email,
             subscription_tier: 'standalone',
-            rep_number: repNumber.trim() || null,
+            rep_number: repNumber.trim(),
           }, { onConflict: 'id' });
         }
         toast({
@@ -161,7 +172,7 @@ export default function Auth() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="repNumber">Cutco Rep Number</Label>
+                      <Label htmlFor="repNumber">Cutco Rep Number <span className="text-destructive">*</span></Label>
                       <Input
                         id="repNumber"
                         value={repNumber}
@@ -170,9 +181,10 @@ export default function Auth() {
                         maxLength={8}
                         inputMode="numeric"
                         pattern="\d{8}"
+                        required
                         style={{ fontSize: "16px" }}
                       />
-                      <p className="text-xs text-muted-foreground">Must be exactly 8 digits</p>
+                      <p className="text-xs text-muted-foreground">Required — exactly 8 digits. Cannot be changed later.</p>
                     </div>
                   </>
                 )}
