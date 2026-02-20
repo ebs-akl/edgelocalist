@@ -17,7 +17,7 @@ interface Props {
 }
 
 export default function ContactDetailModal({ contact, repName, isGhlMode, onClose }: Props) {
-  const { ghlLocationId } = useAuth();
+  const { ssoPayload } = useAuth();
   const [lcCalling, setLcCalling] = useState(false);
 
   const smsBody = encodeURIComponent(
@@ -34,13 +34,12 @@ export default function ContactDetailModal({ contact, repName, isGhlMode, onClos
     }
     setLcCalling(true);
     try {
-      const body: Record<string, string> = { contact_id: contact.id, to_number: contact.phone };
+      const body: Record<string, unknown> = { contact_id: contact.id, to_number: contact.phone };
       const headers: Record<string, string> = {};
 
-      if (ghlLocationId) {
-        // GHL iframe mode — pass location_id with shared secret
-        body.location_id = ghlLocationId;
-        headers["x-ghl-secret"] = import.meta.env.VITE_GHL_SHARED_SECRET ?? "";
+      if (ssoPayload) {
+        // GHL iframe mode — send encrypted SSO payload
+        body.sso_payload = ssoPayload;
       } else {
         // Standalone mode — use Supabase session
         const { data: { session } } = await supabase.auth.getSession();
