@@ -6,8 +6,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Sheet, SheetContent, SheetTrigger, SheetClose } from "@/components/ui/sheet";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import { useGhlSso } from "@/hooks/useGhlSso";
 import { toast } from "@/hooks/use-toast";
-import { LogOut, Menu, Settings } from "lucide-react";
+import { LogOut, Menu, Settings, Loader2 } from "lucide-react";
 import localistLogo from "@/assets/Localist_Logo-2.png";
 import SearchTab from "@/components/dashboard/SearchTab";
 import CsvUploadTab from "@/components/dashboard/CsvUploadTab";
@@ -21,13 +22,21 @@ interface StatCard {
 }
 
 export default function Dashboard() {
-  const { user, repProfile, signOut, isGhlMode, ghlLocationId, ghlRepNum } = useAuth();
+  const { user, repProfile, signOut, isGhlMode, ghlLocationId, ghlRepNum, ssoPayload, setSsoPayload } = useAuth();
+  const { ssoPayload: hookPayload, ssoReady, ssoError, isInIframe } = useGhlSso();
   const [contactCount, setContactCount] = useState(0);
   const [lastSync, setLastSync] = useState<string | null>(null);
   const [loadingStats, setLoadingStats] = useState(true);
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const [searchesToday, setSearchesToday] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
+
+  // Store SSO payload from hook into context
+  useEffect(() => {
+    if (hookPayload && hookPayload !== ssoPayload) {
+      setSsoPayload(hookPayload);
+    }
+  }, [hookPayload, ssoPayload, setSsoPayload]);
 
   const userId = user?.id ?? ghlLocationId ?? "unknown";
   const repName = repProfile?.full_name ?? user?.email ?? "Rep";
@@ -37,11 +46,15 @@ export default function Dashboard() {
     setLoadingStats(true);
     try {
       if (isGhlMode && ghlLocationId) {
-        // GHL mode: fetch stats via edge function proxy
-        const ghlSecret = import.meta.env.VITE_GHL_SHARED_SECRET ?? "";
+        // GHL mode: fetch stats via edge function proxy with SSO payload
+        const body: Record<string, unknown> = { stats_only: true };
+        if (ssoPayload) {
+          body.sso_payload = ssoPayload;
+        } else {
+          body.location_id = ghlLocationId;
+        }
         const { data, error } = await supabase.functions.invoke("ghl-sync-contacts", {
-          body: { location_id: ghlLocationId, stats_only: true },
-          headers: { "x-ghl-secret": ghlSecret },
+          body,
         });
         if (!error && data) {
           setContactCount(data.count ?? 0);
@@ -72,10 +85,14 @@ export default function Dashboard() {
     if (!ghlLocationId) return;
     setRefreshing(true);
     try {
-      const ghlSecret = import.meta.env.VITE_GHL_SHARED_SECRET ?? "";
+      const body: Record<string, unknown> = {};
+      if (ssoPayload) {
+        body.sso_payload = ssoPayload;
+      } else {
+        body.location_id = ghlLocationId;
+      }
       const { data, error } = await supabase.functions.invoke("ghl-sync-contacts", {
-        body: { location_id: ghlLocationId },
-        headers: { "x-ghl-secret": ghlSecret },
+        body,
       });
       if (error) throw error;
       toast({ title: "GHL sync complete", description: `${data?.synced ?? 0} contacts synced.` });
@@ -153,6 +170,18 @@ export default function Dashboard() {
     { label: "SEARCHES TODAY", value: searchesToday },
     { label: "MODE", value: isGhlMode ? "GHL Mode" : "CSV Mode" },
   ];
+
+  // SSO handshake gate: show spinner while waiting for payload in iframe
+  if (isInIframe && !ssoReady) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center space-y-3">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
+          <p className="text-sm text-muted-foreground font-medium">Securing connection...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
