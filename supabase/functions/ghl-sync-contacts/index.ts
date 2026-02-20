@@ -48,7 +48,16 @@ serve(async (req) => {
     });
   }
 
-  // Look up rep by location_id — no JWT required
+  // Validate shared secret
+  const sharedSecret = Deno.env.get("GHL_SHARED_SECRET");
+  const providedSecret = req.headers.get("x-ghl-secret");
+  if (!sharedSecret || providedSecret !== sharedSecret) {
+    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
+  // Look up rep by location_id
   const { data: rep } = await supabase
     .from("localist_reps")
     .select("id, ghl_access_token, ghl_location_id")
