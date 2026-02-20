@@ -1,66 +1,76 @@
 
 
-# Fix GHL OAuth Token Storage: Replace Upsert with SELECT + UPDATE/INSERT
+# Make Rep Number an Immutable Unique Identifier
 
-## Problem
-The `upsert` on `localist_reps` fails because the table's `id` column has no default value. When upserting a new row, Postgres tries to insert with `id = null`, violating the not-null constraint.
+## Overview
 
-## Solution
-Replace the single `upsert` call (lines 119-135 of `ghl-oauth-callback/index.ts`) with a two-step pattern:
+The Cutco rep number will become a required, immutable, unique identifier for each representative. Once set during signup, it cannot be changed. This ensures airtight data isolation -- no rep can access another rep's contacts because their identity is permanently tied to their 8-digit rep number.
 
-1. **SELECT** to check if a row with the given `ghl_location_id` already exists
-2. **UPDATE** that row if found, or **INSERT** a new row with `crypto.randomUUID()` as the `id` if not
+## What Changes
 
-### Changes to `supabase/functions/ghl-oauth-callback/index.ts`
+### 1. Database: Add UNIQUE constraint on `rep_number`
 
-Replace the upsert block (approximately lines 119-135) with:
+Add a unique constraint to the `localist_reps.rep_number` column so no two reps can share the same number. Currently there are no duplicates in the database, so this is safe to apply.
 
-```typescript
-// 1. Check if this location already exists
-const { data: existingRow } = await supabaseAdmin
-  .from("localist_reps")
-  .select("id")
-  .eq("ghl_location_id", locationId)
-  .maybeSingle();
+### 2. Signup: Make rep number required
 
-const tokenPayload = {
-  ghl_location_id: locationId,
-  ghl_access_token: access_token,
-  ghl_refresh_token: refresh_token ?? null,
-  ghl_expires_at: expiresAt,
-  subscription_tier: "edgedms",
-};
+The signup form currently treats the rep number as optional. It will become a **required field** during account creation. The form will:
+- Validate it is exactly 8 digits
+- Check against the database for uniqueness before submitting (via a quick query)
+- Show a clear error if the number is already taken
 
-let saveError;
-if (existingRow) {
-  // 2a. UPDATE existing row
-  const { error } = await supabaseAdmin
-    .from("localist_reps")
-    .update(tokenPayload)
-    .eq("id", existingRow.id);
-  saveError = error;
-} else {
-  // 2b. INSERT new row with generated UUID
-  const { error } = await supabaseAdmin
-    .from("localist_reps")
-    .insert({ ...tokenPayload, id: crypto.randomUUID() });
-  saveError = error;
-}
+### 3. Settings: Make rep number read-only
 
-if (saveError) {
-  console.error("DB save error:", saveError);
-  return new Response(JSON.stringify({ error: "Failed to save credentials" }), {
-    status: 500,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
-  });
-}
+The Settings page currently allows editing the rep number. Once set, it will be displayed as **read-only text** (no edit button). This prevents a rep from changing their number to impersonate another rep.
+
+### 4. Database trigger: Prevent updates to `rep_number`
+
+A Postgres trigger will be added to the `localist_reps` table that rejects any `UPDATE` that attempts to change `rep_number` once it has been set. This is a server-side safety net -- even if someone bypasses the UI, the database itself will block the change.
+
+---
+
+## Technical Details
+
+### Migration SQL
+
+```sql
+-- 1. Unique constraint
+ALTER TABLE public.localist_reps
+  ADD CONSTRAINT localist_reps_rep_number_unique UNIQUE (rep_number);
+
+-- 2. Immutability trigger
+CREATE OR REPLACE FUNCTION public.prevent_rep_number_change()
+  RETURNS trigger
+  LANGUAGE plpgsql
+  SECURITY DEFINER
+  SET search_path TO 'public'
+AS $$
+BEGIN
+  IF OLD.rep_number IS NOT NULL
+     AND NEW.rep_number IS DISTINCT FROM OLD.rep_number THEN
+    RAISE EXCEPTION 'rep_number cannot be changed once set';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER trg_immutable_rep_number
+  BEFORE UPDATE ON public.localist_reps
+  FOR EACH ROW
+  EXECUTE FUNCTION public.prevent_rep_number_change();
 ```
 
-Everything else in the function (CORS, token exchange, authenticated-user linking, error handling) stays the same.
+### Frontend Changes
 
-### Files Modified
-- `supabase/functions/ghl-oauth-callback/index.ts` -- replace upsert block with SELECT + UPDATE/INSERT pattern
+| File | Change |
+|---|---|
+| `src/pages/Auth.tsx` | Make `repNumber` required on signup; add uniqueness check before submit |
+| `src/pages/Settings.tsx` | Remove edit button/logic for rep number; display as static text |
 
-### No Migration Needed
-The unique constraint on `ghl_location_id` from the previous migration is still useful for data integrity but is no longer required for the save logic itself.
+### What stays the same
+
+- Login flow (email + password) -- unchanged
+- RLS policies -- already enforce `rep_id = auth.uid()` isolation
+- The Account Merge Handshake -- continues to use `rep_number` as the bridge
+- GHL SSO flow -- unaffected
 
