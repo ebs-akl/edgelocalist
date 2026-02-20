@@ -17,6 +17,7 @@ export default function Auth() {
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [repNumber, setRepNumber] = useState("");
+  const [repError, setRepError] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
@@ -176,15 +177,28 @@ export default function Auth() {
                       <Input
                         id="repNumber"
                         value={repNumber}
-                        onChange={(e) => setRepNumber(e.target.value.replace(/\D/g, "").slice(0, 8))}
+                        onChange={(e) => {
+                          const val = e.target.value.replace(/\D/g, "").slice(0, 8);
+                          setRepNumber(val);
+                          if (val.length > 0 && val.length !== 8) {
+                            setRepError("Rep Number must be exactly 8 digits (0-9 only).");
+                          } else {
+                            setRepError("");
+                          }
+                        }}
                         placeholder="e.g. 12345678"
                         maxLength={8}
                         inputMode="numeric"
                         pattern="\d{8}"
                         required
                         style={{ fontSize: "16px" }}
+                        className={repError ? "border-destructive" : ""}
                       />
-                      <p className="text-xs text-muted-foreground">Required — exactly 8 digits. Cannot be changed later.</p>
+                      {repError ? (
+                        <p className="text-xs text-destructive">{repError}</p>
+                      ) : (
+                        <p className="text-xs text-muted-foreground">Required — exactly 8 digits. Cannot be changed later.</p>
+                      )}
                     </div>
                   </>
                 )}
@@ -223,7 +237,7 @@ export default function Auth() {
                     </button>
                   </div>
                 )}
-                <Button type="submit" className="w-full min-h-[44px]" disabled={loading}>
+                <Button type="submit" className="w-full min-h-[44px]" disabled={loading || (!isLogin && !/^\d{8}$/.test(repNumber))}>
                   {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   {isLogin ? "Sign In" : "Create Account"}
                 </Button>
