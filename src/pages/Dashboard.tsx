@@ -37,8 +37,10 @@ export default function Dashboard() {
     try {
       if (isGhlMode && ghlLocationId) {
         // GHL mode: fetch stats via edge function proxy
+        const ghlSecret = import.meta.env.VITE_GHL_SHARED_SECRET ?? "";
         const { data, error } = await supabase.functions.invoke("ghl-sync-contacts", {
           body: { location_id: ghlLocationId, stats_only: true },
+          headers: { "x-ghl-secret": ghlSecret },
         });
         if (!error && data) {
           setContactCount(data.count ?? 0);
@@ -69,8 +71,10 @@ export default function Dashboard() {
     if (!ghlLocationId) return;
     setRefreshing(true);
     try {
+      const ghlSecret = import.meta.env.VITE_GHL_SHARED_SECRET ?? "";
       const { data, error } = await supabase.functions.invoke("ghl-sync-contacts", {
         body: { location_id: ghlLocationId },
+        headers: { "x-ghl-secret": ghlSecret },
       });
       if (error) throw error;
       toast({ title: "GHL sync complete", description: `${data?.synced ?? 0} contacts synced.` });

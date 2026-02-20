@@ -81,6 +81,7 @@ export default function GroupSmsModal({ open, onClose, contacts, repName }: Grou
 
       if (ghlLocationId) {
         body.location_id = ghlLocationId;
+        headers["x-ghl-secret"] = import.meta.env.VITE_GHL_SHARED_SECRET ?? "";
       } else {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) throw new Error("Not authenticated");

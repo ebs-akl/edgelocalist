@@ -90,6 +90,18 @@ serve(async (req) => {
     });
   }
 
+  if (message_template.length > 918) {
+    return new Response(JSON.stringify({ error: "Message template exceeds 918 character limit" }), {
+      status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
+  if (contacts.length > 500) {
+    return new Response(JSON.stringify({ error: "Maximum 500 contacts per batch" }), {
+      status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
   const reqHeaders: Record<string, string | null> = { "x-ghl-secret": req.headers.get("x-ghl-secret") };
   const creds = await resolveCredentials(supabase, authHeader, location_id || null, reqHeaders);
   if ("error" in creds) {
