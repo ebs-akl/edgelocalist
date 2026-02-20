@@ -69,16 +69,45 @@ export default function SearchTab({ repName, recentSearches, onSearch, contactCo
     return { lat, lng };
   };
 
-  const COORD_REGEX = /^\s*(-?\d+\.?\d*)\s*[,\s]\s*(-?\d+\.?\d*)\s*$/;
+  const COORD_REGEX = /^(-?\d+(\.\d+)?)[,\s]+(-?\d+(\.\d+)?)$/;
 
   const parseCoords = (input: string): { lat: number; lng: number } | null => {
-    const match = input.match(COORD_REGEX);
+    const match = input.trim().match(COORD_REGEX);
     if (!match) return null;
     const lat = parseFloat(match[1]);
-    const lng = parseFloat(match[2]);
+    const lng = parseFloat(match[3]);
     if (lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) return { lat, lng };
     return null;
   };
+
+  const runRadiusQuery = useCallback(async (center: { lat: number; lng: number }, label: string) => {
+    if (!user) return;
+    if (contactCount === 0) {
+      toast({ title: "No contacts loaded yet — let's fix that.", description: "Upload a CSV in the Contacts tab first.", variant: "destructive" });
+      return;
+    }
+    setLoading(true);
+    setSearched(false);
+    setSelectedIds(new Set());
+    try {
+      setSearchCenter(center);
+      onSearch(label);
+      const { data, error } = await supabase.rpc("nearby_contacts", {
+        rep: user.id,
+        center_lat: center.lat,
+        center_lng: center.lng,
+        radius_miles: radius,
+      });
+      if (error) throw error;
+      setResults((data as NearbyContact[]) ?? []);
+      setSearched(true);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Search failed.";
+      toast({ title: "Search error", description: message, variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
+  }, [user, contactCount, radius, onSearch]);
 
   const handleGPS = () => {
     if (!navigator.geolocation) {
@@ -89,7 +118,7 @@ export default function SearchTab({ repName, recentSearches, onSearch, contactCo
       (pos) => {
         const { latitude, longitude } = pos.coords;
         setAddress("Current Location");
-        setSearchCenter({ lat: latitude, lng: longitude });
+        runRadiusQuery({ lat: latitude, lng: longitude }, "Current Location");
       },
       () => {
         toast({ title: "Could not get location", description: "Check your browser permissions.", variant: "destructive" });
@@ -103,51 +132,38 @@ export default function SearchTab({ repName, recentSearches, onSearch, contactCo
       return;
     }
     if (!user) return;
-    if (contactCount === 0) {
-      toast({ title: "No contacts loaded yet — let's fix that.", description: "Upload a CSV in the Contacts tab first.", variant: "destructive" });
+
+    // 1. If searchCenter already set (e.g. from GPS), use it directly
+    if (searchCenter) {
+      await runRadiusQuery(searchCenter, address.trim() || "Current Location");
       return;
     }
 
+    // 2. Strict coordinate regex bypass
+    const parsed = parseCoords(address.trim());
+    if (parsed) {
+      await runRadiusQuery(parsed, address.trim());
+      return;
+    }
+
+    // 3. Mapbox fuzzy geocoding for addresses
     setLoading(true);
     setSearched(false);
     setSelectedIds(new Set());
-
     try {
-      let center = searchCenter;
+      const center = await geocodeAddress(address.trim());
       if (!center) {
-        // Check if the input looks like coordinates (e.g. "40.88, -81.32")
-        const parsed = parseCoords(address.trim());
-        if (parsed) {
-          center = parsed;
-        } else {
-          center = await geocodeAddress(address.trim());
-          if (!center) {
-            toast({ title: "Address not found", description: "Try a more specific address or ZIP code.", variant: "destructive" });
-            setLoading(false);
-            return;
-          }
-        }
+        toast({ title: "Could not find that exact address.", description: "Try adding the city or ZIP code.", variant: "destructive" });
+        setLoading(false);
+        return;
       }
-      setSearchCenter(center);
-      onSearch(address.trim() || `${center.lat.toFixed(4)}, ${center.lng.toFixed(4)}`);
-
-      const { data, error } = await supabase.rpc("nearby_contacts", {
-        rep: user.id,
-        center_lat: center.lat,
-        center_lng: center.lng,
-        radius_miles: radius,
-      });
-
-      if (error) throw error;
-      setResults((data as NearbyContact[]) ?? []);
-      setSearched(true);
+      await runRadiusQuery(center, address.trim());
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Search failed.";
       toast({ title: "Search error", description: message, variant: "destructive" });
-    } finally {
       setLoading(false);
     }
-  }, [address, radius, user, contactCount, searchCenter, onSearch]);
+  }, [address, searchCenter, user, runRadiusQuery]);
 
   const handleSort = (key: SortKey) => {
     if (sortKey === key) setSortAsc((a) => !a);
