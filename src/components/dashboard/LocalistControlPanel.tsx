@@ -8,6 +8,7 @@ interface ControlPanelProps {
   contactCount: number;
   lastSync: string | null;
   isGhlMode: boolean;
+  ghlLocationId?: string | null;
   subscriptionTier: string | null;
   onRefresh?: () => void;
   refreshing?: boolean;
@@ -28,6 +29,7 @@ export default function ControlPanel({
   contactCount,
   lastSync,
   isGhlMode,
+  ghlLocationId,
   subscriptionTier,
   onRefresh,
   refreshing,
@@ -38,7 +40,7 @@ export default function ControlPanel({
     <Card>
       <CardContent className="p-5">
         <h3 className="font-semibold mb-4" style={{ fontFamily: "'Oswald', sans-serif" }}>
-          🔌 Control Panel
+          {isGhlMode ? "🔗 CRM Connection" : "🔌 Control Panel"}
         </h3>
 
         {/* Status */}
@@ -46,19 +48,29 @@ export default function ControlPanel({
           <div className="flex items-center gap-3">
             <div
               className={`h-3 w-3 rounded-full ${
-                hasContacts ? "bg-success animate-pulse" : "bg-muted-foreground"
+                isGhlMode ? "bg-success animate-pulse" : hasContacts ? "bg-success animate-pulse" : "bg-muted-foreground"
               }`}
             />
             <div>
               <p className="text-sm font-medium">
-                {hasContacts ? "Contacts Active" : "No contacts loaded"}
+                {isGhlMode
+                  ? "Connected to GoHighLevel"
+                  : hasContacts
+                    ? "Contacts Active"
+                    : "No contacts loaded"}
               </p>
               <p className="text-xs text-muted-foreground">
-                {hasContacts
-                  ? lastSync
-                    ? `Last sync: ${formatRelativeTime(lastSync)}`
-                    : `${contactCount.toLocaleString()} contacts`
-                  : "Upload a CSV to get started"}
+                {isGhlMode
+                  ? hasContacts
+                    ? lastSync
+                      ? `Last sync: ${formatRelativeTime(lastSync)}`
+                      : `${contactCount.toLocaleString()} contacts synced`
+                    : "Syncing contacts from CRM…"
+                  : hasContacts
+                    ? lastSync
+                      ? `Last sync: ${formatRelativeTime(lastSync)}`
+                      : `${contactCount.toLocaleString()} contacts`
+                    : "Upload a CSV to get started"}
               </p>
             </div>
           </div>
@@ -76,6 +88,14 @@ export default function ControlPanel({
               {isGhlMode ? "GHL Mode" : "CSV Mode"}
             </Badge>
           </div>
+          {isGhlMode && ghlLocationId && (
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Location</span>
+              <span className="font-medium text-xs font-mono truncate max-w-[140px]" title={ghlLocationId}>
+                {ghlLocationId}
+              </span>
+            </div>
+          )}
           {subscriptionTier && (
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Plan</span>
@@ -98,11 +118,13 @@ export default function ControlPanel({
               {refreshing ? "Syncing GHL..." : "Refresh GHL Contacts"}
             </Button>
           )}
-          <Link to="/settings">
-            <Button variant="outline" size="sm" className="justify-start w-full">
-              <Settings className="mr-2 h-3.5 w-3.5" /> Settings
-            </Button>
-          </Link>
+          {!isGhlMode && (
+            <Link to="/settings">
+              <Button variant="outline" size="sm" className="justify-start w-full">
+                <Settings className="mr-2 h-3.5 w-3.5" /> Settings
+              </Button>
+            </Link>
+          )}
         </div>
       </CardContent>
     </Card>

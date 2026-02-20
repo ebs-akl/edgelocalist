@@ -211,6 +211,7 @@ export default function Dashboard() {
             contactCount={contactCount}
             lastSync={lastSync}
             isGhlMode={isGhlMode}
+            ghlLocationId={ghlLocationId}
             subscriptionTier={repProfile?.subscription_tier ?? null}
             onRefresh={isGhlMode ? handleGhlSync : undefined}
             refreshing={refreshing}
@@ -229,9 +230,11 @@ export default function Dashboard() {
                   📋 Contacts
                 </TabsTrigger>
               )}
-              <TabsTrigger value="settings-tab" className="text-xs sm:text-sm">
-                ⚙️ Settings
-              </TabsTrigger>
+              {!isGhlMode && (
+                <TabsTrigger value="settings-tab" className="text-xs sm:text-sm">
+                  ⚙️ Settings
+                </TabsTrigger>
+              )}
             </TabsList>
 
             <TabsContent value="search">
@@ -262,23 +265,25 @@ export default function Dashboard() {
               </TabsContent>
             )}
 
-            <TabsContent value="settings-tab">
-              <Card>
-                <CardContent className="p-4 sm:p-6 space-y-4">
-                  <h3 className="font-semibold" style={{ fontFamily: "'Oswald', sans-serif" }}>
-                    Quick Settings
-                  </h3>
-                  <p className="text-sm text-muted-foreground">
-                    Manage your account, subscription, and preferences.
-                  </p>
-                  <Link to="/settings">
-                    <Button className="w-full min-h-[44px]">
-                      Open Full Settings
-                    </Button>
-                  </Link>
-                </CardContent>
-              </Card>
-            </TabsContent>
+            {!isGhlMode && (
+              <TabsContent value="settings-tab">
+                <Card>
+                  <CardContent className="p-4 sm:p-6 space-y-4">
+                    <h3 className="font-semibold" style={{ fontFamily: "'Oswald', sans-serif" }}>
+                      Quick Settings
+                    </h3>
+                    <p className="text-sm text-muted-foreground">
+                      Manage your account, subscription, and preferences.
+                    </p>
+                    <Link to="/settings">
+                      <Button className="w-full min-h-[44px]">
+                        Open Full Settings
+                      </Button>
+                    </Link>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            )}
           </Tabs>
 
           {/* Control panel sidebar (desktop) */}
@@ -287,6 +292,7 @@ export default function Dashboard() {
               contactCount={contactCount}
               lastSync={lastSync}
               isGhlMode={isGhlMode}
+              ghlLocationId={ghlLocationId}
               subscriptionTier={repProfile?.subscription_tier ?? null}
               onRefresh={isGhlMode ? handleGhlSync : undefined}
               refreshing={refreshing}
