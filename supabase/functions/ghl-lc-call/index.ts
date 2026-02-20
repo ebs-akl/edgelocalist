@@ -20,7 +20,7 @@ function decryptSsoPayload(ssoPayload: string): string | null {
     const decryptedString = bytes.toString(CryptoJS.enc.Utf8);
     if (!decryptedString) return null;
     const decryptedData = JSON.parse(decryptedString);
-    return decryptedData.locationId ?? null;
+    return decryptedData.activeLocation ?? decryptedData.locationId ?? decryptedData.location_id ?? null;
   } catch (err) { console.error("SSO decryption failed:", err); return null; }
 }
 
