@@ -20,7 +20,7 @@ interface StatCard {
 }
 
 export default function Dashboard() {
-  const { user, repProfile, signOut, isGhlMode, ghlLocationId } = useAuth();
+  const { user, repProfile, signOut, isGhlMode, ghlLocationId, ghlRepNum } = useAuth();
   const [contactCount, setContactCount] = useState(0);
   const [lastSync, setLastSync] = useState<string | null>(null);
   const [loadingStats, setLoadingStats] = useState(true);
@@ -86,6 +86,35 @@ export default function Dashboard() {
       setRefreshing(false);
     }
   };
+
+  // ── Account Merge Handshake ──
+  // If both location_id and rep_num are present, claim old CSV contacts
+  useEffect(() => {
+    if (!ghlLocationId || !ghlRepNum) return;
+    const mergeKey = `merge_done_${ghlLocationId}_${ghlRepNum}`;
+    if (localStorage.getItem(mergeKey)) return;
+
+    (async () => {
+      try {
+        const { data, error } = await supabase
+          .from("localist_contacts")
+          .update({ location_id: ghlLocationId })
+          .eq("rep_number", ghlRepNum)
+          .is("location_id", null)
+          .select("id");
+
+        const count = data?.length ?? 0;
+
+        if (!error && (count ?? 0) > 0) {
+          console.log(`Merge handshake: claimed ${count} contacts for location ${ghlLocationId}`);
+          toast({ title: "Contacts linked!", description: `${count} existing contacts were connected to your CRM.` });
+        }
+        localStorage.setItem(mergeKey, Date.now().toString());
+      } catch (err) {
+        console.error("Merge handshake failed:", err);
+      }
+    })();
+  }, [ghlLocationId, ghlRepNum]);
 
   useEffect(() => {
     fetchContactStats();
