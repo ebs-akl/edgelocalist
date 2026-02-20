@@ -35,6 +35,7 @@ export type Database = {
           order_count: number | null
           phone: string | null
           rep_id: string
+          rep_number: string | null
           rlt: string | null
           source: string | null
           state: string | null
@@ -61,6 +62,7 @@ export type Database = {
           order_count?: number | null
           phone?: string | null
           rep_id: string
+          rep_number?: string | null
           rlt?: string | null
           source?: string | null
           state?: string | null
@@ -87,6 +89,7 @@ export type Database = {
           order_count?: number | null
           phone?: string | null
           rep_id?: string
+          rep_number?: string | null
           rlt?: string | null
           source?: string | null
           state?: string | null
