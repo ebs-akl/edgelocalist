@@ -57,10 +57,10 @@ export function useGhlSso() {
     } catch {}
   }, []);
 
-  const startHandshake = useCallback(() => {
+  const startHandshake = useCallback((): (() => void) => {
     if (!isInIframe()) {
       setSsoReady(true);
-      return;
+      return () => {};
     }
 
     // URL parameter fallback — skip postMessage entirely
@@ -70,7 +70,7 @@ export function useGhlSso() {
       receivedRef.current = true;
       setSsoPayload(urlPayload);
       setSsoReady(true);
-      return;
+      return () => {};
     }
 
     receivedRef.current = false;
