@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useGhlSso } from "@/hooks/useGhlSso";
 import { Loader2, AlertTriangle, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -22,23 +22,34 @@ export default function IframeApp() {
   const [verifying, setVerifying] = useState(false);
   const [verifyError, setVerifyError] = useState<string | null>(null);
   const [verified, setVerified] = useState(false);
+  const isVerifying = useRef(false);
 
-  // Once we have a payload, verify it server-side
+  // Once we have a payload, verify it server-side — ONE TIME ONLY
   useEffect(() => {
-    if (!ssoReady || !ssoPayload || ssoError || verified || verifying) return;
-
+    if (!ssoReady || !ssoPayload || ssoError || verified) return;
+    if (isVerifying.current) return; // Already in-flight, do not duplicate
+    isVerifying.current = true;
     setVerifying(true);
-    console.log("🔐 Verifying SSO payload server-side...");
+
+    console.log("🔐 Verifying SSO payload server-side (one-shot)...");
 
     supabase.functions
       .invoke("ghl-sso-verify", { body: { payload: ssoPayload } })
-      .then(({ data, error }) => {
+      .then(async ({ data, error }) => {
         if (error) {
-          console.error("❌ SSO verify invocation error:", error);
-          setVerifyError(`Verification failed: ${error.message}`);
+          // Try to extract the actual error body from the edge function
+          let detail = error.message;
+          try {
+            if ((error as any).context) {
+              const body = await (error as any).context.json();
+              detail = body?.error || JSON.stringify(body);
+            }
+          } catch {}
+          console.error("❌ SSO verify error:", detail);
+          setVerifyError(`Decryption Failed: ${detail}`);
         } else if (data?.error) {
           console.error("❌ SSO verify returned error:", data.error);
-          setVerifyError(data.error);
+          setVerifyError(`Decryption Failed: ${data.error}`);
         } else if (data?.success) {
           console.log("✅ SSO verified, locationId:", data.locationId);
           setVerified(true);
@@ -53,7 +64,7 @@ export default function IframeApp() {
         setVerifyError(`Network error: ${err.message}`);
         setVerifying(false);
       });
-  }, [ssoReady, ssoPayload, ssoError, verified, verifying]);
+  }, [ssoReady, ssoPayload, ssoError, verified]);
 
   // Lazy-load Dashboard only after verified
   useEffect(() => {
