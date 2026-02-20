@@ -13,8 +13,9 @@ import { supabase } from "@/integrations/supabase/client";
 const iframeQueryClient = new QueryClient();
 
 /**
- * Injects verified GHL IDs into AuthContext then renders Dashboard.
- * Must be rendered inside <AuthProvider>.
+ * Injects verified GHL IDs into AuthContext, then renders Dashboard
+ * ONLY after context is confirmed set — preventing effects from firing
+ * with a null ssoPayload and causing 401s.
  */
 function GhlDashboardBridge({
   locationId,
@@ -26,11 +27,28 @@ function GhlDashboardBridge({
   Dashboard: React.ComponentType;
 }) {
   const { setGhlLocationId, setSsoPayload } = useAuth();
+  const [contextReady, setContextReady] = useState(false);
 
   useEffect(() => {
+    // Batch all three updates — React 18 batches them so Dashboard
+    // renders with all values already in context.
     setGhlLocationId(locationId);
     setSsoPayload(ssoPayload);
+    setContextReady(true);
   }, [locationId, ssoPayload, setGhlLocationId, setSsoPayload]);
+
+  if (!contextReady) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center space-y-3">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
+          <p className="text-sm text-muted-foreground font-medium">
+            Initializing GHL session...
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return <Dashboard />;
 }
