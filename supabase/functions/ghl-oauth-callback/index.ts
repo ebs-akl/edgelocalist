@@ -49,13 +49,7 @@ serve(async (req) => {
       });
     }
 
-    // Log what we're sending (never log the secret)
-    console.log("Sending to GHL:", {
-      client_id: GHL_CLIENT_ID,
-      grant_type: "authorization_code",
-      code,
-      redirect_uri,
-    });
+    // Exchanging authorization code for tokens
 
     // Exchange code for tokens
     const tokenRes = await fetch("https://services.leadconnectorhq.com/oauth/token", {
@@ -74,9 +68,7 @@ serve(async (req) => {
       }),
     });
 
-    // Read response as raw text first for logging
     const responseText = await tokenRes.text();
-    console.log("GHL Raw Response (status " + tokenRes.status + "):", responseText);
 
     if (!tokenRes.ok) {
       let ghlError = { error: `GHL API error (${tokenRes.status})`, error_description: responseText };
