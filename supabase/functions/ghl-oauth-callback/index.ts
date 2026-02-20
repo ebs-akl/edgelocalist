@@ -17,8 +17,16 @@ serve(async (req) => {
   const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
   const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
-  if (!GHL_CLIENT_ID || !GHL_CLIENT_SECRET || !SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+  if (!GHL_CLIENT_ID || !SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
     return new Response(JSON.stringify({ error: "Missing server configuration" }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
+  if (!GHL_CLIENT_SECRET) {
+    console.error("GHL_CLIENT_SECRET is not defined in environment variables.");
+    return new Response(JSON.stringify({ error: "Missing server configuration", error_description: "GHL_CLIENT_SECRET is undefined" }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
@@ -61,6 +69,7 @@ serve(async (req) => {
         client_secret: GHL_CLIENT_SECRET,
         grant_type: "authorization_code",
         code,
+        user_type: "Location",
         redirect_uri,
       }),
     });
