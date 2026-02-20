@@ -22,6 +22,7 @@ export type Database = {
           city: string | null
           contact_id: string
           first_name: string | null
+          ghl_contact_id: string | null
           gift_count: number | null
           id: string
           last_name: string | null
@@ -29,6 +30,7 @@ export type Database = {
           latitude: number | null
           lifetime_value: number | null
           location: unknown
+          location_id: string | null
           longitude: number | null
           order_count: number | null
           phone: string | null
@@ -46,6 +48,7 @@ export type Database = {
           city?: string | null
           contact_id: string
           first_name?: string | null
+          ghl_contact_id?: string | null
           gift_count?: number | null
           id?: string
           last_name?: string | null
@@ -53,6 +56,7 @@ export type Database = {
           latitude?: number | null
           lifetime_value?: number | null
           location?: unknown
+          location_id?: string | null
           longitude?: number | null
           order_count?: number | null
           phone?: string | null
@@ -70,6 +74,7 @@ export type Database = {
           city?: string | null
           contact_id?: string
           first_name?: string | null
+          ghl_contact_id?: string | null
           gift_count?: number | null
           id?: string
           last_name?: string | null
@@ -77,6 +82,7 @@ export type Database = {
           latitude?: number | null
           lifetime_value?: number | null
           location?: unknown
+          location_id?: string | null
           longitude?: number | null
           order_count?: number | null
           phone?: string | null
