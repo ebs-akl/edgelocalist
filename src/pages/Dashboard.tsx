@@ -127,8 +127,8 @@ export default function Dashboard() {
     if (stored) {
       try { setRecentSearches(JSON.parse(stored)); } catch { /* ignore */ }
     }
-    // Auto-sync GHL on load if connected and not synced recently
-    if (isGhlMode && ghlLocationId) {
+    // Auto-sync GHL on load if connected and payload ready
+    if (isGhlMode && ghlLocationId && ssoPayload) {
       const lastSyncKey = `ghl_last_sync_${ghlLocationId}`;
       const lastSyncTime = localStorage.getItem(lastSyncKey);
       const hoursSince = lastSyncTime
@@ -140,7 +140,7 @@ export default function Dashboard() {
         });
       }
     }
-  }, [userId, isGhlMode]);
+  }, [userId, isGhlMode, ssoPayload]);
 
   const handleSearch = (address: string) => {
     setSearchesToday((n) => n + 1);
@@ -158,8 +158,8 @@ export default function Dashboard() {
     { label: "MODE", value: isGhlMode ? "GHL Mode" : "CSV Mode" },
   ];
 
-  // SSO handshake gate: show spinner while waiting, or error with retry
-  if (isInIframe && !ssoReady) {
+  // SSO handshake gate — skip if already in GHL mode via IframeApp bridge
+  if (isInIframe && !ghlLocationId && !ssoReady) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center space-y-3">
@@ -172,7 +172,7 @@ export default function Dashboard() {
     );
   }
 
-  if (isInIframe && ssoError) {
+  if (isInIframe && !ghlLocationId && ssoError) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center space-y-4 max-w-sm px-4">
