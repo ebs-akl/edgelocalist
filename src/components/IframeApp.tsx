@@ -43,13 +43,19 @@ export default function IframeApp() {
             if ((error as any).context) {
               const body = await (error as any).context.json();
               detail = body?.error || JSON.stringify(body);
+              if (body?.rawData) {
+                console.error("🔍 RAW GHL PAYLOAD:", JSON.stringify(body.rawData, null, 2));
+              }
             }
           } catch {}
           console.error("❌ SSO verify error:", detail);
           setVerifyError(`Decryption Failed: ${detail}`);
         } else if (data?.error) {
           console.error("❌ SSO verify returned error:", data.error);
-          setVerifyError(`Decryption Failed: ${data.error}`);
+          if (data?.rawData) {
+            console.error("🔍 RAW GHL PAYLOAD:", JSON.stringify(data.rawData, null, 2));
+          }
+          setVerifyError(`${data.error}${data.rawData ? `\n\nRaw keys: ${Object.keys(data.rawData).join(", ")}` : ""}`);
         } else if (data?.success) {
           console.log("✅ SSO verified, locationId:", data.locationId);
           setVerified(true);
