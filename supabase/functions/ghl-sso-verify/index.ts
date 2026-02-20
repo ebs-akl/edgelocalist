@@ -69,13 +69,20 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Extract locationId — this is what all other edge functions need
-    const locationId = userData.locationId || userData.location_id;
+    // Fuzzy-match locationId across all known GHL property names
+    const locationId =
+      userData.locationId ||
+      userData.location_id ||
+      userData.LocationId ||
+      (userData.location && typeof userData.location === "object" && (userData.location as any).id) ||
+      null;
+
     if (!locationId) {
+      console.log("DECRYPTED USER DATA (no locationId found):", JSON.stringify(userData));
       return new Response(
         JSON.stringify({
-          error: "Decrypted payload does not contain locationId",
-          keys: Object.keys(userData),
+          error: "Missing location ID — could not find locationId in decrypted payload",
+          rawData: userData,
         }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
