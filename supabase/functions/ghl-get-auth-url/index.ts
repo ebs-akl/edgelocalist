@@ -20,7 +20,30 @@ serve(async (req) => {
     });
   }
 
-  const { redirect_uri } = await req.json() as { redirect_uri: string };
+  let body: { redirect_uri?: string } = {};
+  try {
+    body = await req.json();
+  } catch {
+    return new Response(JSON.stringify({ error: "Invalid request body" }), {
+      status: 400,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
+  const { redirect_uri } = body;
+
+  // Validate redirect_uri against allowlist
+  const ALLOWED_REDIRECTS = [
+    "https://edgelocalist.app/callback",
+    "https://edgelocalist.lovable.app/callback",
+  ];
+
+  if (!redirect_uri || !ALLOWED_REDIRECTS.includes(redirect_uri)) {
+    return new Response(JSON.stringify({ error: "Invalid redirect_uri" }), {
+      status: 400,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
 
   const params = new URLSearchParams({
     response_type: "code",
