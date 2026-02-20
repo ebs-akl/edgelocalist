@@ -30,9 +30,14 @@ export default function GhlCallback() {
         });
 
         if (error || !data?.success) {
-          console.error("GHL OAuth failed:", { error: data?.error, details: data?.details });
+          console.error("GHL OAuth failed:", {
+            error: data?.error,
+            error_description: data?.error_description,
+            details: data?.details,
+            raw: data,
+          });
           throw new Error(
-            data?.error || "Could not connect to GoHighLevel. Please try again or contact support."
+            data?.error_description || data?.error || "Could not connect to GoHighLevel. Please try again or contact support."
           );
         }
 

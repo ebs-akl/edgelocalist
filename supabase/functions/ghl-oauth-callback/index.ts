@@ -59,8 +59,16 @@ serve(async (req) => {
     if (!tokenRes.ok) {
       const errBody = await tokenRes.text();
       console.error("GHL token exchange failed. Status:", tokenRes.status, "Body:", errBody);
-      return new Response(JSON.stringify({ error: "Token exchange failed" }), {
-        status: 400,
+      let ghlError = { error: `GHL API error (${tokenRes.status})`, error_description: errBody };
+      try {
+        const parsed = JSON.parse(errBody);
+        ghlError = {
+          error: parsed.error || ghlError.error,
+          error_description: parsed.error_description || parsed.message || errBody,
+        };
+      } catch (_) { /* use raw text fallback */ }
+      return new Response(JSON.stringify(ghlError), {
+        status: tokenRes.status,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
