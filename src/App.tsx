@@ -13,6 +13,16 @@ import NotFound from "./pages/NotFound";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { supabaseConfigured } from "@/integrations/supabase/client";
 import { MapPin, AlertTriangle } from "lucide-react";
+import IframeApp from "./components/IframeApp";
+
+// ─── Top-level iframe detection (runs before any React tree) ───
+const isIframe = (() => {
+  try {
+    return window.self !== window.top;
+  } catch {
+    return true; // cross-origin = definitely in iframe
+  }
+})();
 
 const queryClient = new QueryClient();
 
@@ -52,6 +62,11 @@ function MissingCredentials() {
 }
 
 const App = () => {
+  // ─── AGGRESSIVE SHORT-CIRCUIT: iframe → skip all routing/auth ───
+  if (isIframe) {
+    return <IframeApp />;
+  }
+
   if (!supabaseConfigured) {
     return <MissingCredentials />;
   }
