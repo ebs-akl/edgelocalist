@@ -71,6 +71,10 @@ export default function Settings() {
               <span className="font-medium">{user?.email}</span>
             </div>
             <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Rep Number</span>
+              <span className="font-medium">{repProfile?.rep_number ?? "—"}</span>
+            </div>
+            <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Plan</span>
               <Badge variant="secondary" className="capitalize">
                 {repProfile?.subscription_tier ?? "standalone"}
