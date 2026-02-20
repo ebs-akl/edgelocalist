@@ -31,6 +31,10 @@ export default function Auth() {
       toast({ title: "Missing fields", description: "Please enter email and password.", variant: "destructive" });
       return;
     }
+    if (!isLogin && repNumber.trim() && !/^\d{8}$/.test(repNumber.trim())) {
+      toast({ title: "Invalid Rep Number", description: "Rep number must be exactly 8 digits.", variant: "destructive" });
+      return;
+    }
     setLoading(true);
     try {
       if (isLogin) {
@@ -161,10 +165,14 @@ export default function Auth() {
                       <Input
                         id="repNumber"
                         value={repNumber}
-                        onChange={(e) => setRepNumber(e.target.value)}
-                        placeholder="e.g. 12345"
+                        onChange={(e) => setRepNumber(e.target.value.replace(/\D/g, "").slice(0, 8))}
+                        placeholder="e.g. 12345678"
+                        maxLength={8}
+                        inputMode="numeric"
+                        pattern="\d{8}"
                         style={{ fontSize: "16px" }}
                       />
+                      <p className="text-xs text-muted-foreground">Must be exactly 8 digits</p>
                     </div>
                   </>
                 )}
