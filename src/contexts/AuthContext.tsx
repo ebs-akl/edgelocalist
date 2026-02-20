@@ -9,7 +9,6 @@ export interface RepProfile {
   full_name: string;
   subscription_tier: 'standalone' | 'edgedms' | null;
   ghl_location_id: string | null;
-  stripe_customer_id: string | null;
 }
 
 interface AuthState {

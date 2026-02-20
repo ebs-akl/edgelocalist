@@ -149,7 +149,6 @@ export type Database = {
           full_name: string
           ghl_location_id: string
           id: string
-          stripe_customer_id: string
           subscription_tier: string
         }[]
       }
