@@ -35,6 +35,7 @@ export function useGhlSso() {
   const [ssoReady, setSsoReady] = useState(false);
   const [ssoError, setSsoError] = useState<string | null>(null);
   const handshakeComplete = useRef(false);
+  const listenerRef = useRef<((event: MessageEvent) => void) | null>(null);
 
   const isInIframe = useCallback(() => {
     try {
@@ -54,18 +55,24 @@ export function useGhlSso() {
     } catch {}
   }, []);
 
+  const killListener = useCallback(() => {
+    if (listenerRef.current) {
+      window.removeEventListener("message", listenerRef.current);
+      listenerRef.current = null;
+      console.log("🔇 Message listener removed");
+    }
+  }, []);
+
   const startHandshake = useCallback((): (() => void) => {
     if (!isInIframe()) {
       setSsoReady(true);
       return () => {};
     }
 
-    // Already completed — don't restart
     if (handshakeComplete.current) {
       return () => {};
     }
 
-    // URL parameter fallback
     const urlPayload = getSsoFromUrl();
     if (urlPayload) {
       console.log("🔑 SSO payload found in URL params");
@@ -76,16 +83,15 @@ export function useGhlSso() {
     }
 
     const handleMessage = (event: MessageEvent) => {
-      // Ignore if we already have a payload
       if (handshakeComplete.current) return;
-
-      console.log("📨 RAW MESSAGE RECEIVED:", event.data);
 
       if (isResponseMessage(event.data)) {
         const payload = getPayloadFromEvent(event.data);
         if (payload) {
-          console.log("✅ SSO payload captured, handshake complete");
+          console.log("✅ SSO payload captured — killing listener immediately");
           handshakeComplete.current = true;
+          // Kill listener IMMEDIATELY so no more messages are processed
+          killListener();
           setSsoPayload(payload);
           setSsoReady(true);
           setSsoError(null);
@@ -93,9 +99,9 @@ export function useGhlSso() {
       }
     };
 
+    listenerRef.current = handleMessage;
     window.addEventListener("message", handleMessage);
 
-    // Wait 500ms then first attempt
     const initialDelay = setTimeout(() => {
       if (handshakeComplete.current) return;
       sendRequest();
@@ -107,6 +113,7 @@ export function useGhlSso() {
 
         const finalTimeout = setTimeout(() => {
           if (!handshakeComplete.current) {
+            killListener();
             setSsoError("SSO handshake timed out. The HighLevel connection could not be established.");
             setSsoReady(true);
           }
@@ -118,12 +125,12 @@ export function useGhlSso() {
     (window as any).__ghlInitialDelay = initialDelay;
 
     return () => {
-      window.removeEventListener("message", handleMessage);
+      killListener();
       clearTimeout(initialDelay);
       clearTimeout((window as any).__ghlRetryTimeout);
       clearTimeout((window as any).__ghlFinalTimeout);
     };
-  }, [isInIframe, sendRequest]);
+  }, [isInIframe, sendRequest, killListener]);
 
   const retry = useCallback(() => {
     handshakeComplete.current = false;
