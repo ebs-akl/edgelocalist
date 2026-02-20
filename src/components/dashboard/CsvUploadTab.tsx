@@ -82,6 +82,7 @@ interface ParsedContact {
   lifetime_value: number | null;
   order_count: number | null;
   gift_count: number | null;
+  rep_number: string;
 }
 
 function normalize(row: CsvRow, keys: string[]): string {
@@ -141,6 +142,7 @@ export default function CsvUploadTab({ onUploaded, contactCount, lastSync }: Pro
           const rawLifetime = normalize(row, ["lifetime$", "lifetime", "lifetimevalue"]);
           const rawOrders = normalize(row, ["#orders", "orders", "numberoforders", "numorders"]);
           const rawGifts = normalize(row, ["#gifts", "gifts", "numberofgifts", "numgifts"]);
+          const repNumber = normalize(row, ["repnumber", "rep#", "repnum", "rep_number", "rep_num", "repno"]);
           return {
             id: `row-${i}`,
             first_name: normalize(row, ["firstname", "first_name", "first"]),
@@ -161,6 +163,7 @@ export default function CsvUploadTab({ onUploaded, contactCount, lastSync }: Pro
             lifetime_value: rawLifetime ? parseFloat(rawLifetime.replace(/[$,]/g, "")) || null : null,
             order_count: rawOrders ? parseInt(rawOrders, 10) || null : null,
             gift_count: rawGifts ? parseInt(rawGifts, 10) || null : null,
+            rep_number: repNumber,
           };
         }).filter((c) => c.first_name || c.last_name || c.phone);
 
@@ -229,6 +232,7 @@ export default function CsvUploadTab({ onUploaded, contactCount, lastSync }: Pro
           lifetime_value: c.lifetime_value,
           order_count: c.order_count,
           gift_count: c.gift_count,
+          rep_number: c.rep_number || null,
           source: "csv" as const,
           updated_at: new Date().toISOString(),
         }));
@@ -418,7 +422,7 @@ export default function CsvUploadTab({ onUploaded, contactCount, lastSync }: Pro
           <span className="text-sm font-medium">Expected CSV columns</span>
         </div>
         <div className="flex flex-wrap gap-2">
-          {["First Name", "Last Name", "Address 1", "Address 2", "City", "State", "Zip", "Phone", "Email", "Customer #"].map((col) => (
+          {["First Name", "Last Name", "Address 1", "Address 2", "City", "State", "Zip", "Phone", "Email", "Customer #", "Rep #"].map((col) => (
             <Badge key={col} variant="secondary" className="font-mono text-xs">
               {col}
             </Badge>

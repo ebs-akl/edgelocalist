@@ -19,6 +19,8 @@ interface AuthState {
   loadingProfile: boolean;
   /** Set when the app is loaded inside a GHL iframe with ?location_id=... */
   ghlLocationId: string | null;
+  /** Rep number from URL (?rep_num=...) used for account merge handshake */
+  ghlRepNum: string | null;
 }
 
 interface AuthContextType extends AuthState {
@@ -47,7 +49,17 @@ function getLocationIdFromUrl(): string | null {
   }
 }
 
+function getRepNumFromUrl(): string | null {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    return params.get("rep_num") || null;
+  } catch {
+    return null;
+  }
+}
+
 const initialGhlLocationId = getLocationIdFromUrl();
+const initialGhlRepNum = getRepNumFromUrl();
 
 const DEFAULT_STATE: AuthState = {
   user: null,
@@ -56,6 +68,7 @@ const DEFAULT_STATE: AuthState = {
   repProfile: null,
   loadingProfile: false,
   ghlLocationId: initialGhlLocationId,
+  ghlRepNum: initialGhlRepNum,
 };
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -66,8 +79,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [searchParams] = useSearchParams();
   useEffect(() => {
     const locId = searchParams.get("location_id");
+    const repNum = searchParams.get("rep_num");
     if (locId && locId !== state.ghlLocationId) {
       setState((s) => ({ ...s, ghlLocationId: locId, loading: false }));
+    }
+    if (repNum && repNum !== state.ghlRepNum) {
+      setState((s) => ({ ...s, ghlRepNum: repNum }));
     }
   }, [searchParams]);
 
