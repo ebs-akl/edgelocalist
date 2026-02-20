@@ -69,31 +69,41 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Fuzzy-match locationId across all known GHL property names
+    // Fuzzy-match locationId — GHL uses "activeLocation" in SSO payloads
     const locationId =
+      userData.activeLocation ||
       userData.locationId ||
       userData.location_id ||
       userData.LocationId ||
       (userData.location && typeof userData.location === "object" && (userData.location as any).id) ||
       null;
 
+    // Fuzzy-match companyId
+    const companyId =
+      userData.companyId ||
+      userData.company_id ||
+      userData.CompanyId ||
+      (userData.company && typeof userData.company === "object" && (userData.company as any).id) ||
+      null;
+
     if (!locationId) {
       console.log("DECRYPTED USER DATA (no locationId found):", JSON.stringify(userData));
       return new Response(
         JSON.stringify({
-          error: "Missing location ID — could not find locationId in decrypted payload",
+          error: "Missing location ID — could not find locationId/activeLocation in decrypted payload",
           rawData: userData,
         }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    console.log("SSO verified successfully for location:", locationId);
+    console.log("✅ SSO verified. locationId:", locationId, "companyId:", companyId);
 
     return new Response(
       JSON.stringify({
         success: true,
         locationId,
+        companyId,
         userData,
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }

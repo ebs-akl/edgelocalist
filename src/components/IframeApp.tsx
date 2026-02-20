@@ -22,6 +22,8 @@ export default function IframeApp() {
   const [verifying, setVerifying] = useState(false);
   const [verifyError, setVerifyError] = useState<string | null>(null);
   const [verified, setVerified] = useState(false);
+  const [ghlLocationId, setGhlLocationId] = useState<string | null>(null);
+  const [ghlCompanyId, setGhlCompanyId] = useState<string | null>(null);
   const isVerifying = useRef(false);
 
   // Once we have a payload, verify it server-side — ONE TIME ONLY
@@ -57,7 +59,12 @@ export default function IframeApp() {
           }
           setVerifyError(`${data.error}${data.rawData ? `\n\nRaw keys: ${Object.keys(data.rawData).join(", ")}` : ""}`);
         } else if (data?.success) {
-          console.log("✅ SSO verified, locationId:", data.locationId);
+          console.log("✅ SSO verified, locationId:", data.locationId, "companyId:", data.companyId);
+          // Store IDs in sessionStorage so Dashboard and other components can access them
+          sessionStorage.setItem("ghl_location_id", data.locationId ?? "");
+          sessionStorage.setItem("ghl_company_id", data.companyId ?? "");
+          setGhlLocationId(data.locationId ?? null);
+          setGhlCompanyId(data.companyId ?? null);
           setVerified(true);
         } else {
           console.error("❌ Unexpected verify response:", data);
