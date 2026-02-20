@@ -5,27 +5,16 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
-import { LogOut, ArrowLeft, ExternalLink, Link2, Unlink } from "lucide-react";
+import { LogOut, ArrowLeft, ExternalLink, Rocket } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import localistLogo from "@/assets/Localist_Logo-2.png";
 
-const GHL_CLIENT_ID = "69924ed31d05050c3a7e5757-mlr00xb6";
-const GHL_REDIRECT_URI = "https://edgelocalist.app/callback";
+// Upgrade page URL — will be replaced with the real link later
+const UPGRADE_URL = "#";
 
 export default function Settings() {
   const { user, repProfile, signOut, isGhlMode, refreshProfile } = useAuth();
   const [loading, setLoading] = useState(false);
-  const [connecting, setConnecting] = useState(false);
-
-  const handleConnectGHL = () => {
-    const params = new URLSearchParams({
-      response_type: "code",
-      client_id: GHL_CLIENT_ID,
-      redirect_uri: GHL_REDIRECT_URI,
-      scope: "contacts.readonly contacts.write users.readonly locations.readonly conversations/message.write",
-    });
-    window.location.href = `https://marketplace.gohighlevel.com/oauth/chooselocation?${params}`;
-  };
 
   const handleManageBilling = async () => {
     setLoading(true);
@@ -116,48 +105,28 @@ export default function Settings() {
           </CardContent>
         </Card>
 
-        {/* GHL connection */}
-        <Card>
-          <CardHeader>
-            <CardTitle style={{ fontFamily: "'Oswald', sans-serif" }}>GoHighLevel Connection</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {isGhlMode ? (
-              <>
-                <div className="flex items-center gap-2">
-                  <div className="h-2.5 w-2.5 rounded-full bg-success animate-pulse" />
-                  <span className="text-sm font-medium">Connected</span>
-                </div>
-                <div className="text-sm text-muted-foreground">
-                  Location ID: <span className="font-mono">{repProfile?.ghl_location_id}</span>
-                </div>
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  className="min-h-[44px]"
-                  onClick={() => toast({ title: "To disconnect GHL, contact support@edgedms.com" })}
-                >
-                  <Unlink className="mr-2 h-4 w-4" />
-                  Disconnect GHL
-                </Button>
-              </>
-            ) : (
-              <>
-                <p className="text-sm text-muted-foreground">
-                  Connect your GoHighLevel account to automatically sync contacts and enable LC Calls.
-                </p>
-                <Button
-                  onClick={handleConnectGHL}
-                  disabled={connecting}
-                  className="w-full min-h-[44px]"
-                >
-                  <Link2 className="mr-2 h-4 w-4" />
-                  {connecting ? "Connecting…" : "Connect GoHighLevel"}
-                </Button>
-              </>
-            )}
-          </CardContent>
-        </Card>
+        {/* Upgrade to EdgeDMS */}
+        {!isGhlMode && (
+          <Card>
+            <CardHeader>
+              <CardTitle style={{ fontFamily: "'Oswald', sans-serif" }}>Upgrade To EdgeDMS</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                Unlock automatic CRM syncing, LC Calls, and more by upgrading to EdgeDMS.
+              </p>
+              <Button
+                asChild
+                className="w-full min-h-[44px]"
+              >
+                <a href={UPGRADE_URL}>
+                  <Rocket className="mr-2 h-4 w-4" />
+                  Upgrade To EdgeDMS
+                </a>
+              </Button>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Sign out */}
         <Card>
