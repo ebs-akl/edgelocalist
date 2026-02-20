@@ -8,6 +8,7 @@ import { toast } from "@/hooks/use-toast";
 import { LogOut, ArrowLeft, ExternalLink, Rocket } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import localistLogo from "@/assets/Localist_Logo-2.png";
+import Footer from "@/components/Footer";
 
 // Upgrade page URL — will be replaced with the real link later
 const UPGRADE_URL = "#";
@@ -142,6 +143,7 @@ export default function Settings() {
           </CardContent>
         </Card>
       </main>
+      <Footer />
     </div>
   );
 }
