@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import CryptoJS from "npm:crypto-js";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -7,19 +8,28 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-// Simple validation helpers
-const UUID_RE = /^[0-9a-zA-Z]{20,40}$/; // GHL IDs are not standard UUIDs
+const UUID_RE = /^[0-9a-zA-Z]{20,40}$/;
 const PHONE_RE = /^\+?[0-9]{7,15}$/;
+const LOCATION_ID_RE = /^[a-zA-Z0-9]{5,50}$/;
 
-/**
- * Resolve GHL credentials via Bearer token or location_id.
- */
+function decryptSsoPayload(ssoPayload: string): string | null {
+  const ssoKey = Deno.env.get("GHL_SSO_KEY");
+  if (!ssoKey) { console.error("GHL_SSO_KEY not configured"); return null; }
+  try {
+    const bytes = CryptoJS.AES.decrypt(ssoPayload, ssoKey);
+    const decryptedString = bytes.toString(CryptoJS.enc.Utf8);
+    if (!decryptedString) return null;
+    const decryptedData = JSON.parse(decryptedString);
+    return decryptedData.locationId ?? null;
+  } catch (err) { console.error("SSO decryption failed:", err); return null; }
+}
+
 async function resolveCredentials(
   supabase: ReturnType<typeof createClient>,
   authHeader: string | null,
-  locationId: string | null,
-  headers?: Record<string, string | null> | null,
+  body: Record<string, unknown>,
 ): Promise<{ accessToken: string; ghlLocationId: string } | { error: string; status: number }> {
+  // 1. Bearer token auth (standalone mode)
   if (authHeader?.startsWith("Bearer ")) {
     const { data: { user }, error } = await supabase.auth.getUser(authHeader.replace("Bearer ", ""));
     if (error || !user) return { error: "Could not verify user", status: 401 };
@@ -34,12 +44,11 @@ async function resolveCredentials(
     return { accessToken: rep.ghl_access_token, ghlLocationId: rep.ghl_location_id };
   }
 
-  if (locationId) {
-    const sharedSecret = Deno.env.get("GHL_SHARED_SECRET");
-    const providedSecret = (headers as Record<string, string | null> | null)?.["x-ghl-secret"] ?? null;
-    if (!sharedSecret || providedSecret !== sharedSecret) {
-      return { error: "Unauthorized", status: 401 };
-    }
+  // 2. SSO payload auth (GHL iframe mode)
+  if (typeof body.sso_payload === "string" && body.sso_payload) {
+    const locationId = decryptSsoPayload(body.sso_payload);
+    if (!locationId) return { error: "Cryptographic verification failed", status: 401 };
+    if (!LOCATION_ID_RE.test(locationId)) return { error: "Invalid location_id", status: 400 };
 
     const { data: rep } = await supabase
       .from("localist_reps")
@@ -82,9 +91,7 @@ serve(async (req) => {
 
   const contact_id = typeof body.contact_id === "string" ? body.contact_id.trim() : "";
   const to_number = typeof body.to_number === "string" ? body.to_number.trim() : "";
-  const location_id = typeof body.location_id === "string" ? body.location_id.trim() : null;
 
-  // Input validation
   if (!contact_id || !UUID_RE.test(contact_id)) {
     return new Response(JSON.stringify({ error: "Invalid contact_id" }), {
       status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -96,8 +103,7 @@ serve(async (req) => {
     });
   }
 
-  const reqHeaders: Record<string, string | null> = { "x-ghl-secret": req.headers.get("x-ghl-secret") };
-  const creds = await resolveCredentials(supabase, authHeader, location_id, reqHeaders);
+  const creds = await resolveCredentials(supabase, authHeader, body);
   if ("error" in creds) {
     return new Response(JSON.stringify({ error: creds.error }), {
       status: creds.status, headers: { ...corsHeaders, "Content-Type": "application/json" },
