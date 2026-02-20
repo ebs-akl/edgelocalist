@@ -23,6 +23,7 @@ interface StatCard {
 
 export default function Dashboard() {
   const { user, repProfile, signOut, isGhlMode, ghlLocationId, ghlRepNum, ssoPayload, setSsoPayload } = useAuth();
+  // Only run internal SSO hook when NOT already in GHL mode via IframeApp bridge
   const { ssoPayload: hookPayload, ssoReady, ssoError, isInIframe, retry } = useGhlSso();
   const [contactCount, setContactCount] = useState(0);
   const [lastSync, setLastSync] = useState<string | null>(null);
@@ -31,9 +32,9 @@ export default function Dashboard() {
   const [searchesToday, setSearchesToday] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
 
-  // Store SSO payload from hook into context
+  // Store SSO payload from hook into context only when NOT already set by IframeApp bridge
   useEffect(() => {
-    if (hookPayload && hookPayload !== ssoPayload) {
+    if (hookPayload && !ssoPayload) {
       setSsoPayload(hookPayload);
     }
   }, [hookPayload, ssoPayload, setSsoPayload]);

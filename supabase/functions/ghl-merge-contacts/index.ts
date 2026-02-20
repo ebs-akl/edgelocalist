@@ -18,7 +18,7 @@ function decryptSsoPayload(ssoPayload: string): string | null {
     const decrypted = bytes.toString(CryptoJS.enc.Utf8);
     if (!decrypted) return null;
     const parsed = JSON.parse(decrypted);
-    return parsed.locationId || null;
+    return parsed.activeLocation ?? parsed.locationId ?? parsed.location_id ?? null;
   } catch {
     return null;
   }
