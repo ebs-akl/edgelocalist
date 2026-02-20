@@ -156,7 +156,9 @@ export type Database = {
           zip: string
         }[]
       }
-      smart_upsert_ghl_contacts: { Args: { p_contacts: Json }; Returns: number }
+      smart_upsert_ghl_contacts:
+        | { Args: { p_contacts: Json }; Returns: number }
+        | { Args: { p_contacts: Json; p_rep_id: string }; Returns: number }
     }
     Enums: {
       [_ in never]: never

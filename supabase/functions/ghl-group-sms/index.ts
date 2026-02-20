@@ -16,6 +16,7 @@ async function resolveCredentials(
   supabase: ReturnType<typeof createClient>,
   authHeader: string | null,
   locationId: string | null,
+  headers?: Record<string, string | null> | null,
 ): Promise<{ repName: string; accessToken: string; ghlLocationId: string } | { error: string; status: number }> {
   if (authHeader?.startsWith("Bearer ")) {
     const { data: { user }, error } = await supabase.auth.getUser(authHeader.replace("Bearer ", ""));
@@ -32,6 +33,12 @@ async function resolveCredentials(
   }
 
   if (locationId) {
+    const sharedSecret = Deno.env.get("GHL_SHARED_SECRET");
+    const providedSecret = (headers as Record<string, string | null> | null)?.["x-ghl-secret"] ?? null;
+    if (!sharedSecret || providedSecret !== sharedSecret) {
+      return { error: "Unauthorized: invalid or missing shared secret", status: 401 };
+    }
+
     const { data: rep } = await supabase
       .from("localist_reps")
       .select("ghl_access_token, ghl_location_id, full_name")
@@ -83,7 +90,8 @@ serve(async (req) => {
     });
   }
 
-  const creds = await resolveCredentials(supabase, authHeader, location_id || null);
+  const reqHeaders: Record<string, string | null> = { "x-ghl-secret": req.headers.get("x-ghl-secret") };
+  const creds = await resolveCredentials(supabase, authHeader, location_id || null, reqHeaders);
   if ("error" in creds) {
     return new Response(JSON.stringify({ error: creds.error }), {
       status: creds.status, headers: { ...corsHeaders, "Content-Type": "application/json" },

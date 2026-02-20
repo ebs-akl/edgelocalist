@@ -22,7 +22,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
-const MAPBOX_TOKEN = "pk.eyJ1IjoiZWRnZWRtcyIsImEiOiJjbWxvZ25kNjIwOHhpM2dxNjdlcHY3MDFlIn0.vAChp9IlzeKSlI5kxjWPcA";
+const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN ?? "";
 
 async function geocodeAddress(street: string, city: string, state: string, zip: string): Promise<{ lat: number; lng: number } | null> {
   if (!MAPBOX_TOKEN) return null;

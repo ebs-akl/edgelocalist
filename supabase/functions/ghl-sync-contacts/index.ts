@@ -25,6 +25,7 @@ async function resolveCredentials(
   supabase: ReturnType<typeof createClient>,
   authHeader: string | null,
   locationId: string | null,
+  headers?: Record<string, string | null> | null,
 ): Promise<{ repId: string; accessToken: string; ghlLocationId: string } | { error: string; status: number }> {
   // Pathway A: Bearer token (standalone mode)
   if (authHeader?.startsWith("Bearer ")) {
@@ -41,8 +42,14 @@ async function resolveCredentials(
     return { repId: user.id, accessToken: rep.ghl_access_token, ghlLocationId: rep.ghl_location_id };
   }
 
-  // Pathway B: location_id (GHL iframe mode)
+  // Pathway B: location_id (GHL iframe mode) – requires shared secret
   if (locationId) {
+    const sharedSecret = Deno.env.get("GHL_SHARED_SECRET");
+    const providedSecret = (headers as Record<string, string | null> | null)?.["x-ghl-secret"] ?? null;
+    if (!sharedSecret || providedSecret !== sharedSecret) {
+      return { error: "Unauthorized: invalid or missing shared secret", status: 401 };
+    }
+
     const { data: rep } = await supabase
       .from("localist_reps")
       .select("id, ghl_access_token, ghl_location_id")
@@ -80,7 +87,8 @@ serve(async (req) => {
   const locationId = (body.location_id as string) || null;
   const statsOnly = !!(body.stats_only);
 
-  const creds = await resolveCredentials(supabase, authHeader, locationId);
+  const reqHeaders: Record<string, string | null> = { "x-ghl-secret": req.headers.get("x-ghl-secret") };
+  const creds = await resolveCredentials(supabase, authHeader, locationId, reqHeaders);
   if ("error" in creds) {
     return new Response(JSON.stringify({ error: creds.error }), {
       status: creds.status, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -172,7 +180,7 @@ serve(async (req) => {
       const batch = rows.slice(i, i + BATCH_SIZE);
       const { data, error: rpcError } = await supabase.rpc(
         "smart_upsert_ghl_contacts",
-        { p_contacts: JSON.stringify(batch) }
+        { p_rep_id: creds.repId, p_contacts: JSON.stringify(batch) }
       );
 
       if (rpcError) {
