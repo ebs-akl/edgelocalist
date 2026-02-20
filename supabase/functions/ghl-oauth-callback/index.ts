@@ -25,12 +25,18 @@ serve(async (req) => {
   }
 
   try {
-    const { code, redirect_uri } = await req.json() as { code: string; redirect_uri: string };
+    const body = await req.json() as { code?: string; redirect_uri?: string };
+    const { code, redirect_uri } = body;
 
-    if (!code || !redirect_uri) {
-      return new Response(JSON.stringify({ error: "Missing code or redirect_uri" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+    // Input validation
+    if (!code || typeof code !== "string" || code.length > 2048) {
+      return new Response(JSON.stringify({ error: "Invalid request" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    if (!redirect_uri || typeof redirect_uri !== "string" || !redirect_uri.startsWith("https://")) {
+      return new Response(JSON.stringify({ error: "Invalid request" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
@@ -53,14 +59,7 @@ serve(async (req) => {
     if (!tokenRes.ok) {
       const errBody = await tokenRes.text();
       console.error("GHL token exchange failed. Status:", tokenRes.status, "Body:", errBody);
-      console.error("Request used client_id:", GHL_CLIENT_ID, "redirect_uri:", redirect_uri);
-      return new Response(JSON.stringify({ 
-        error: "Token exchange failed", 
-        details: errBody,
-        status: tokenRes.status,
-        client_id_used: GHL_CLIENT_ID,
-        redirect_uri_used: redirect_uri,
-      }), {
+      return new Response(JSON.stringify({ error: "Token exchange failed" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -70,7 +69,8 @@ serve(async (req) => {
     const { access_token, refresh_token, locationId } = tokenData;
 
     if (!access_token || !locationId) {
-      return new Response(JSON.stringify({ error: "Invalid token response from GHL", data: tokenData }), {
+      console.error("Invalid token response from GHL:", JSON.stringify(tokenData));
+      return new Response(JSON.stringify({ error: "Invalid response from provider" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -110,7 +110,7 @@ serve(async (req) => {
 
     if (updateError) {
       console.error("DB update error:", updateError);
-      return new Response(JSON.stringify({ error: "Failed to save GHL credentials" }), {
+      return new Response(JSON.stringify({ error: "Failed to save credentials" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -121,7 +121,7 @@ serve(async (req) => {
     });
   } catch (err) {
     console.error("ghl-oauth-callback error:", err);
-    return new Response(JSON.stringify({ error: String(err) }), {
+    return new Response(JSON.stringify({ error: "Authentication failed" }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

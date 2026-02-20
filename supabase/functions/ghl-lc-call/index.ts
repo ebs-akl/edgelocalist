@@ -7,6 +7,10 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+// Simple validation helpers
+const UUID_RE = /^[0-9a-zA-Z]{20,40}$/; // GHL IDs are not standard UUIDs
+const PHONE_RE = /^\+?[0-9]{7,15}$/;
+
 /**
  * Resolve GHL credentials via Bearer token or location_id.
  */
@@ -34,7 +38,7 @@ async function resolveCredentials(
     const sharedSecret = Deno.env.get("GHL_SHARED_SECRET");
     const providedSecret = (headers as Record<string, string | null> | null)?.["x-ghl-secret"] ?? null;
     if (!sharedSecret || providedSecret !== sharedSecret) {
-      return { error: "Unauthorized: invalid or missing shared secret", status: 401 };
+      return { error: "Unauthorized", status: 401 };
     }
 
     const { data: rep } = await supabase
@@ -43,11 +47,11 @@ async function resolveCredentials(
       .eq("ghl_location_id", locationId)
       .maybeSingle();
 
-    if (!rep?.ghl_access_token) return { error: "No rep found for this location_id", status: 400 };
+    if (!rep?.ghl_access_token) return { error: "No rep found for this location", status: 400 };
     return { accessToken: rep.ghl_access_token, ghlLocationId: rep.ghl_location_id! };
   }
 
-  return { error: "Missing Authorization header or location_id", status: 401 };
+  return { error: "Missing authorization", status: 401 };
 }
 
 serve(async (req) => {
@@ -67,20 +71,33 @@ serve(async (req) => {
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
   const authHeader = req.headers.get("Authorization");
 
-  const { contact_id, to_number, location_id } = await req.json() as {
-    contact_id: string;
-    to_number: string;
-    location_id?: string;
-  };
+  let body: Record<string, unknown>;
+  try {
+    body = await req.json();
+  } catch {
+    return new Response(JSON.stringify({ error: "Invalid request body" }), {
+      status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
 
-  if (!contact_id || !to_number) {
-    return new Response(JSON.stringify({ error: "Missing contact_id or to_number" }), {
+  const contact_id = typeof body.contact_id === "string" ? body.contact_id.trim() : "";
+  const to_number = typeof body.to_number === "string" ? body.to_number.trim() : "";
+  const location_id = typeof body.location_id === "string" ? body.location_id.trim() : null;
+
+  // Input validation
+  if (!contact_id || !UUID_RE.test(contact_id)) {
+    return new Response(JSON.stringify({ error: "Invalid contact_id" }), {
+      status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+  if (!to_number || !PHONE_RE.test(to_number.replace(/[\s()-]/g, ""))) {
+    return new Response(JSON.stringify({ error: "Invalid phone number" }), {
       status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 
   const reqHeaders: Record<string, string | null> = { "x-ghl-secret": req.headers.get("x-ghl-secret") };
-  const creds = await resolveCredentials(supabase, authHeader, location_id || null, reqHeaders);
+  const creds = await resolveCredentials(supabase, authHeader, location_id, reqHeaders);
   if ("error" in creds) {
     return new Response(JSON.stringify({ error: creds.error }), {
       status: creds.status, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -110,7 +127,7 @@ serve(async (req) => {
 
     if (!callRes.ok) {
       console.error("GHL call error:", callData);
-      return new Response(JSON.stringify({ error: "GHL call failed", details: callData }), {
+      return new Response(JSON.stringify({ error: "Call request failed" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -120,7 +137,7 @@ serve(async (req) => {
     });
   } catch (err) {
     console.error("ghl-lc-call error:", err);
-    return new Response(JSON.stringify({ error: String(err) }), {
+    return new Response(JSON.stringify({ error: "Call request failed" }), {
       status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }

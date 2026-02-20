@@ -135,6 +135,18 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_my_rep_profile: {
+        Args: never
+        Returns: {
+          created_at: string
+          email: string
+          full_name: string
+          ghl_location_id: string
+          id: string
+          stripe_customer_id: string
+          subscription_tier: string
+        }[]
+      }
       nearby_contacts: {
         Args: {
           center_lat: number

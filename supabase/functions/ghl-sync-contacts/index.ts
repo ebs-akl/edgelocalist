@@ -11,6 +11,8 @@ const corsHeaders = {
 const LAT_FIELD_ID = "ZVN9RS1nJEZfNbMVqGVN";
 const LNG_FIELD_ID = "VI1lTTp020TB9ycXII1e";
 
+const LOCATION_ID_RE = /^[a-zA-Z0-9]{5,50}$/;
+
 function getCustomField(contact: Record<string, unknown>, fieldId: string): string | null {
   const fields = contact.customFields as Array<{ id: string; value: string }> ?? [];
   return fields.find((f) => f.id === fieldId)?.value ?? null;
@@ -27,7 +29,6 @@ async function resolveCredentials(
   locationId: string | null,
   headers?: Record<string, string | null> | null,
 ): Promise<{ repId: string; accessToken: string; ghlLocationId: string } | { error: string; status: number }> {
-  // Pathway A: Bearer token (standalone mode)
   if (authHeader?.startsWith("Bearer ")) {
     const { data: { user }, error } = await supabase.auth.getUser(authHeader.replace("Bearer ", ""));
     if (error || !user) return { error: "Could not verify user", status: 401 };
@@ -42,12 +43,11 @@ async function resolveCredentials(
     return { repId: user.id, accessToken: rep.ghl_access_token, ghlLocationId: rep.ghl_location_id };
   }
 
-  // Pathway B: location_id (GHL iframe mode) – requires shared secret
   if (locationId) {
     const sharedSecret = Deno.env.get("GHL_SHARED_SECRET");
     const providedSecret = (headers as Record<string, string | null> | null)?.["x-ghl-secret"] ?? null;
     if (!sharedSecret || providedSecret !== sharedSecret) {
-      return { error: "Unauthorized: invalid or missing shared secret", status: 401 };
+      return { error: "Unauthorized", status: 401 };
     }
 
     const { data: rep } = await supabase
@@ -56,11 +56,11 @@ async function resolveCredentials(
       .eq("ghl_location_id", locationId)
       .maybeSingle();
 
-    if (!rep?.ghl_access_token) return { error: "No rep found for this location_id", status: 400 };
+    if (!rep?.ghl_access_token) return { error: "No rep found for this location", status: 400 };
     return { repId: rep.id, accessToken: rep.ghl_access_token, ghlLocationId: rep.ghl_location_id! };
   }
 
-  return { error: "Missing Authorization header or location_id", status: 401 };
+  return { error: "Missing authorization", status: 401 };
 }
 
 serve(async (req) => {
@@ -80,12 +80,19 @@ serve(async (req) => {
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
   const authHeader = req.headers.get("Authorization");
 
-  // Parse body (may contain location_id and/or stats_only)
+  // Parse body
   let body: Record<string, unknown> = {};
   try { body = await req.json(); } catch { /* no body is fine for GET-like calls */ }
 
-  const locationId = (body.location_id as string) || null;
+  const locationId = typeof body.location_id === "string" ? body.location_id : null;
   const statsOnly = !!(body.stats_only);
+
+  // Validate location_id format if provided
+  if (locationId && !LOCATION_ID_RE.test(locationId)) {
+    return new Response(JSON.stringify({ error: "Invalid request" }), {
+      status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
 
   const reqHeaders: Record<string, string | null> = { "x-ghl-secret": req.headers.get("x-ghl-secret") };
   const creds = await resolveCredentials(supabase, authHeader, locationId, reqHeaders);
@@ -118,7 +125,7 @@ serve(async (req) => {
 
     while (true) {
       const ghlRes = await fetch(
-        `https://services.leadconnectorhq.com/contacts/?locationId=${creds.ghlLocationId}&limit=${limit}&skip=${(page - 1) * limit}`,
+        `https://services.leadconnectorhq.com/contacts/?locationId=${encodeURIComponent(creds.ghlLocationId)}&limit=${limit}&skip=${(page - 1) * limit}`,
         {
           headers: {
             Authorization: `Bearer ${creds.accessToken}`,
@@ -129,8 +136,7 @@ serve(async (req) => {
       );
 
       if (!ghlRes.ok) {
-        const errText = await ghlRes.text();
-        console.error(`GHL API error page ${page}:`, errText);
+        console.error(`GHL API error page ${page}:`, await ghlRes.text());
         break;
       }
 
@@ -172,8 +178,7 @@ serve(async (req) => {
       };
     });
 
-    // Smart upsert: matches on phone to merge CSV→GHL contacts,
-    // preserves existing geocoded coordinates, upgrades source to 'ghl'
+    // Smart upsert
     const BATCH_SIZE = 200;
     let totalUpserted = 0;
     for (let i = 0; i < rows.length; i += BATCH_SIZE) {
@@ -195,7 +200,7 @@ serve(async (req) => {
     });
   } catch (err) {
     console.error("ghl-sync-contacts error:", err);
-    return new Response(JSON.stringify({ error: String(err) }), {
+    return new Response(JSON.stringify({ error: "Sync failed" }), {
       status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
