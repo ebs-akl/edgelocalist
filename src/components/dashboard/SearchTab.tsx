@@ -69,22 +69,26 @@ export default function SearchTab({ repName, recentSearches, onSearch, contactCo
     return { lat, lng };
   };
 
+  const COORD_REGEX = /^\s*(-?\d+\.?\d*)\s*[,\s]\s*(-?\d+\.?\d*)\s*$/;
+
+  const parseCoords = (input: string): { lat: number; lng: number } | null => {
+    const match = input.match(COORD_REGEX);
+    if (!match) return null;
+    const lat = parseFloat(match[1]);
+    const lng = parseFloat(match[2]);
+    if (lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) return { lat, lng };
+    return null;
+  };
+
   const handleGPS = () => {
     if (!navigator.geolocation) {
       toast({ title: "GPS not supported on this device", variant: "destructive" });
       return;
     }
     navigator.geolocation.getCurrentPosition(
-      async (pos) => {
+      (pos) => {
         const { latitude, longitude } = pos.coords;
-        if (MAPBOX_TOKEN) {
-          const res = await fetch(
-            `https://api.mapbox.com/geocoding/v5/mapbox.places/${longitude},${latitude}.json?access_token=${MAPBOX_TOKEN}&limit=1`
-          );
-          const data = await res.json();
-          const place = data?.features?.[0]?.place_name ?? `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
-          setAddress(place);
-        }
+        setAddress("Current Location");
         setSearchCenter({ lat: latitude, lng: longitude });
       },
       () => {
@@ -111,11 +115,17 @@ export default function SearchTab({ repName, recentSearches, onSearch, contactCo
     try {
       let center = searchCenter;
       if (!center) {
-        center = await geocodeAddress(address.trim());
-        if (!center) {
-          toast({ title: "Address not found", description: "Try a more specific address or ZIP code.", variant: "destructive" });
-          setLoading(false);
-          return;
+        // Check if the input looks like coordinates (e.g. "40.88, -81.32")
+        const parsed = parseCoords(address.trim());
+        if (parsed) {
+          center = parsed;
+        } else {
+          center = await geocodeAddress(address.trim());
+          if (!center) {
+            toast({ title: "Address not found", description: "Try a more specific address or ZIP code.", variant: "destructive" });
+            setLoading(false);
+            return;
+          }
         }
       }
       setSearchCenter(center);
