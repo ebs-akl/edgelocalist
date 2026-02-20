@@ -80,12 +80,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     setState((s) => ({ ...s, loadingProfile: true }));
     try {
-      const { data } = await supabase
-        .from("localist_reps")
-        .select("id, email, full_name, subscription_tier, ghl_location_id, stripe_customer_id, created_at")
-        .eq("id", userId)
-        .maybeSingle();
-      setState((s) => ({ ...s, repProfile: data as RepProfile | null, loadingProfile: false }));
+      // Use secure RPC that excludes sensitive fields (ghl_access_token)
+      const { data } = await supabase.rpc("get_my_rep_profile");
+      const profile = Array.isArray(data) ? data[0] ?? null : data;
+      setState((s) => ({ ...s, repProfile: profile as RepProfile | null, loadingProfile: false }));
     } catch {
       setState((s) => ({ ...s, repProfile: null, loadingProfile: false }));
     }

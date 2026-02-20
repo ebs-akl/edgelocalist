@@ -9,6 +9,8 @@ const corsHeaders = {
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
+const PHONE_RE = /^\+?[0-9]{7,15}$/;
+
 /**
  * Resolve GHL credentials via Bearer token or location_id.
  */
@@ -36,7 +38,7 @@ async function resolveCredentials(
     const sharedSecret = Deno.env.get("GHL_SHARED_SECRET");
     const providedSecret = (headers as Record<string, string | null> | null)?.["x-ghl-secret"] ?? null;
     if (!sharedSecret || providedSecret !== sharedSecret) {
-      return { error: "Unauthorized: invalid or missing shared secret", status: 401 };
+      return { error: "Unauthorized", status: 401 };
     }
 
     const { data: rep } = await supabase
@@ -45,11 +47,21 @@ async function resolveCredentials(
       .eq("ghl_location_id", locationId)
       .maybeSingle();
 
-    if (!rep?.ghl_access_token) return { error: "No rep found for this location_id", status: 400 };
+    if (!rep?.ghl_access_token) return { error: "No rep found for this location", status: 400 };
     return { repName: rep.full_name ?? "your rep", accessToken: rep.ghl_access_token, ghlLocationId: rep.ghl_location_id! };
   }
 
-  return { error: "Missing Authorization header or location_id", status: 401 };
+  return { error: "Missing authorization", status: 401 };
+}
+
+// Only allow known placeholders in templates
+const ALLOWED_PLACEHOLDERS = new Set(["first_name", "city", "rep_name"]);
+
+function sanitizeTemplate(template: string): string {
+  // Strip any placeholder that isn't in the allowed set
+  return template.replace(/\{\{(\w+)\}\}/g, (match, name) => {
+    return ALLOWED_PLACEHOLDERS.has(name) ? match : "";
+  });
 }
 
 serve(async (req) => {
@@ -69,29 +81,28 @@ serve(async (req) => {
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
   const authHeader = req.headers.get("Authorization");
 
-  interface ContactPayload {
-    contact_id: string;
-    first_name: string;
-    city: string;
-    phone: string;
-  }
-
-  const body = await req.json() as {
-    contacts: ContactPayload[];
-    message_template: string;
-    location_id?: string;
-  };
-
-  const { contacts, message_template, location_id } = body;
-
-  if (!contacts?.length || !message_template) {
-    return new Response(JSON.stringify({ error: "Missing contacts or message_template" }), {
+  let rawBody: Record<string, unknown>;
+  try {
+    rawBody = await req.json();
+  } catch {
+    return new Response(JSON.stringify({ error: "Invalid request body" }), {
       status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 
-  if (message_template.length > 918) {
-    return new Response(JSON.stringify({ error: "Message template exceeds 918 character limit" }), {
+  const contacts = rawBody.contacts;
+  const message_template = typeof rawBody.message_template === "string" ? rawBody.message_template : "";
+  const location_id = typeof rawBody.location_id === "string" ? rawBody.location_id : undefined;
+
+  // Validate contacts array
+  if (!Array.isArray(contacts) || contacts.length === 0) {
+    return new Response(JSON.stringify({ error: "Missing or empty contacts array" }), {
+      status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
+  if (!message_template || message_template.length > 918) {
+    return new Response(JSON.stringify({ error: "Message template missing or exceeds 918 character limit" }), {
       status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
@@ -101,6 +112,37 @@ serve(async (req) => {
       status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
+
+  // Validate each contact has required fields
+  interface ContactPayload {
+    contact_id: string;
+    first_name: string;
+    city: string;
+    phone: string;
+  }
+
+  const validContacts: ContactPayload[] = [];
+  for (const c of contacts) {
+    if (
+      typeof c !== "object" || c === null ||
+      typeof c.contact_id !== "string" || !c.contact_id.trim() ||
+      typeof c.first_name !== "string" ||
+      typeof c.phone !== "string" || !PHONE_RE.test(c.phone.replace(/[\s()-]/g, ""))
+    ) {
+      return new Response(JSON.stringify({ error: "Invalid contact data" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    validContacts.push({
+      contact_id: c.contact_id.trim(),
+      first_name: String(c.first_name).slice(0, 100),
+      city: typeof c.city === "string" ? String(c.city).slice(0, 100) : "",
+      phone: c.phone.trim(),
+    });
+  }
+
+  // Sanitize template to only allow known placeholders
+  const safeTemplate = sanitizeTemplate(message_template);
 
   const reqHeaders: Record<string, string | null> = { "x-ghl-secret": req.headers.get("x-ghl-secret") };
   const creds = await resolveCredentials(supabase, authHeader, location_id || null, reqHeaders);
@@ -112,8 +154,8 @@ serve(async (req) => {
 
   const results: { contact_id: string; success: boolean; error?: string }[] = [];
 
-  for (const contact of contacts) {
-    const msgBody = message_template
+  for (const contact of validContacts) {
+    const msgBody = safeTemplate
       .replace(/\{\{first_name\}\}/g, contact.first_name)
       .replace(/\{\{city\}\}/g, contact.city)
       .replace(/\{\{rep_name\}\}/g, creds.repName);
@@ -141,13 +183,13 @@ serve(async (req) => {
 
       if (!res.ok) {
         console.error("GHL SMS error for contact", contact.contact_id, data);
-        results.push({ contact_id: contact.contact_id, success: false, error: data?.message ?? "Send failed" });
+        results.push({ contact_id: contact.contact_id, success: false, error: "Send failed" });
       } else {
         results.push({ contact_id: contact.contact_id, success: true });
       }
     } catch (err) {
       console.error("ghl-group-sms error:", err);
-      results.push({ contact_id: contact.contact_id, success: false, error: String(err) });
+      results.push({ contact_id: contact.contact_id, success: false, error: "Send failed" });
     }
 
     const delay = 1000 + Math.random() * 1000;

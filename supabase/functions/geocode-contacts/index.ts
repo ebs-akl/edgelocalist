@@ -46,15 +46,14 @@ async function geocodeWithMapbox(contact: ContactInput): Promise<GeoResult> {
     if (lat && lng) return { id: contact.id, lat, lng, source: "mapbox" };
     return { id: contact.id, lat: null, lng: null, source: "failed" };
   } catch (err) {
-    console.error(`Mapbox error for ${contact.id}:`, err);
+    console.error(`Mapbox geocode error for contact:`, err);
     return { id: contact.id, lat: null, lng: null, source: "failed" };
   }
 }
 
-// Process contacts in small parallel chunks with a delay between chunks to avoid rate limits
 async function geocodeBatchMapbox(contacts: ContactInput[]): Promise<GeoResult[]> {
-  const CONCURRENCY = 5;   // 5 parallel requests at a time
-  const DELAY_MS = 200;    // 200ms pause between chunks (~25 req/s max)
+  const CONCURRENCY = 5;
+  const DELAY_MS = 200;
   const results: GeoResult[] = [];
 
   for (let i = 0; i < contacts.length; i += CONCURRENCY) {
@@ -69,13 +68,16 @@ async function geocodeBatchMapbox(contacts: ContactInput[]): Promise<GeoResult[]
   return results;
 }
 
+const MAX_CONTACTS = 500;
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { contacts } = await req.json() as { contacts: ContactInput[] };
+    const body = await req.json() as { contacts?: unknown };
+    const contacts = body.contacts;
 
     if (!Array.isArray(contacts) || contacts.length === 0) {
       return new Response(
@@ -84,9 +86,41 @@ serve(async (req) => {
       );
     }
 
-    console.log(`Geocoding ${contacts.length} contacts via Mapbox. Token present: ${!!MAPBOX_TOKEN}`);
+    if (contacts.length > MAX_CONTACTS) {
+      return new Response(
+        JSON.stringify({ error: `Maximum ${MAX_CONTACTS} contacts per batch` }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
-    const results = await geocodeBatchMapbox(contacts);
+    // Validate each contact
+    const validContacts: ContactInput[] = [];
+    for (const c of contacts) {
+      if (
+        typeof c !== "object" || c === null ||
+        typeof c.id !== "string" || !c.id.trim() ||
+        typeof c.street !== "string" ||
+        typeof c.city !== "string" ||
+        typeof c.state !== "string" ||
+        typeof c.zip !== "string"
+      ) {
+        return new Response(
+          JSON.stringify({ error: "Invalid contact data" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      validContacts.push({
+        id: c.id.trim(),
+        street: String(c.street).slice(0, 200),
+        city: String(c.city).slice(0, 100),
+        state: String(c.state).slice(0, 50),
+        zip: String(c.zip).slice(0, 20),
+      });
+    }
+
+    console.log(`Geocoding ${validContacts.length} contacts via Mapbox.`);
+
+    const results = await geocodeBatchMapbox(validContacts);
 
     const geocoded = results.filter((r) => r.lat !== null).length;
     console.log(`Done: ${geocoded}/${results.length} geocoded successfully`);
@@ -98,7 +132,7 @@ serve(async (req) => {
   } catch (err) {
     console.error("geocode-contacts error:", err);
     return new Response(
-      JSON.stringify({ error: String(err) }),
+      JSON.stringify({ error: "Geocoding failed" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
