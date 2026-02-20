@@ -30,6 +30,8 @@ interface AuthContextType extends AuthState {
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
   setSsoPayload: (payload: string | null) => void;
+  /** Inject GHL locationId from IframeApp after SSO verification */
+  setGhlLocationId: (id: string | null) => void;
   /** True when running inside GHL iframe (location_id present) */
   isGhlMode: boolean;
   /** True when user logged in via email/password without GHL context */
@@ -141,6 +143,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setState((s) => ({ ...s, ssoPayload: payload }));
   }, []);
 
+  const setGhlLocationId = useCallback((id: string | null) => {
+    setState((s) => ({ ...s, ghlLocationId: id, loading: false }));
+  }, []);
+
   // ── Derived mode flags ──
   const isGhlMode = !!state.ghlLocationId;
   const isStandaloneMode = !isGhlMode && !!state.user;
@@ -148,7 +154,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ ...state, signOut, refreshProfile, setSsoPayload, isGhlMode, isStandaloneMode, isAuthenticated }}
+      value={{ ...state, signOut, refreshProfile, setSsoPayload, setGhlLocationId, isGhlMode, isStandaloneMode, isAuthenticated }}
     >
       {children}
     </AuthContext.Provider>
