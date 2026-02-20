@@ -2,11 +2,8 @@ import { useEffect, useState, useCallback, useRef } from "react";
 
 /**
  * GHL Custom Page SSO handshake hook.
- * "Wide net" approach:
- * 1. Check URL params for pre-existing SSO payload
- * 2. Post to both parent AND top frames
- * 3. Fuzzy-match response message types
- * 4. Log all raw messages for debugging
+ * Posts REQUEST_USER_DATA to parent/top frames, captures the encrypted payload.
+ * Uses a `handshakeComplete` ref to prevent duplicate processing.
  */
 
 const SSO_URL_KEYS = ["payload", "sso", "session"];
@@ -37,7 +34,7 @@ export function useGhlSso() {
   const [ssoPayload, setSsoPayload] = useState<string | null>(null);
   const [ssoReady, setSsoReady] = useState(false);
   const [ssoError, setSsoError] = useState<string | null>(null);
-  const receivedRef = useRef(false);
+  const handshakeComplete = useRef(false);
 
   const isInIframe = useCallback(() => {
     try {
@@ -63,26 +60,32 @@ export function useGhlSso() {
       return () => {};
     }
 
-    // URL parameter fallback — skip postMessage entirely
+    // Already completed — don't restart
+    if (handshakeComplete.current) {
+      return () => {};
+    }
+
+    // URL parameter fallback
     const urlPayload = getSsoFromUrl();
     if (urlPayload) {
       console.log("🔑 SSO payload found in URL params");
-      receivedRef.current = true;
+      handshakeComplete.current = true;
       setSsoPayload(urlPayload);
       setSsoReady(true);
       return () => {};
     }
 
-    receivedRef.current = false;
-
     const handleMessage = (event: MessageEvent) => {
+      // Ignore if we already have a payload
+      if (handshakeComplete.current) return;
+
       console.log("📨 RAW MESSAGE RECEIVED:", event.data);
 
       if (isResponseMessage(event.data)) {
         const payload = getPayloadFromEvent(event.data);
         if (payload) {
-          console.log("✅ SSO payload captured");
-          receivedRef.current = true;
+          console.log("✅ SSO payload captured, handshake complete");
+          handshakeComplete.current = true;
           setSsoPayload(payload);
           setSsoReady(true);
           setSsoError(null);
@@ -94,16 +97,16 @@ export function useGhlSso() {
 
     // Wait 500ms then first attempt
     const initialDelay = setTimeout(() => {
-      if (receivedRef.current) return;
+      if (handshakeComplete.current) return;
       sendRequest();
 
       const retryTimeout = setTimeout(() => {
-        if (receivedRef.current) return;
+        if (handshakeComplete.current) return;
         console.warn("Handshake timeout, retrying...");
         sendRequest();
 
         const finalTimeout = setTimeout(() => {
-          if (!receivedRef.current) {
+          if (!handshakeComplete.current) {
             setSsoError("SSO handshake timed out. The HighLevel connection could not be established.");
             setSsoReady(true);
           }
@@ -123,7 +126,7 @@ export function useGhlSso() {
   }, [isInIframe, sendRequest]);
 
   const retry = useCallback(() => {
-    receivedRef.current = false;
+    handshakeComplete.current = false;
     setSsoPayload(null);
     setSsoReady(false);
     setSsoError(null);

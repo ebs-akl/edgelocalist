@@ -8,23 +8,59 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 const iframeQueryClient = new QueryClient();
 
 /**
  * Completely isolated app shell for GHL iframe mode.
- * No standard routing or ProtectedRoute — just SSO handshake → Dashboard.
+ * SSO handshake → verify payload server-side → Dashboard.
  */
 export default function IframeApp() {
   const { ssoPayload, ssoReady, ssoError, retry } = useGhlSso();
   const [Dashboard, setDashboard] = useState<React.ComponentType | null>(null);
+  const [verifying, setVerifying] = useState(false);
+  const [verifyError, setVerifyError] = useState<string | null>(null);
+  const [verified, setVerified] = useState(false);
 
-  // Lazy-load Dashboard only after handshake succeeds
+  // Once we have a payload, verify it server-side
   useEffect(() => {
-    if (ssoReady && ssoPayload && !ssoError) {
+    if (!ssoReady || !ssoPayload || ssoError || verified || verifying) return;
+
+    setVerifying(true);
+    console.log("🔐 Verifying SSO payload server-side...");
+
+    supabase.functions
+      .invoke("ghl-sso-verify", { body: { payload: ssoPayload } })
+      .then(({ data, error }) => {
+        if (error) {
+          console.error("❌ SSO verify invocation error:", error);
+          setVerifyError(`Verification failed: ${error.message}`);
+        } else if (data?.error) {
+          console.error("❌ SSO verify returned error:", data.error);
+          setVerifyError(data.error);
+        } else if (data?.success) {
+          console.log("✅ SSO verified, locationId:", data.locationId);
+          setVerified(true);
+        } else {
+          console.error("❌ Unexpected verify response:", data);
+          setVerifyError("Unexpected response from SSO verification");
+        }
+        setVerifying(false);
+      })
+      .catch((err) => {
+        console.error("❌ SSO verify network error:", err);
+        setVerifyError(`Network error: ${err.message}`);
+        setVerifying(false);
+      });
+  }, [ssoReady, ssoPayload, ssoError, verified, verifying]);
+
+  // Lazy-load Dashboard only after verified
+  useEffect(() => {
+    if (verified && ssoPayload && !ssoError) {
       import("@/pages/Dashboard").then((mod) => setDashboard(() => mod.default));
     }
-  }, [ssoReady, ssoPayload, ssoError]);
+  }, [verified, ssoPayload, ssoError]);
 
   // Still waiting for handshake
   if (!ssoReady) {
@@ -63,6 +99,41 @@ export default function IframeApp() {
     );
   }
 
+  // Verifying payload server-side
+  if (verifying) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center space-y-3">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
+          <p className="text-sm text-muted-foreground font-medium">
+            Verifying secure session...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // Verification failed
+  if (verifyError) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center space-y-4 max-w-sm px-4">
+          <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-6 space-y-3">
+            <div className="flex items-center justify-center gap-2 text-destructive">
+              <AlertTriangle className="h-5 w-5" />
+              <span className="font-semibold text-sm">Verification Failed</span>
+            </div>
+            <p className="text-sm text-muted-foreground">{verifyError}</p>
+          </div>
+          <Button onClick={retry} className="min-h-[44px] gap-2">
+            <RefreshCw className="h-4 w-4" />
+            Retry Connection
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   // Dashboard not yet loaded
   if (!Dashboard) {
     return (
@@ -77,7 +148,7 @@ export default function IframeApp() {
     );
   }
 
-  // Success — render Dashboard inside minimal providers (no ProtectedRoute)
+  // Success — render Dashboard inside minimal providers
   return (
     <QueryClientProvider client={iframeQueryClient}>
       <TooltipProvider>

@@ -11,3 +11,6 @@ verify_jwt = false
 
 [functions.ghl-merge-contacts]
 verify_jwt = false
+
+[functions.ghl-sso-verify]
+verify_jwt = false
