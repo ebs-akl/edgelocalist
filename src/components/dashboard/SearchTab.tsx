@@ -4,7 +4,14 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "@/hooks/use-toast";
-import { MapPin, Loader2, Phone, MessageSquare, Map, ExternalLink, ChevronUp, ChevronDown, Filter, Trash2, Send } from "lucide-react";
+import { MapPin, Loader2, Phone, MessageSquare, Map, ExternalLink, ChevronUp, ChevronDown, Filter, Trash2, Send, ArrowUpDown } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { formatPhoneDisplay, formatCurrency } from "@/lib/contacts";
@@ -34,7 +41,7 @@ interface SearchTabProps {
   isGhlMode: boolean;
 }
 
-type SortKey = "distance_miles" | "lifetime_value" | "last_order_date" | "last_service_date";
+type SortKey = "distance_miles" | "lifetime_value" | "last_order_date" | "last_service_date" | "order_count";
 
 export default function SearchTab({ repName, recentSearches, onSearch, contactCount, isGhlMode }: SearchTabProps) {
   const { user } = useAuth();
@@ -202,6 +209,9 @@ export default function SearchTab({ repName, recentSearches, onSearch, contactCo
       if (sortKey === "lifetime_value") {
         av = a.lifetime_value ?? 0;
         bv = b.lifetime_value ?? 0;
+      } else if (sortKey === "order_count") {
+        av = a.order_count ?? 0;
+        bv = b.order_count ?? 0;
       } else if (sortKey === "last_order_date") {
         av = a.last_order_date ? new Date(a.last_order_date).getTime() : 0;
         bv = b.last_order_date ? new Date(b.last_order_date).getTime() : 0;
@@ -331,7 +341,7 @@ export default function SearchTab({ repName, recentSearches, onSearch, contactCo
                 ? "No contacts found in that area — try a wider radius."
                 : `${results.length} contact${results.length !== 1 ? "s" : ""} within ${radius} miles`}
             </p>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               {/* Group SMS button — GHL mode only, shown when contacts are selected */}
               {isGhlMode && selectedContacts.length > 0 && (
                 <Button
@@ -344,16 +354,43 @@ export default function SearchTab({ repName, recentSearches, onSearch, contactCo
                 </Button>
               )}
               {results.length > 0 && (
-                <div className="relative">
-                  <Filter className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
-                  <Input
-                    value={filter}
-                    onChange={(e) => setFilter(e.target.value)}
-                    placeholder="Filter by name..."
-                    className="pl-8 h-8 text-sm w-40"
-                    style={{ fontSize: "16px" }}
-                  />
-                </div>
+                <>
+                  <Select
+                    value={`${sortKey}_${sortAsc ? "asc" : "desc"}`}
+                    onValueChange={(val) => {
+                      const parts = val.split("_");
+                      const dir = parts.pop() as "asc" | "desc";
+                      const key = parts.join("_") as SortKey;
+                      setSortKey(key);
+                      setSortAsc(dir === "asc");
+                    }}
+                  >
+                    <SelectTrigger className="h-8 w-[160px] text-xs">
+                      <ArrowUpDown className="h-3.5 w-3.5 mr-1.5 shrink-0" />
+                      <SelectValue placeholder="Sort by..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="distance_miles_asc">Distance ↑</SelectItem>
+                      <SelectItem value="distance_miles_desc">Distance ↓</SelectItem>
+                      <SelectItem value="lifetime_value_desc">Lifetime $ ↓</SelectItem>
+                      <SelectItem value="lifetime_value_asc">Lifetime $ ↑</SelectItem>
+                      <SelectItem value="order_count_desc">Orders ↓</SelectItem>
+                      <SelectItem value="order_count_asc">Orders ↑</SelectItem>
+                      <SelectItem value="last_service_date_desc">Last Service ↓</SelectItem>
+                      <SelectItem value="last_service_date_asc">Last Service ↑</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <div className="relative">
+                    <Filter className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+                    <Input
+                      value={filter}
+                      onChange={(e) => setFilter(e.target.value)}
+                      placeholder="Filter by name..."
+                      className="pl-8 h-8 text-sm w-40"
+                      style={{ fontSize: "16px" }}
+                    />
+                  </div>
+                </>
               )}
             </div>
           </div>
