@@ -23,7 +23,7 @@ interface StatCard {
 
 export default function Dashboard() {
   const { user, repProfile, signOut, isGhlMode, ghlLocationId, ghlRepNum, ssoPayload, setSsoPayload } = useAuth();
-  const { ssoPayload: hookPayload, ssoReady, ssoError, isInIframe } = useGhlSso();
+  const { ssoPayload: hookPayload, ssoReady, ssoError, isInIframe, retry } = useGhlSso();
   const [contactCount, setContactCount] = useState(0);
   const [lastSync, setLastSync] = useState<string | null>(null);
   const [loadingStats, setLoadingStats] = useState(true);
@@ -47,14 +47,13 @@ export default function Dashboard() {
     try {
       if (isGhlMode && ghlLocationId) {
         // GHL mode: fetch stats via edge function proxy with SSO payload
-        const body: Record<string, unknown> = { stats_only: true };
-        if (ssoPayload) {
-          body.sso_payload = ssoPayload;
-        } else {
-          body.location_id = ghlLocationId;
+        if (!ssoPayload) {
+          // Can't call without SSO payload — skip silently
+          setLoadingStats(false);
+          return;
         }
         const { data, error } = await supabase.functions.invoke("ghl-sync-contacts", {
-          body,
+          body: { stats_only: true, sso_payload: ssoPayload },
         });
         if (!error && data) {
           setContactCount(data.count ?? 0);
@@ -82,17 +81,11 @@ export default function Dashboard() {
   };
 
   const handleGhlSync = async () => {
-    if (!ghlLocationId) return;
+    if (!ghlLocationId || !ssoPayload) return;
     setRefreshing(true);
     try {
-      const body: Record<string, unknown> = {};
-      if (ssoPayload) {
-        body.sso_payload = ssoPayload;
-      } else {
-        body.location_id = ghlLocationId;
-      }
       const { data, error } = await supabase.functions.invoke("ghl-sync-contacts", {
-        body,
+        body: { sso_payload: ssoPayload },
       });
       if (error) throw error;
       toast({ title: "GHL sync complete", description: `${data?.synced ?? 0} contacts synced.` });
@@ -165,13 +158,31 @@ export default function Dashboard() {
     { label: "MODE", value: isGhlMode ? "GHL Mode" : "CSV Mode" },
   ];
 
-  // SSO handshake gate: show spinner while waiting for payload in iframe
+  // SSO handshake gate: show spinner while waiting, or error with retry
   if (isInIframe && !ssoReady) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center space-y-3">
           <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
-          <p className="text-sm text-muted-foreground font-medium">Securing connection...</p>
+          <p className="text-sm text-muted-foreground font-medium">
+            Establishing Secure Connection to HighLevel...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (isInIframe && ssoError) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center space-y-4 max-w-sm px-4">
+          <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-6 space-y-3">
+            <p className="text-sm font-semibold text-destructive">Connection Failed</p>
+            <p className="text-sm text-muted-foreground">{ssoError}</p>
+          </div>
+          <Button onClick={retry} className="min-h-[44px]">
+            Retry Connection
+          </Button>
         </div>
       </div>
     );
