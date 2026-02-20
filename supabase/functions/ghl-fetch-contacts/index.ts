@@ -59,7 +59,7 @@ serve(async (req) => {
     });
   }
 
-  // ── Resolve location_id: prefer SSO payload, fall back to raw location_id ──
+  // ── Resolve location_id: SSO payload or Bearer auth (no raw location_id) ──
   let locationId: string | null = null;
 
   if (typeof body.sso_payload === "string" && body.sso_payload) {
@@ -69,8 +69,26 @@ serve(async (req) => {
         status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-  } else if (typeof body.location_id === "string") {
-    locationId = body.location_id.trim();
+  } else {
+    // Require Bearer auth for non-SSO mode
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
+      return new Response(JSON.stringify({ error: "Authorization required" }), {
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const { data: { user }, error: authError } = await supabase.auth.getUser(authHeader.replace("Bearer ", ""));
+    if (authError || !user) {
+      return new Response(JSON.stringify({ error: "Invalid authorization" }), {
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const { data: authRep } = await supabase
+      .from("localist_reps")
+      .select("ghl_location_id")
+      .eq("id", user.id)
+      .maybeSingle();
+    locationId = authRep?.ghl_location_id ?? null;
   }
 
   const limit = typeof body.limit === "number" ? Math.min(Math.max(body.limit, 1), 100) : 100;
