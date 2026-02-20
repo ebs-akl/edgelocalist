@@ -37,16 +37,6 @@ export default function Auth() {
         toast({ title: "Rep Number Required", description: "Enter your 8-digit Cutco rep number.", variant: "destructive" });
         return;
       }
-      // Check uniqueness before signup
-      const { data: existing } = await supabase
-        .from("localist_reps")
-        .select("id")
-        .eq("rep_number", repNumber.trim())
-        .maybeSingle();
-      if (existing) {
-        toast({ title: "Rep Number Taken", description: "That rep number is already registered. Contact support if this is yours.", variant: "destructive" });
-        return;
-      }
     }
     setLoading(true);
     try {
@@ -77,7 +67,9 @@ export default function Auth() {
       }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Something went wrong.";
-      toast({ title: "Error", description: message, variant: "destructive" });
+      // Show generic error for signup to prevent information disclosure
+      const userMessage = isLogin ? message : "Signup failed. Please try again or contact support.";
+      toast({ title: "Error", description: userMessage, variant: "destructive" });
     } finally {
       setLoading(false);
     }

@@ -124,7 +124,6 @@ export default function Dashboard() {
         const count = data?.length ?? 0;
 
         if (!error && (count ?? 0) > 0) {
-          console.log(`Merge handshake: claimed ${count} contacts for location ${ghlLocationId}`);
           toast({ title: "Contacts linked!", description: `${count} existing contacts were connected to your CRM.` });
         }
         localStorage.setItem(mergeKey, Date.now().toString());
