@@ -1,26 +1,27 @@
 
 
-# Fix: PostGIS "geography" Type Not Found
+# Fix: GHL OAuth Callback - Debugging and Error Transparency
 
-## What Broke
+## Problem
+The edge function returns `undefined` error details to the frontend, and we need better logging to diagnose the 400/401 from GoHighLevel.
 
-The `nearby_contacts` and `sync_contact_location` database functions stopped working because **PostGIS is installed in the `extensions` schema**, but both functions have their search path restricted to only `public`. This means they can't find PostGIS types like `geography` or functions like `ST_Distance`.
+## Changes
 
-This likely broke when a recent migration recreated these functions with `SET search_path TO 'public'` -- a security best practice that unfortunately excludes the schema where PostGIS lives.
+### 1. Edge Function (`supabase/functions/ghl-oauth-callback/index.ts`)
 
-## The Fix
+**Pre-fetch logging** -- Add a `console.log` right before the GHL fetch call showing `client_id`, `grant_type`, `code`, and `redirect_uri` (never the secret).
 
-Create a new migration that recreates both affected functions with the corrected search path: `SET search_path TO 'public', 'extensions'`.
+**Raw text error parsing** -- Read the GHL response as `.text()` first, log it raw, then safely attempt `JSON.parse` to extract `error` and `error_description`. This is partially done already but needs the raw log line added.
 
-### Functions to update:
+**Redirect URI** -- Important note: Using `new URL(req.url).origin + '/callback'` would produce the Supabase functions URL (e.g., `https://kimyzwmniidwnixezqdi.supabase.co/callback`), NOT the registered GHL redirect URI (`https://edgelocalist.app/callback`). This would cause an immediate OAuth mismatch error. The current approach of receiving the redirect_uri from the frontend is correct. However, I will add a hardcoded fallback of `https://edgelocalist.app/callback` so if the frontend omits it, the function still uses the right value.
 
-1. **`nearby_contacts`** -- powers all radius searches
-   - Change: `SET search_path TO 'public'` --> `SET search_path TO 'public', 'extensions'`
+**Body format** -- Already using `URLSearchParams` and `application/x-www-form-urlencoded`. No change needed here.
 
-2. **`sync_contact_location`** -- trigger that converts lat/lng to a PostGIS geometry on insert/update
-   - Change: `SET search_path TO 'public'` --> `SET search_path TO 'public', 'extensions'`
+### 2. Frontend (`src/pages/GhlCallback.tsx`)
 
-### Steps:
-1. Create a new SQL migration file with the two `CREATE OR REPLACE FUNCTION` statements using the updated search paths
-2. No frontend code changes are needed -- the app code is correct; this is purely a database-level fix
+**Better error extraction** -- When `supabase.functions.invoke` returns a non-2xx status, the Supabase client may put the parsed response in `error` rather than `data`. Add handling to extract error details from both paths and log them clearly.
+
+## Files Modified
+- `supabase/functions/ghl-oauth-callback/index.ts` -- Add pre-fetch logging, raw response logging, redirect_uri fallback
+- `src/pages/GhlCallback.tsx` -- Improve error extraction from both `data` and `error` response paths
 
