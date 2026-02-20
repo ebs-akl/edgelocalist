@@ -50,7 +50,7 @@ function preview(template: string, repName: string): string {
 }
 
 export default function GroupSmsModal({ open, onClose, contacts, repName }: GroupSmsModalProps) {
-  const { ghlLocationId } = useAuth();
+  const { ssoPayload } = useAuth();
   const [selectedTemplate, setSelectedTemplate] = useState<number | "custom">(0);
   const [customMessage, setCustomMessage] = useState("");
   const [sending, setSending] = useState(false);
@@ -79,9 +79,8 @@ export default function GroupSmsModal({ open, onClose, contacts, repName }: Grou
       const body: Record<string, unknown> = { contacts: payload, message_template: activeBody };
       const headers: Record<string, string> = {};
 
-      if (ghlLocationId) {
-        body.location_id = ghlLocationId;
-        headers["x-ghl-secret"] = import.meta.env.VITE_GHL_SHARED_SECRET ?? "";
+      if (ssoPayload) {
+        body.sso_payload = ssoPayload;
       } else {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) throw new Error("Not authenticated");
