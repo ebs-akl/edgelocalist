@@ -38,8 +38,9 @@ export default function ContactDetailModal({ contact, repName, isGhlMode, onClos
       const headers: Record<string, string> = {};
 
       if (ghlLocationId) {
-        // GHL iframe mode — pass location_id, no Bearer token needed
+        // GHL iframe mode — pass location_id with shared secret
         body.location_id = ghlLocationId;
+        headers["x-ghl-secret"] = import.meta.env.VITE_GHL_SHARED_SECRET ?? "";
       } else {
         // Standalone mode — use Supabase session
         const { data: { session } } = await supabase.auth.getSession();
