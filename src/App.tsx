@@ -82,10 +82,10 @@ const App = () => {
                   </ProtectedRoute>
                 }
               />
-              <Route path="/ghl-callback" element={<ProtectedRoute><GhlCallback /></ProtectedRoute>} />
-              <Route path="/localist-setup" element={<ProtectedRoute><GhlCallback /></ProtectedRoute>} />
-              <Route path="/callback" element={<ProtectedRoute><GhlCallback /></ProtectedRoute>} />
-              <Route path="/leadconnector/oauth" element={<ProtectedRoute><GhlCallback /></ProtectedRoute>} />
+              <Route path="/ghl-callback" element={<GhlCallback />} />
+              <Route path="/localist-setup" element={<GhlCallback />} />
+              <Route path="/callback" element={<GhlCallback />} />
+              <Route path="/leadconnector/oauth" element={<GhlCallback />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </AuthProvider>
