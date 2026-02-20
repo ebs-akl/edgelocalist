@@ -16,6 +16,7 @@ export default function Auth() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
+  const [repNumber, setRepNumber] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
@@ -50,6 +51,7 @@ export default function Auth() {
             email,
             full_name: fullName.trim() || email,
             subscription_tier: 'standalone',
+            rep_number: repNumber.trim() || null,
           }, { onConflict: 'id' });
         }
         toast({
@@ -143,16 +145,28 @@ export default function Auth() {
             ) : (
               <form onSubmit={handleSubmit} className="space-y-4">
                 {!isLogin && (
-                  <div className="space-y-2">
-                    <Label htmlFor="fullName">Full Name</Label>
-                    <Input
-                      id="fullName"
-                      value={fullName}
-                      onChange={(e) => setFullName(e.target.value)}
-                      placeholder="Jane Smith"
-                      style={{ fontSize: "16px" }}
-                    />
-                  </div>
+                  <>
+                    <div className="space-y-2">
+                      <Label htmlFor="fullName">Full Name</Label>
+                      <Input
+                        id="fullName"
+                        value={fullName}
+                        onChange={(e) => setFullName(e.target.value)}
+                        placeholder="Jane Smith"
+                        style={{ fontSize: "16px" }}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="repNumber">Cutco Rep Number</Label>
+                      <Input
+                        id="repNumber"
+                        value={repNumber}
+                        onChange={(e) => setRepNumber(e.target.value)}
+                        placeholder="e.g. 12345"
+                        style={{ fontSize: "16px" }}
+                      />
+                    </div>
+                  </>
                 )}
                 <div className="space-y-2">
                   <Label htmlFor="email">Email</Label>

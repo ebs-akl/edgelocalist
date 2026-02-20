@@ -120,6 +120,7 @@ export type Database = {
           ghl_refresh_token: string | null
           id: string
           location_id: string | null
+          rep_number: string | null
           stripe_customer_id: string | null
           subscription_tier: string | null
         }
@@ -133,6 +134,7 @@ export type Database = {
           ghl_refresh_token?: string | null
           id: string
           location_id?: string | null
+          rep_number?: string | null
           stripe_customer_id?: string | null
           subscription_tier?: string | null
         }
@@ -146,6 +148,7 @@ export type Database = {
           ghl_refresh_token?: string | null
           id?: string
           location_id?: string | null
+          rep_number?: string | null
           stripe_customer_id?: string | null
           subscription_tier?: string | null
         }
@@ -164,6 +167,7 @@ export type Database = {
           full_name: string
           ghl_location_id: string
           id: string
+          rep_number: string
           subscription_tier: string
         }[]
       }

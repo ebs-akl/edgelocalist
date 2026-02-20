@@ -9,6 +9,7 @@ export interface RepProfile {
   full_name: string;
   subscription_tier: 'standalone' | 'edgedms' | null;
   ghl_location_id: string | null;
+  rep_number: string | null;
 }
 
 interface AuthState {
