@@ -132,7 +132,7 @@ serve(async (req) => {
 
       if (contacts.length < limit) break;
       page++;
-      if (page > 100) break;
+      if (page > 150) break;
     }
 
     console.log(`Fetched ${allContacts.length} contacts from GHL`);
