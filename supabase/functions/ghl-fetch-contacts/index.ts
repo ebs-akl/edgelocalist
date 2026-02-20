@@ -11,7 +11,7 @@ const LOCATION_ID_RE = /^[a-zA-Z0-9]{5,50}$/;
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+    return new Response("ok", { headers: corsHeaders });
   }
 
   const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
@@ -23,9 +23,8 @@ serve(async (req) => {
     });
   }
 
-  // Service-role client bypasses RLS
+  // Admin client — bypasses RLS, no user session needed
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-  const authHeader = req.headers.get("Authorization");
 
   // Parse body
   let body: Record<string, unknown> = {};
@@ -41,71 +40,38 @@ serve(async (req) => {
   const limit = typeof body.limit === "number" ? Math.min(Math.max(body.limit, 1), 100) : 100;
   const skip = typeof body.skip === "number" ? Math.max(body.skip, 0) : 0;
 
-  // ── Resolve credentials ──
-  let accessToken: string;
-  let ghlLocationId: string;
-  let repId: string;
+  // Validate location_id
+  if (!locationId || !LOCATION_ID_RE.test(locationId)) {
+    return new Response(JSON.stringify({ error: "Missing or invalid location_id" }), {
+      status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
 
-  if (authHeader?.startsWith("Bearer ")) {
-    // Standalone mode: verify user via Supabase auth
-    const { data: { user }, error } = await supabase.auth.getUser(authHeader.replace("Bearer ", ""));
-    if (error || !user) {
-      return new Response(JSON.stringify({ error: "Could not verify user" }), {
-        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    const { data: rep } = await supabase
-      .from("localist_reps")
-      .select("id, ghl_access_token, ghl_location_id")
-      .eq("id", user.id)
-      .maybeSingle();
-
-    if (!rep?.ghl_access_token || !rep?.ghl_location_id) {
-      return new Response(JSON.stringify({ error: "No CRM token found for this location." }), {
-        status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    accessToken = rep.ghl_access_token;
-    ghlLocationId = rep.ghl_location_id;
-    repId = rep.id;
-  } else if (locationId) {
-    // GHL iframe mode: validate shared secret + location_id format
-    if (!LOCATION_ID_RE.test(locationId)) {
-      return new Response(JSON.stringify({ error: "Invalid request" }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    const sharedSecret = Deno.env.get("GHL_SHARED_SECRET");
-    const providedSecret = req.headers.get("x-ghl-secret");
-    if (!sharedSecret || providedSecret !== sharedSecret) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    const { data: rep } = await supabase
-      .from("localist_reps")
-      .select("id, ghl_access_token, ghl_location_id")
-      .eq("ghl_location_id", locationId)
-      .maybeSingle();
-
-    if (!rep?.ghl_access_token) {
-      return new Response(JSON.stringify({ error: "No CRM token found for this location." }), {
-        status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    accessToken = rep.ghl_access_token;
-    ghlLocationId = rep.ghl_location_id!;
-    repId = rep.id;
-  } else {
-    return new Response(JSON.stringify({ error: "Missing authorization" }), {
+  // Validate shared secret
+  const sharedSecret = Deno.env.get("GHL_SHARED_SECRET");
+  const providedSecret = req.headers.get("x-ghl-secret");
+  if (!sharedSecret || providedSecret !== sharedSecret) {
+    return new Response(JSON.stringify({ error: "Unauthorized" }), {
       status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
+
+  // Look up rep by location_id
+  const { data: rep } = await supabase
+    .from("localist_reps")
+    .select("id, ghl_access_token, ghl_location_id")
+    .eq("ghl_location_id", locationId)
+    .maybeSingle();
+
+  if (!rep?.ghl_access_token || !rep?.ghl_location_id) {
+    return new Response(JSON.stringify({ error: "No CRM token found for this location." }), {
+      status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
+  const repId = rep.id;
+  const accessToken = rep.ghl_access_token;
+  const ghlLocationId = rep.ghl_location_id;
 
   // ── Fetch contacts from GoHighLevel API ──
   try {
@@ -154,11 +120,6 @@ serve(async (req) => {
         longitude: null as number | null,
       }));
 
-      // smart_upsert_ghl_contacts RPC:
-      // - Matches by rep_id + phone to find existing CSV records
-      // - Preserves existing lat/lng when present
-      // - Sets source = 'ghl' and links ghl contact_id
-      // - Inserts new contacts with source = 'ghl'
       const BATCH_SIZE = 200;
       for (let i = 0; i < rows.length; i += BATCH_SIZE) {
         const batch = rows.slice(i, i + BATCH_SIZE);
