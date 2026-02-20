@@ -24,20 +24,34 @@ export default function GhlCallback() {
       try {
         const redirectUri = "https://edgelocalist.app/callback";
 
-        // Call edge function without auth — the function uses the code to identify the account
         const { data, error } = await supabase.functions.invoke("ghl-oauth-callback", {
           body: { code, redirect_uri: redirectUri },
         });
 
-        if (error || !data?.success) {
-          console.error("GHL OAuth failed:", {
-            error: data?.error,
-            error_description: data?.error_description,
-            details: data?.details,
-            raw: data,
-          });
+        // supabase-js may put the parsed error body in `error.context` or `error.message`
+        if (error) {
+          console.error("GHL OAuth edge function error object:", error);
+          // Try to extract structured error from the response
+          let details: any = {};
+          try {
+            // error.context may contain the response body
+            if (typeof error === "object" && error !== null) {
+              details = (error as any).context || error;
+            }
+          } catch (_) {}
+          const desc =
+            details?.error_description ||
+            details?.error ||
+            (error as any)?.message ||
+            "Could not connect to GoHighLevel.";
+          console.error("GHL OAuth failure details:", desc, details);
+          throw new Error(desc);
+        }
+
+        if (!data?.success) {
+          console.error("GHL OAuth returned non-success data:", data);
           throw new Error(
-            data?.error_description || data?.error || "Could not connect to GoHighLevel. Please try again or contact support."
+            data?.error_description || data?.error || "Unexpected response from server."
           );
         }
 

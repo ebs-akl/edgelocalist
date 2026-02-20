@@ -26,7 +26,8 @@ serve(async (req) => {
 
   try {
     const body = await req.json() as { code?: string; redirect_uri?: string };
-    const { code, redirect_uri } = body;
+    const code = body.code;
+    const redirect_uri = body.redirect_uri || "https://edgelocalist.app/callback";
 
     // Input validation
     if (!code || typeof code !== "string" || code.length > 2048) {
@@ -39,6 +40,14 @@ serve(async (req) => {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
+    // Log what we're sending (never log the secret)
+    console.log("Sending to GHL:", {
+      client_id: GHL_CLIENT_ID,
+      grant_type: "authorization_code",
+      code,
+      redirect_uri,
+    });
 
     // Exchange code for tokens
     const tokenRes = await fetch("https://services.leadconnectorhq.com/oauth/token", {
@@ -56,15 +65,17 @@ serve(async (req) => {
       }),
     });
 
+    // Read response as raw text first for logging
+    const responseText = await tokenRes.text();
+    console.log("GHL Raw Response (status " + tokenRes.status + "):", responseText);
+
     if (!tokenRes.ok) {
-      const errBody = await tokenRes.text();
-      console.error("GHL token exchange failed. Status:", tokenRes.status, "Body:", errBody);
-      let ghlError = { error: `GHL API error (${tokenRes.status})`, error_description: errBody };
+      let ghlError = { error: `GHL API error (${tokenRes.status})`, error_description: responseText };
       try {
-        const parsed = JSON.parse(errBody);
+        const parsed = JSON.parse(responseText);
         ghlError = {
           error: parsed.error || ghlError.error,
-          error_description: parsed.error_description || parsed.message || errBody,
+          error_description: parsed.error_description || parsed.message || responseText,
         };
       } catch (_) { /* use raw text fallback */ }
       return new Response(JSON.stringify(ghlError), {
@@ -73,7 +84,16 @@ serve(async (req) => {
       });
     }
 
-    const tokenData = await tokenRes.json();
+    let tokenData;
+    try {
+      tokenData = JSON.parse(responseText);
+    } catch (_) {
+      console.error("Failed to parse GHL success response:", responseText);
+      return new Response(JSON.stringify({ error: "Invalid response from provider" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
     const { access_token, refresh_token, locationId } = tokenData;
 
     if (!access_token || !locationId) {
