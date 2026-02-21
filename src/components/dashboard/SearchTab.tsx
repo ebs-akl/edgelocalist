@@ -116,7 +116,7 @@ export default function SearchTab({ repName, recentSearches, onSearch, contactCo
       onSearch(label);
 
       if (isGhlMode && ssoPayload) {
-        // GHL mode: use edge function (auth.uid() is null, RPC won't work directly)
+        // GHL mode: use edge function
         const { data: fnData, error: fnError } = await supabase.functions.invoke("nearby-search", {
           body: {
             sso_payload: ssoPayload,
@@ -147,6 +147,42 @@ export default function SearchTab({ repName, recentSearches, onSearch, contactCo
       setLoading(false);
     }
   }, [effectiveRepId, contactCount, radius, onSearch, isGhlMode, ssoPayload]);
+
+  // GHL mode: server-side geocoding + search in one call
+  const runServerSearch = useCallback(async (addr: string) => {
+    if (!effectiveRepId || !ssoPayload) return;
+    if (contactCount === 0) {
+      toast({ title: "No contacts loaded yet — let's fix that.", description: "Upload a CSV in the Contacts tab first.", variant: "destructive" });
+      return;
+    }
+    setLoading(true);
+    setSearched(false);
+    setSelectedIds(new Set());
+    try {
+      onSearch(addr);
+      const { data: fnData, error: fnError } = await supabase.functions.invoke("nearby-search", {
+        body: {
+          sso_payload: ssoPayload,
+          address: addr,
+          radius_miles: radius,
+        },
+      });
+      if (fnError) throw fnError;
+      if (fnData?.error === "address_not_found") {
+        toast({ title: "Could not find that exact address.", description: "Try adding the city or ZIP code.", variant: "destructive" });
+        setLoading(false);
+        return;
+      }
+      if (fnData?.error) throw new Error(fnData.error);
+      setResults((fnData?.contacts as NearbyContact[]) ?? []);
+      setSearched(true);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Search failed.";
+      toast({ title: "Search error", description: message, variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
+  }, [effectiveRepId, ssoPayload, contactCount, radius, onSearch]);
 
   const handleGPS = () => {
     if (!navigator.geolocation) {
@@ -185,7 +221,13 @@ export default function SearchTab({ repName, recentSearches, onSearch, contactCo
       return;
     }
 
-    // 3. Mapbox fuzzy geocoding for addresses
+    // 3. GHL mode: geocode server-side (client Mapbox token may not be available)
+    if (isGhlMode && ssoPayload) {
+      await runServerSearch(address.trim());
+      return;
+    }
+
+    // 4. Standalone: Mapbox fuzzy geocoding client-side
     setLoading(true);
     setSearched(false);
     setSelectedIds(new Set());
@@ -202,7 +244,7 @@ export default function SearchTab({ repName, recentSearches, onSearch, contactCo
       toast({ title: "Search error", description: message, variant: "destructive" });
       setLoading(false);
     }
-  }, [address, searchCenter, effectiveRepId, runRadiusQuery]);
+  }, [address, searchCenter, effectiveRepId, runRadiusQuery, isGhlMode, ssoPayload, runServerSearch]);
 
   const handleSort = (key: SortKey) => {
     if (sortKey === key) setSortAsc((a) => !a);
