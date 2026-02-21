@@ -103,15 +103,15 @@ serve(async (req) => {
     });
   }
 
-  // Look up rep by location_id
+  // Look up rep by location_id, then fallback to any rep with a token
   let { data: rep } = await supabase
     .from("localist_reps")
     .select("id, ghl_access_token, ghl_location_id")
     .eq("ghl_location_id", locationId)
     .maybeSingle();
 
-  // Auto-link: if no rep matches this location but one has a token, update its location_id
   if (!rep?.ghl_access_token) {
+    // Fallback: find any rep with a valid GHL token (location may have changed)
     const { data: tokenRep } = await supabase
       .from("localist_reps")
       .select("id, ghl_access_token, ghl_location_id")
@@ -120,12 +120,8 @@ serve(async (req) => {
       .maybeSingle();
 
     if (tokenRep?.ghl_access_token) {
-      console.log(`Auto-linking rep ${tokenRep.id} from location ${tokenRep.ghl_location_id} to ${locationId}`);
-      await supabase
-        .from("localist_reps")
-        .update({ ghl_location_id: locationId })
-        .eq("id", tokenRep.id);
-      rep = { ...tokenRep, ghl_location_id: locationId };
+      console.log(`Using rep ${tokenRep.id} with token for location ${tokenRep.ghl_location_id} (SSO location: ${locationId})`);
+      rep = tokenRep; // Keep original ghl_location_id for API calls
     } else {
       return new Response(JSON.stringify({ error: "No rep found for this location" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },

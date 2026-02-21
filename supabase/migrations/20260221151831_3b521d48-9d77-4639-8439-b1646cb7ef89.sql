@@ -1,0 +1,1 @@
+UPDATE localist_reps SET ghl_location_id = 'hXcSSA35KVSLC2674wFT' WHERE id = 'd6fb36a9-dba8-4b52-9e29-6ceb15eb16b6'
