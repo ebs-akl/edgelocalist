@@ -88,11 +88,34 @@ export default function Dashboard() {
       const { data, error } = await supabase.functions.invoke("ghl-sync-contacts", {
         body: { sso_payload: ssoPayload },
       });
-      if (error) throw error;
+      if (error) {
+        // Try to extract JSON error body from the response
+        let detail = error.message;
+        try {
+          if ((error as any).context && typeof (error as any).context.json === "function") {
+            const body = await (error as any).context.json();
+            detail = body?.error ?? detail;
+          }
+        } catch { /* fallback */ }
+        throw new Error(detail);
+      }
       toast({ title: "GHL sync complete", description: `${data?.synced ?? 0} contacts synced.` });
       await fetchContactStats();
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Sync failed";
+      let msg = "Sync failed";
+      if (err && typeof err === "object" && "context" in err) {
+        // supabase.functions.invoke wraps non-2xx in FunctionsHttpError with context
+        try {
+          const ctx = (err as any).context;
+          if (ctx && typeof ctx.json === "function") {
+            const body = await ctx.json();
+            msg = body?.error ?? msg;
+          }
+        } catch { /* fallback */ }
+      } else if (err instanceof Error) {
+        msg = err.message;
+      }
+      console.error("GHL sync error detail:", msg);
       toast({ title: "GHL sync failed", description: msg, variant: "destructive" });
     } finally {
       setRefreshing(false);
