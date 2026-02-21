@@ -50,14 +50,12 @@ export default function SyncProgressDialog({
           {/* Animated GIF while syncing */}
           {!isFinished && (
             <div className="flex justify-center">
-              <div className="rounded-lg overflow-hidden" style={{ backgroundColor: "#f9edde" }}>
-                <img
-                  src={syncAnimation}
-                  alt="Syncing contacts"
-                  className="h-28 w-auto object-contain"
-                  style={{ mixBlendMode: "screen" }}
-                />
-              </div>
+              <img
+                src={syncAnimation}
+                alt="Syncing contacts"
+                className="h-28 w-auto object-contain rounded-lg"
+                style={{ backgroundColor: "#f9edde" }}
+              />
             </div>
           )}
 
