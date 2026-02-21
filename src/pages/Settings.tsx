@@ -16,7 +16,7 @@ const UPGRADE_URL = "#";
 
 export default function Settings() {
   const { user, repProfile, signOut, isGhlMode, refreshProfile } = useAuth();
-  const [loading, setLoading] = useState(false);
+  const loading = false; // Billing portal not yet implemented
 
   const [editing, setEditing] = useState<"name" | null>(null);
   const [editName, setEditName] = useState(repProfile?.full_name ?? "");
@@ -52,22 +52,11 @@ export default function Settings() {
     setEditing(null);
   };
 
-  const handleManageBilling = async () => {
-    setLoading(true);
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) { toast({ title: "Please sign in first", variant: "destructive" }); return; }
-      const { data, error } = await supabase.functions.invoke("customer-portal", {
-        headers: { Authorization: `Bearer ${session.access_token}` },
-      });
-      if (error) throw error;
-      if (data?.url) window.open(data.url, "_blank");
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Something went wrong.";
-      toast({ title: "Billing error", description: message, variant: "destructive" });
-    } finally {
-      setLoading(false);
-    }
+  const handleManageBilling = () => {
+    toast({
+      title: "Coming Soon",
+      description: "The billing portal is not yet available. Stay tuned!",
+    });
   };
 
   return (
