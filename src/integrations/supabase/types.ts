@@ -154,6 +154,33 @@ export type Database = {
         }
         Relationships: []
       }
+      sms_rate_limits: {
+        Row: {
+          daily_count: number
+          daily_start: string
+          id: string
+          location_id: string
+          send_count: number
+          window_start: string
+        }
+        Insert: {
+          daily_count?: number
+          daily_start?: string
+          id?: string
+          location_id: string
+          send_count?: number
+          window_start?: string
+        }
+        Update: {
+          daily_count?: number
+          daily_start?: string
+          id?: string
+          location_id?: string
+          send_count?: number
+          window_start?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -170,6 +197,15 @@ export type Database = {
           rep_number: string
           subscription_tier: string
         }[]
+      }
+      increment_sms_rate_limit: {
+        Args: {
+          p_count: number
+          p_location_id: string
+          p_today: string
+          p_window_start: string
+        }
+        Returns: undefined
       }
       nearby_contacts: {
         Args: {
