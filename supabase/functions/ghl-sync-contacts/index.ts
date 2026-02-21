@@ -215,7 +215,7 @@ serve(async (req) => {
       const batch = rows.slice(i, i + BATCH_SIZE);
       const { data, error: rpcError } = await supabase.rpc(
         "smart_upsert_ghl_contacts",
-        { p_rep_id: repId, p_contacts: JSON.stringify(batch) }
+        { p_rep_id: repId, p_contacts: batch }
       );
 
       if (rpcError) {
