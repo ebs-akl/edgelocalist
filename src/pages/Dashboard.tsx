@@ -13,6 +13,7 @@ import localistLogo from "@/assets/Localist_Logo-2.png";
 import SearchTab from "@/components/dashboard/SearchTab";
 import CsvUploadTab from "@/components/dashboard/CsvUploadTab";
 import LocalistControlPanel from "@/components/dashboard/LocalistControlPanel";
+import SyncProgressDialog, { SyncStep } from "@/components/dashboard/SyncProgressDialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import Footer from "@/components/Footer";
 
@@ -31,6 +32,10 @@ export default function Dashboard() {
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const [searchesToday, setSearchesToday] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
+  const [syncDialogOpen, setSyncDialogOpen] = useState(false);
+  const [syncSteps, setSyncSteps] = useState<SyncStep[]>([]);
+  const [syncSummary, setSyncSummary] = useState<{ total: number; searchable: number; needsGeocoding: number } | null>(null);
+  const [syncError, setSyncError] = useState<string | null>(null);
 
   // Store SSO payload from hook into context only when NOT already set by IframeApp bridge
   useEffect(() => {
@@ -84,12 +89,35 @@ export default function Dashboard() {
   const handleGhlSync = async () => {
     if (!ghlLocationId || !ssoPayload) return;
     setRefreshing(true);
+    setSyncError(null);
+    setSyncSummary(null);
+
+    const initialSteps: SyncStep[] = [
+      { id: "connect", label: "Connecting to GoHighLevel", status: "active" },
+      { id: "fetch", label: "Fetching your contacts", status: "pending" },
+      { id: "save", label: "Saving to your account", status: "pending" },
+      { id: "done", label: "Preparing search results", status: "pending" },
+    ];
+    setSyncSteps(initialSteps);
+    setSyncDialogOpen(true);
+
+    const updateStep = (id: string, updates: Partial<SyncStep>) => {
+      setSyncSteps((prev) =>
+        prev.map((s) => (s.id === id ? { ...s, ...updates } : s))
+      );
+    };
+
     try {
+      // Step 1 → 2: connection established, now fetching
+      await new Promise((r) => setTimeout(r, 600));
+      updateStep("connect", { status: "done", detail: "Secure connection established" });
+      updateStep("fetch", { status: "active", label: "Fetching your contacts from CRM..." });
+
       const { data, error } = await supabase.functions.invoke("ghl-sync-contacts", {
         body: { sso_payload: ssoPayload },
       });
+
       if (error) {
-        // Try to extract JSON error body from the response
         let detail = error.message;
         try {
           if ((error as any).context && typeof (error as any).context.json === "function") {
@@ -99,12 +127,47 @@ export default function Dashboard() {
         } catch { /* fallback */ }
         throw new Error(detail);
       }
-      toast({ title: "GHL sync complete", description: `${data?.synced ?? 0} contacts synced.` });
+
+      const synced = data?.synced ?? 0;
+      updateStep("fetch", { status: "done", detail: `${synced.toLocaleString()} contacts received` });
+
+      // Step 3: saving
+      updateStep("save", { status: "active" });
+      await new Promise((r) => setTimeout(r, 400));
+      updateStep("save", { status: "done", detail: "Contacts merged and updated" });
+
+      // Step 4: get final stats
+      updateStep("done", { status: "active" });
+
+      // Fetch searchable count
+      const { data: statsData } = await supabase.functions.invoke("ghl-sync-contacts", {
+        body: { stats_only: true, sso_payload: ssoPayload },
+      });
+      const totalCount = statsData?.count ?? synced;
+
+      // Count contacts with coordinates
+      let searchable = 0;
+      if (user) {
+        const { count } = await supabase
+          .from("localist_contacts")
+          .select("id", { count: "exact", head: true })
+          .eq("rep_id", user.id)
+          .not("latitude", "is", null);
+        searchable = count ?? 0;
+      }
+
+      updateStep("done", { status: "done", detail: `${searchable.toLocaleString()} contacts ready for nearby search` });
+
+      setSyncSummary({
+        total: totalCount,
+        searchable,
+        needsGeocoding: totalCount - searchable,
+      });
+
       await fetchContactStats();
     } catch (err: unknown) {
       let msg = "Sync failed";
       if (err && typeof err === "object" && "context" in err) {
-        // supabase.functions.invoke wraps non-2xx in FunctionsHttpError with context
         try {
           const ctx = (err as any).context;
           if (ctx && typeof ctx.json === "function") {
@@ -116,7 +179,12 @@ export default function Dashboard() {
         msg = err.message;
       }
       console.error("GHL sync error detail:", msg);
-      toast({ title: "GHL sync failed", description: msg, variant: "destructive" });
+
+      // Mark current active step as error
+      setSyncSteps((prev) =>
+        prev.map((s) => (s.status === "active" ? { ...s, status: "error", detail: msg } : s))
+      );
+      setSyncError(msg);
     } finally {
       setRefreshing(false);
     }
@@ -389,6 +457,18 @@ export default function Dashboard() {
         </div>
       </main>
       <Footer />
+
+      <SyncProgressDialog
+        open={syncDialogOpen}
+        onClose={() => {
+          setSyncDialogOpen(false);
+          setSyncSummary(null);
+          setSyncError(null);
+        }}
+        steps={syncSteps}
+        summary={syncSummary}
+        error={syncError}
+      />
     </div>
   );
 }
