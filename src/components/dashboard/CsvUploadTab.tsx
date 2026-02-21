@@ -9,7 +9,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { formatPhone, stripAptFromAddress, isPOBox } from "@/lib/contacts";
 import Papa from "papaparse";
 import coffeeBotImg from "@/assets/Coffee_Edgar.gif";
-import stopBotImg from "@/assets/stop_cutout.png";
+import stopBotImg from "@/assets/stopbot.png";
 import {
   AlertDialog,
   AlertDialogAction,
