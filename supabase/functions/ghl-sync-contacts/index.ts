@@ -200,6 +200,22 @@ serve(async (req) => {
       });
     }
 
+    // Debug: log customFields structure of first contact that has any
+    const sampleWithFields = allContacts.find((c) => Array.isArray(c.customFields) && (c.customFields as unknown[]).length > 0);
+    if (sampleWithFields) {
+      const fields = sampleWithFields.customFields as Array<Record<string, unknown>>;
+      console.log(`Sample customFields (first 5):`, JSON.stringify(fields.slice(0, 5)));
+      const latField = fields.find((f) => 
+        String(f.key ?? '').toLowerCase().includes('lat') || 
+        String(f.field_key ?? '').toLowerCase().includes('lat') ||
+        String(f.id ?? '').toLowerCase().includes('lat')
+      );
+      if (latField) console.log(`Found lat-like field:`, JSON.stringify(latField));
+      else console.log(`No lat-like field found in keys:`, fields.map(f => f.key ?? f.field_key ?? f.id).join(', '));
+    } else {
+      console.log(`No contacts have customFields array`);
+    }
+
     const rows = allContacts.map((c) => {
       const latStr = getCustomFieldByKey(c, LAT_FIELD_KEY);
       const lngStr = getCustomFieldByKey(c, LNG_FIELD_KEY);
