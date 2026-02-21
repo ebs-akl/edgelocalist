@@ -39,11 +39,12 @@ interface SearchTabProps {
   onSearch: (address: string) => void;
   contactCount: number;
   isGhlMode: boolean;
+  ghlRepId?: string | null;
 }
 
 type SortKey = "distance_miles" | "lifetime_value" | "last_order_date" | "last_service_date" | "order_count";
 
-export default function SearchTab({ repName, recentSearches, onSearch, contactCount, isGhlMode }: SearchTabProps) {
+export default function SearchTab({ repName, recentSearches, onSearch, contactCount, isGhlMode, ghlRepId }: SearchTabProps) {
   const { user } = useAuth();
   const [address, setAddress] = useState("");
   const [radius, setRadius] = useState<10 | 25 | 50>(25);
@@ -87,8 +88,10 @@ export default function SearchTab({ repName, recentSearches, onSearch, contactCo
     return null;
   };
 
+  const effectiveRepId = user?.id ?? ghlRepId ?? null;
+
   const runRadiusQuery = useCallback(async (center: { lat: number; lng: number }, label: string) => {
-    if (!user) return;
+    if (!effectiveRepId) return;
     if (contactCount === 0) {
       toast({ title: "No contacts loaded yet — let's fix that.", description: "Upload a CSV in the Contacts tab first.", variant: "destructive" });
       return;
@@ -100,7 +103,7 @@ export default function SearchTab({ repName, recentSearches, onSearch, contactCo
       setSearchCenter(center);
       onSearch(label);
       const { data, error } = await supabase.rpc("nearby_contacts", {
-        rep: user.id,
+        rep: effectiveRepId,
         center_lat: center.lat,
         center_lng: center.lng,
         radius_miles: radius,
@@ -114,7 +117,7 @@ export default function SearchTab({ repName, recentSearches, onSearch, contactCo
     } finally {
       setLoading(false);
     }
-  }, [user, contactCount, radius, onSearch]);
+  }, [effectiveRepId, contactCount, radius, onSearch]);
 
   const handleGPS = () => {
     if (!navigator.geolocation) {
@@ -138,7 +141,7 @@ export default function SearchTab({ repName, recentSearches, onSearch, contactCo
       toast({ title: "Enter an address first", variant: "destructive" });
       return;
     }
-    if (!user) return;
+    if (!effectiveRepId) return;
 
     // 1. If searchCenter already set (e.g. from GPS), use it directly
     if (searchCenter) {
@@ -170,7 +173,7 @@ export default function SearchTab({ repName, recentSearches, onSearch, contactCo
       toast({ title: "Search error", description: message, variant: "destructive" });
       setLoading(false);
     }
-  }, [address, searchCenter, user, runRadiusQuery]);
+  }, [address, searchCenter, effectiveRepId, runRadiusQuery]);
 
   const handleSort = (key: SortKey) => {
     if (sortKey === key) setSortAsc((a) => !a);
@@ -178,13 +181,13 @@ export default function SearchTab({ repName, recentSearches, onSearch, contactCo
   };
 
   const handleDeleteContact = async () => {
-    if (!contactToDelete || !user) return;
+    if (!contactToDelete || !effectiveRepId) return;
     setDeleting(true);
     try {
       const { error } = await supabase
         .from("localist_contacts")
         .delete()
-        .eq("rep_id", user.id)
+        .eq("rep_id", effectiveRepId)
         .eq("id", contactToDelete.id);
       if (error) throw error;
       setResults((prev) => prev.filter((c) => c.id !== contactToDelete.id));

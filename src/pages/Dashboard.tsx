@@ -32,6 +32,7 @@ export default function Dashboard() {
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const [searchesToday, setSearchesToday] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
+  const [ghlRepId, setGhlRepId] = useState<string | null>(null);
   const [syncDialogOpen, setSyncDialogOpen] = useState(false);
   const [syncSteps, setSyncSteps] = useState<SyncStep[]>([]);
   const [syncSummary, setSyncSummary] = useState<{ total: number; searchable: number; needsGeocoding: number } | null>(null);
@@ -64,6 +65,7 @@ export default function Dashboard() {
         if (!error && data) {
           setContactCount(data.count ?? 0);
           setLastSync(data.last_sync ?? null);
+          if (data.rep_id) setGhlRepId(data.rep_id);
         }
       } else if (user) {
         // Standalone mode: query Supabase directly
@@ -443,6 +445,7 @@ export default function Dashboard() {
                     onSearch={handleSearch}
                     contactCount={contactCount}
                     isGhlMode={isGhlMode}
+                    ghlRepId={ghlRepId}
                   />
                 </CardContent>
               </Card>

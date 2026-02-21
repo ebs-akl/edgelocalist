@@ -187,6 +187,7 @@ serve(async (req) => {
       count: count ?? 0,
       searchable: searchableCount ?? 0,
       last_sync: data?.[0]?.updated_at ?? null,
+      rep_id: repId,
     }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 
