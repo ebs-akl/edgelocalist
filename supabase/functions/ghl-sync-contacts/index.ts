@@ -9,14 +9,49 @@ const corsHeaders = {
 };
 
 // GHL custom field keys for lat/lng
-const LAT_FIELD_KEY = "custom_lat";
-const LNG_FIELD_KEY = "custom_lng";
+const LAT_FIELD_KEY = "contact.custom_lat";
+const LNG_FIELD_KEY = "contact.custom_lng";
 
 const LOCATION_ID_RE = /^[a-zA-Z0-9]{5,50}$/;
 
-function getCustomFieldByKey(contact: Record<string, unknown>, fieldKey: string): string | null {
-  const fields = contact.customFields as Array<{ id: string; key?: string; field_key?: string; value: string }> ?? [];
-  return fields.find((f) => f.key === fieldKey || f.field_key === fieldKey)?.value ?? null;
+function getCustomFieldById(contact: Record<string, unknown>, fieldId: string): string | null {
+  const fields = contact.customFields as Array<{ id: string; value: string }> ?? [];
+  return fields.find((f) => f.id === fieldId)?.value ?? null;
+}
+
+async function fetchCustomFieldIds(
+  accessToken: string,
+  locationId: string
+): Promise<{ latFieldId: string | null; lngFieldId: string | null }> {
+  try {
+    const url = `https://services.leadconnectorhq.com/locations/${locationId}/customFields`;
+    const res = await fetch(url, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        Version: "2021-07-28",
+        Accept: "application/json",
+      },
+      signal: AbortSignal.timeout(10000),
+    });
+    if (!res.ok) {
+      console.error(`Failed to fetch custom fields: ${res.status}`);
+      return { latFieldId: null, lngFieldId: null };
+    }
+    const data = await res.json();
+    const fields = data.customFields ?? [];
+    let latFieldId: string | null = null;
+    let lngFieldId: string | null = null;
+    for (const f of fields) {
+      const fk = f.fieldKey ?? f.field_key ?? "";
+      if (fk === LAT_FIELD_KEY) latFieldId = f.id;
+      if (fk === LNG_FIELD_KEY) lngFieldId = f.id;
+    }
+    console.log(`Custom field lookup: lat=${latFieldId}, lng=${lngFieldId}`);
+    return { latFieldId, lngFieldId };
+  } catch (err) {
+    console.error("Error fetching custom field definitions:", err);
+    return { latFieldId: null, lngFieldId: null };
+  }
 }
 
 /**
@@ -149,6 +184,9 @@ serve(async (req) => {
   }
 
   try {
+    // Fetch custom field IDs for lat/lng
+    const { latFieldId, lngFieldId } = await fetchCustomFieldIds(accessToken, ghlLocationId);
+
     // Paginate through all GHL contacts using cursor-based pagination
     const allContacts: Record<string, unknown>[] = [];
     const limit = 100;
@@ -183,7 +221,6 @@ serve(async (req) => {
       const contacts: Record<string, unknown>[] = ghlData.contacts ?? [];
       allContacts.push(...contacts);
 
-      // Use cursor from meta for next page
       const meta = ghlData.meta;
       if (contacts.length < limit || !meta?.startAfter || !meta?.startAfterId) break;
       startAfter = meta.startAfter;
@@ -200,27 +237,20 @@ serve(async (req) => {
       });
     }
 
-    // Debug: log customFields structure of first contact that has any
-    const sampleWithFields = allContacts.find((c) => Array.isArray(c.customFields) && (c.customFields as unknown[]).length > 0);
-    if (sampleWithFields) {
-      const fields = sampleWithFields.customFields as Array<Record<string, unknown>>;
-      console.log(`Sample customFields (first 5):`, JSON.stringify(fields.slice(0, 5)));
-      const latField = fields.find((f) => 
-        String(f.key ?? '').toLowerCase().includes('lat') || 
-        String(f.field_key ?? '').toLowerCase().includes('lat') ||
-        String(f.id ?? '').toLowerCase().includes('lat')
-      );
-      if (latField) console.log(`Found lat-like field:`, JSON.stringify(latField));
-      else console.log(`No lat-like field found in keys:`, fields.map(f => f.key ?? f.field_key ?? f.id).join(', '));
-    } else {
-      console.log(`No contacts have customFields array`);
-    }
-
+    let coordCount = 0;
     const rows = allContacts.map((c) => {
-      const latStr = getCustomFieldByKey(c, LAT_FIELD_KEY);
-      const lngStr = getCustomFieldByKey(c, LNG_FIELD_KEY);
-      const lat = latStr ? parseFloat(latStr) : null;
-      const lng = lngStr ? parseFloat(lngStr) : null;
+      let lat: number | null = null;
+      let lng: number | null = null;
+
+      if (latFieldId && lngFieldId) {
+        const latStr = getCustomFieldById(c, latFieldId);
+        const lngStr = getCustomFieldById(c, lngFieldId);
+        lat = latStr ? parseFloat(String(latStr)) : null;
+        lng = lngStr ? parseFloat(String(lngStr)) : null;
+        if (isNaN(lat!)) lat = null;
+        if (isNaN(lng!)) lng = null;
+        if (lat !== null && lng !== null) coordCount++;
+      }
 
       return {
         rep_id: repId,
@@ -232,10 +262,12 @@ serve(async (req) => {
         city: (c.city as string) ?? "",
         state: (c.state as string) ?? "",
         zip: (c.postalCode as string) ?? "",
-        latitude: isNaN(lat!) ? null : lat,
-        longitude: isNaN(lng!) ? null : lng,
+        latitude: lat,
+        longitude: lng,
       };
     });
+
+    console.log(`Contacts with pre-existing coordinates: ${coordCount}/${allContacts.length}`);
 
     // Smart upsert in batches
     const BATCH_SIZE = 200;
