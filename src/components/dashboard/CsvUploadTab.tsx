@@ -25,18 +25,27 @@ import {
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN ?? "";
 
 async function geocodeAddress(street: string, city: string, state: string, zip: string): Promise<{ lat: number; lng: number } | null> {
-  if (!MAPBOX_TOKEN) return null;
+  if (!MAPBOX_TOKEN) {
+    console.warn("[Geocode] VITE_MAPBOX_ACCESS_TOKEN is not set — skipping geocoding");
+    return null;
+  }
+  if (!street && !city) return null;
   try {
-    const query = encodeURIComponent(`${street} ${city} ${state} ${zip}`);
+    const parts = [street, city, state, zip].filter(Boolean).join(" ");
+    const query = encodeURIComponent(parts);
     const res = await fetch(
       `https://api.mapbox.com/geocoding/v5/mapbox.places/${query}.json?access_token=${MAPBOX_TOKEN}&country=US&limit=1`
     );
-    if (!res.ok) return null;
+    if (!res.ok) {
+      console.warn(`[Geocode] Mapbox returned ${res.status} for "${parts}"`);
+      return null;
+    }
     const data = await res.json();
     const [lng, lat] = data?.features?.[0]?.center ?? [];
     if (lat && lng) return { lat, lng };
     return null;
-  } catch {
+  } catch (err) {
+    console.warn("[Geocode] Error:", err);
     return null;
   }
 }
@@ -186,25 +195,34 @@ export default function CsvUploadTab({ onUploaded, contactCount, lastSync }: Pro
         let totalFailed = poBoxCount;
         const geocodeResults: Record<string, { lat: number | null; lng: number | null }> = {};
 
-        // Geocode directly from browser using VITE_MAPBOX_ACCESS_TOKEN (same as SearchTab)
-        // Process in chunks of 5 with a 200ms delay to avoid rate limits
-        const CONCURRENCY = 5;
-        const DELAY_MS = 250;
+        // Try client-side geocoding if Mapbox token is available
+        if (MAPBOX_TOKEN) {
+          const CONCURRENCY = 5;
+          const DELAY_MS = 250;
 
-        for (let i = 0; i < validContacts.length; i += CONCURRENCY) {
-          const chunk = validContacts.slice(i, i + CONCURRENCY);
-          setProgressLabel(`Geocoding ${i + 1}–${Math.min(i + CONCURRENCY, validContacts.length)} of ${validContacts.length}...`);
-          setProgress(Math.round((i / validContacts.length) * 70));
+          for (let i = 0; i < validContacts.length; i += CONCURRENCY) {
+            const chunk = validContacts.slice(i, i + CONCURRENCY);
+            setProgressLabel(`Geocoding ${i + 1}–${Math.min(i + CONCURRENCY, validContacts.length)} of ${validContacts.length}...`);
+            setProgress(Math.round((i / validContacts.length) * 70));
 
-          await Promise.all(chunk.map(async (c) => {
-            const result = await geocodeAddress(c.street_clean, c.city, c.state, c.zip);
-            geocodeResults[c.id] = { lat: result?.lat ?? null, lng: result?.lng ?? null };
-            if (result) totalGeocoded++;
-            else totalFailed++;
-          }));
+            await Promise.all(chunk.map(async (c) => {
+              const result = await geocodeAddress(c.street_clean, c.city, c.state, c.zip);
+              geocodeResults[c.id] = { lat: result?.lat ?? null, lng: result?.lng ?? null };
+              if (result) totalGeocoded++;
+              else totalFailed++;
+            }));
 
-          if (i + CONCURRENCY < validContacts.length) {
-            await sleep(DELAY_MS);
+            if (i + CONCURRENCY < validContacts.length) {
+              await sleep(DELAY_MS);
+            }
+          }
+        } else {
+          // No client-side token — we'll use server-side geocoding after upsert
+          setProgressLabel("Preparing contacts for server-side geocoding...");
+          setProgress(50);
+          // Mark all valid contacts as not geocoded yet (they'll get null coords)
+          for (const c of validContacts) {
+            geocodeResults[c.id] = { lat: null, lng: null };
           }
         }
 
@@ -244,6 +262,34 @@ export default function CsvUploadTab({ onUploaded, contactCount, lastSync }: Pro
         if (upsertError) {
           toast({ title: "Save failed", description: upsertError.message, variant: "destructive" });
         } else {
+          // If client-side geocoding wasn't available, use server-side geocoding
+          if (!MAPBOX_TOKEN && validContacts.length > 0) {
+            setProgressLabel("Geocoding addresses server-side...");
+            setProgress(75);
+            let remaining = 1;
+            let rounds = 0;
+            const MAX_ROUNDS = 20;
+
+            while (remaining > 0 && rounds < MAX_ROUNDS) {
+              const { data: geoData, error: geoErr } = await supabase.functions.invoke("geocode-contacts", {
+                body: { limit: 500 },
+              });
+              if (geoErr || !geoData) break;
+
+              totalGeocoded += geoData.geocoded ?? 0;
+              remaining = geoData.remaining ?? 0;
+              rounds++;
+
+              if (totalGeocoded > 0) {
+                setProgressLabel(`${totalGeocoded.toLocaleString()} addresses geocoded${remaining > 0 ? `, ${remaining.toLocaleString()} remaining...` : ""}`);
+                setProgress(75 + Math.round((1 - remaining / (remaining + totalGeocoded)) * 20));
+              }
+              if (geoData.geocoded === 0) break;
+            }
+            totalFailed = deduped.length - totalGeocoded - poBoxCount;
+            if (totalFailed < 0) totalFailed = 0;
+          }
+
           setStats({
             total: deduped.length,
             geocoded: totalGeocoded,
