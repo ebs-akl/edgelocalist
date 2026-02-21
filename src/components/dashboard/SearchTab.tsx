@@ -69,13 +69,19 @@ export default function SearchTab({ repName, recentSearches, onSearch, contactCo
       return null;
     }
     const encoded = encodeURIComponent(addr);
-    const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encoded}.json?access_token=${MAPBOX_TOKEN}&country=US&limit=1`;
+    // If input looks like a bare ZIP code, add postcode type hint
+    const isZip = /^\d{5}(-\d{4})?$/.test(addr.trim());
+    const typesParam = isZip ? "&types=postcode" : "";
+    const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encoded}.json?access_token=${MAPBOX_TOKEN}&country=US&limit=1${typesParam}`;
     console.log("[SearchTab] Geocoding URL:", url.replace(MAPBOX_TOKEN, "***"));
     try {
       const res = await fetch(url);
       console.log("[SearchTab] Mapbox response status:", res.status);
       const data = await res.json();
       console.log("[SearchTab] Mapbox features count:", data?.features?.length ?? 0);
+      if (data?.features?.length > 0) {
+        console.log("[SearchTab] First feature:", JSON.stringify(data.features[0].place_name));
+      }
       const [lng, lat] = data?.features?.[0]?.center ?? [];
       if (!lat || !lng) {
         console.warn("[SearchTab] No coordinates found in Mapbox response");
