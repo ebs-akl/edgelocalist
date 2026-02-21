@@ -64,17 +64,29 @@ export default function SearchTab({ repName, recentSearches, onSearch, contactCo
 
   const geocodeAddress = async (addr: string): Promise<{ lat: number; lng: number } | null> => {
     if (!MAPBOX_TOKEN) {
+      console.error("[SearchTab] MAPBOX_TOKEN is empty/missing");
       toast({ title: "Mapbox token missing", variant: "destructive" });
       return null;
     }
     const encoded = encodeURIComponent(addr);
-    const res = await fetch(
-      `https://api.mapbox.com/geocoding/v5/mapbox.places/${encoded}.json?access_token=${MAPBOX_TOKEN}&country=US&limit=1`
-    );
-    const data = await res.json();
-    const [lng, lat] = data?.features?.[0]?.center ?? [];
-    if (!lat || !lng) return null;
-    return { lat, lng };
+    const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encoded}.json?access_token=${MAPBOX_TOKEN}&country=US&limit=1`;
+    console.log("[SearchTab] Geocoding URL:", url.replace(MAPBOX_TOKEN, "***"));
+    try {
+      const res = await fetch(url);
+      console.log("[SearchTab] Mapbox response status:", res.status);
+      const data = await res.json();
+      console.log("[SearchTab] Mapbox features count:", data?.features?.length ?? 0);
+      const [lng, lat] = data?.features?.[0]?.center ?? [];
+      if (!lat || !lng) {
+        console.warn("[SearchTab] No coordinates found in Mapbox response");
+        return null;
+      }
+      console.log("[SearchTab] Geocoded to:", { lat, lng });
+      return { lat, lng };
+    } catch (err) {
+      console.error("[SearchTab] Geocoding fetch error:", err);
+      return null;
+    }
   };
 
   const COORD_REGEX = /^(-?\d+(\.\d+)?)[,\s]+(-?\d+(\.\d+)?)$/;
