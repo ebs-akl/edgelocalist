@@ -63,7 +63,6 @@ Deno.serve(async (req) => {
       return new Response(
         JSON.stringify({
           error: "Decrypted payload is not valid JSON",
-          preview: decryptedString.substring(0, 50),
         }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
@@ -91,7 +90,6 @@ Deno.serve(async (req) => {
       return new Response(
         JSON.stringify({
           error: "Missing location ID — could not find locationId/activeLocation in decrypted payload",
-          rawData: userData,
         }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
