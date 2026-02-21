@@ -18,7 +18,7 @@ import { formatPhoneDisplay, formatCurrency } from "@/lib/contacts";
 import type { NearbyContact } from "@/lib/contacts";
 import ContactDetailModal from "./ContactDetailModal";
 import GroupSmsModal from "./GroupSmsModal";
-import stopBotImg from "@/assets/stop_cutout.png";
+import stopBotImg from "@/assets/stopbot.png";
 import {
   AlertDialog,
   AlertDialogAction,
