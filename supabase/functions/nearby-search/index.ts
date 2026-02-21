@@ -24,6 +24,26 @@ function decryptSsoPayload(ssoPayload: string): string | null {
   }
 }
 
+async function geocodeAddress(address: string, token: string): Promise<{ lat: number; lng: number } | null> {
+  if (!address.trim()) return null;
+  const query = encodeURIComponent(address.trim());
+  const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${query}.json?access_token=${token}&country=US&limit=1`;
+  try {
+    const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
+    if (!res.ok) {
+      console.error("Mapbox geocode failed:", res.status);
+      return null;
+    }
+    const data = await res.json();
+    const coords = data.features?.[0]?.center;
+    if (!coords || coords.length < 2) return null;
+    return { lng: coords[0], lat: coords[1] };
+  } catch (err) {
+    console.error("Mapbox geocode error:", err);
+    return null;
+  }
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -31,6 +51,7 @@ serve(async (req) => {
 
   const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
   const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  const MAPBOX_TOKEN = Deno.env.get("MAPBOX_ACCESS_TOKEN");
 
   if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
     return new Response(JSON.stringify({ error: "Missing server configuration" }), {
@@ -99,9 +120,39 @@ serve(async (req) => {
     });
   }
 
-  // ── Validate search params ──
-  const centerLat = Number(body.center_lat);
-  const centerLng = Number(body.center_lng);
+  // ── Resolve coordinates: either provided directly or geocode an address ──
+  let centerLat: number;
+  let centerLng: number;
+
+  if (typeof body.center_lat === "number" && typeof body.center_lng === "number") {
+    // Coordinates provided directly (GPS or pre-geocoded)
+    centerLat = body.center_lat;
+    centerLng = body.center_lng;
+  } else if (typeof body.address === "string" && body.address.trim()) {
+    // Address string: geocode server-side
+    if (!MAPBOX_TOKEN) {
+      return new Response(JSON.stringify({ error: "Geocoding not configured" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const coords = await geocodeAddress(body.address as string, MAPBOX_TOKEN);
+    if (!coords) {
+      return new Response(JSON.stringify({ error: "address_not_found" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    centerLat = coords.lat;
+    centerLng = coords.lng;
+    console.log("Geocoded address to:", centerLat, centerLng);
+  } else {
+    return new Response(JSON.stringify({ error: "Provide center_lat/center_lng or address" }), {
+      status: 400,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
   const radiusMiles = Number(body.radius_miles);
 
   if (isNaN(centerLat) || isNaN(centerLng) || isNaN(radiusMiles)) {
@@ -118,7 +169,7 @@ serve(async (req) => {
     });
   }
 
-  // ── Run the spatial query directly (service role bypasses RLS) ──
+  // ── Run the spatial query ──
   const { data, error } = await supabase.rpc("nearby_contacts_service", {
     rep: repId,
     center_lat: centerLat,
@@ -127,7 +178,6 @@ serve(async (req) => {
   });
 
   if (error) {
-    // Fallback: try raw query if RPC doesn't exist yet
     console.error("nearby_contacts_service error:", error);
     return new Response(JSON.stringify({ error: "Search failed" }), {
       status: 500,
