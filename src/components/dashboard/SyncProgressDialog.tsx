@@ -28,6 +28,7 @@ const stepIcons: Record<string, React.ReactNode> = {
   connect: <Download className="h-4 w-4" />,
   fetch: <Download className="h-4 w-4" />,
   save: <Database className="h-4 w-4" />,
+  geocode: <MapPin className="h-4 w-4" />,
   done: <MapPin className="h-4 w-4" />,
 };
 

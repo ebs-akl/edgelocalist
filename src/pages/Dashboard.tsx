@@ -96,6 +96,7 @@ export default function Dashboard() {
       { id: "connect", label: "Connecting to GoHighLevel", status: "active" },
       { id: "fetch", label: "Fetching your contacts", status: "pending" },
       { id: "save", label: "Saving to your account", status: "pending" },
+      { id: "geocode", label: "Geocoding addresses", status: "pending" },
       { id: "done", label: "Preparing search results", status: "pending" },
     ];
     setSyncSteps(initialSteps);
@@ -136,10 +137,45 @@ export default function Dashboard() {
       await new Promise((r) => setTimeout(r, 400));
       updateStep("save", { status: "done", detail: "Contacts merged and updated" });
 
-      // Step 4: get final stats
+      // Step 4: Geocode contacts without coordinates
+      updateStep("geocode", { status: "active", detail: "Finding coordinates for your contacts..." });
+
+      let totalGeocoded = 0;
+      let remaining = 1; // Start with 1 to enter loop
+      let geocodeRounds = 0;
+      const MAX_ROUNDS = 20; // 500 per round × 20 = up to 10,000 contacts
+
+      while (remaining > 0 && geocodeRounds < MAX_ROUNDS) {
+        const { data: geoData, error: geoErr } = await supabase.functions.invoke("geocode-contacts", {
+          body: { sso_payload: ssoPayload, limit: 500 },
+        });
+
+        if (geoErr || !geoData) break;
+
+        totalGeocoded += geoData.geocoded ?? 0;
+        remaining = geoData.remaining ?? 0;
+        geocodeRounds++;
+
+        if (totalGeocoded > 0) {
+          updateStep("geocode", {
+            status: "active",
+            detail: `${totalGeocoded.toLocaleString()} addresses geocoded${remaining > 0 ? `, ${remaining.toLocaleString()} remaining...` : ""}`,
+          });
+        }
+
+        if (geoData.geocoded === 0) break; // No progress, stop
+      }
+
+      updateStep("geocode", {
+        status: "done",
+        detail: totalGeocoded > 0
+          ? `${totalGeocoded.toLocaleString()} addresses geocoded`
+          : "No new addresses to geocode",
+      });
+
+      // Step 5: get final stats
       updateStep("done", { status: "active" });
 
-      // Fetch searchable count
       const { data: statsData } = await supabase.functions.invoke("ghl-sync-contacts", {
         body: { stats_only: true, sso_payload: ssoPayload },
       });
