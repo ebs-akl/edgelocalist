@@ -168,7 +168,7 @@ serve(async (req) => {
   const accessToken = rep.ghl_access_token;
   const ghlLocationId = rep.ghl_location_id!;
 
-  // Stats-only mode: return contact count and last sync for this rep
+  // Stats-only mode: return contact count, searchable count, and last sync for this rep
   if (statsOnly) {
     const { count, data } = await supabase
       .from("localist_contacts")
@@ -177,8 +177,15 @@ serve(async (req) => {
       .order("updated_at", { ascending: false })
       .limit(1);
 
+    const { count: searchableCount } = await supabase
+      .from("localist_contacts")
+      .select("id", { count: "exact", head: true })
+      .eq("rep_id", repId)
+      .not("latitude", "is", null);
+
     return new Response(JSON.stringify({
       count: count ?? 0,
+      searchable: searchableCount ?? 0,
       last_sync: data?.[0]?.updated_at ?? null,
     }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
