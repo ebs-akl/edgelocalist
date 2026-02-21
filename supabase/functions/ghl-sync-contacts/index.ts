@@ -8,15 +8,15 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
-// GHL custom field IDs for lat/lng
-const LAT_FIELD_ID = "ZVN9RS1nJEZfNbMVqGVN";
-const LNG_FIELD_ID = "VI1lTTp020TB9ycXII1e";
+// GHL custom field keys for lat/lng
+const LAT_FIELD_KEY = "custom_lat";
+const LNG_FIELD_KEY = "custom_lng";
 
 const LOCATION_ID_RE = /^[a-zA-Z0-9]{5,50}$/;
 
-function getCustomField(contact: Record<string, unknown>, fieldId: string): string | null {
-  const fields = contact.customFields as Array<{ id: string; value: string }> ?? [];
-  return fields.find((f) => f.id === fieldId)?.value ?? null;
+function getCustomFieldByKey(contact: Record<string, unknown>, fieldKey: string): string | null {
+  const fields = contact.customFields as Array<{ id: string; key?: string; field_key?: string; value: string }> ?? [];
+  return fields.find((f) => f.key === fieldKey || f.field_key === fieldKey)?.value ?? null;
 }
 
 /**
@@ -201,8 +201,8 @@ serve(async (req) => {
     }
 
     const rows = allContacts.map((c) => {
-      const latStr = getCustomField(c, LAT_FIELD_ID);
-      const lngStr = getCustomField(c, LNG_FIELD_ID);
+      const latStr = getCustomFieldByKey(c, LAT_FIELD_KEY);
+      const lngStr = getCustomFieldByKey(c, LNG_FIELD_KEY);
       const lat = latStr ? parseFloat(latStr) : null;
       const lng = lngStr ? parseFloat(lngStr) : null;
 
