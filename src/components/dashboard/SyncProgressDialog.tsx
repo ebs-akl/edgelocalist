@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { CheckCircle2, Loader2, MapPin, Download, Database, XCircle } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import syncAnimation from "@/assets/sync-animation.gif";
+import stopCutout from "@/assets/stop_cutout.png";
 
 export interface SyncStep {
   id: string;
@@ -144,8 +145,20 @@ export default function SyncProgressDialog({
           )}
 
           {error && (
-            <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3">
-              <p className="text-sm text-destructive">{error}</p>
+            <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 space-y-3">
+              <div className="flex justify-center">
+                <img src={stopCutout} alt="Error" className="h-24 w-auto object-contain" />
+              </div>
+              <p className="text-sm text-destructive text-center">{error}</p>
+              <p className="text-xs text-muted-foreground text-center">
+                Need help?{" "}
+                <a
+                  href="mailto:support@automatedknifelife.com"
+                  className="text-primary underline hover:text-primary/80"
+                >
+                  support@automatedknifelife.com
+                </a>
+              </p>
             </div>
           )}
 
