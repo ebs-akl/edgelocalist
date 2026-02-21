@@ -2,6 +2,7 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { CheckCircle2, Loader2, MapPin, Download, Database, XCircle } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
+import syncAnimation from "@/assets/sync-animation.gif";
 
 export interface SyncStep {
   id: string;
@@ -44,6 +45,17 @@ export default function SyncProgressDialog({
     <Dialog open={open} onOpenChange={(v) => !v && isFinished && onClose()}>
       <DialogContent className="sm:max-w-md" onPointerDownOutside={(e) => !isFinished && e.preventDefault()}>
         <div className="space-y-5">
+          {/* Animated GIF while syncing */}
+          {!isFinished && (
+            <div className="flex justify-center">
+              <img
+                src={syncAnimation}
+                alt="Syncing contacts"
+                className="h-28 w-auto object-contain rounded-lg"
+              />
+            </div>
+          )}
+
           <div>
             <h3
               className="text-lg font-semibold"
