@@ -120,9 +120,10 @@ serve(async (req) => {
 
   // ── Fetch contacts from GoHighLevel API ──
   try {
-    const ghlRes = await fetch(
-      `https://services.leadconnectorhq.com/contacts/?locationId=${encodeURIComponent(ghlLocationId)}&limit=${limit}&skip=${skip}`,
-      {
+    const fetchUrl = new URL("https://services.leadconnectorhq.com/contacts/");
+    fetchUrl.searchParams.set("locationId", ghlLocationId);
+    fetchUrl.searchParams.set("limit", String(limit));
+    const ghlRes = await fetch(fetchUrl.toString(), {
         headers: {
           Authorization: `Bearer ${accessToken}`,
           Version: "2021-07-28",

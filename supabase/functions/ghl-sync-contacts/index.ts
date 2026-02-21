@@ -136,27 +136,32 @@ serve(async (req) => {
   }
 
   try {
-    // Paginate through all GHL contacts
+    // Paginate through all GHL contacts using cursor-based pagination
     const allContacts: Record<string, unknown>[] = [];
-    let page = 1;
     const limit = 100;
+    let startAfter: string | undefined;
+    let startAfterId: string | undefined;
+    let pageNum = 0;
 
     while (true) {
-      const ghlRes = await fetch(
-        `https://services.leadconnectorhq.com/contacts/?locationId=${encodeURIComponent(ghlLocationId)}&limit=${limit}&skip=${(page - 1) * limit}`,
-        {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            Version: "2021-07-28",
-          },
-          signal: AbortSignal.timeout(20000),
-        }
-      );
+      const url = new URL("https://services.leadconnectorhq.com/contacts/");
+      url.searchParams.set("locationId", ghlLocationId);
+      url.searchParams.set("limit", String(limit));
+      if (startAfter) url.searchParams.set("startAfter", startAfter);
+      if (startAfterId) url.searchParams.set("startAfterId", startAfterId);
+
+      const ghlRes = await fetch(url.toString(), {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          Version: "2021-07-28",
+        },
+        signal: AbortSignal.timeout(20000),
+      });
 
       if (!ghlRes.ok) {
         const errText = await ghlRes.text();
-        console.error(`GHL API error page ${page} (status ${ghlRes.status}):`, errText);
-        return new Response(JSON.stringify({ error: "GHL API error", status: ghlRes.status, details: errText }), {
+        console.error(`GHL API error page ${pageNum} (status ${ghlRes.status}):`, errText);
+        return new Response(JSON.stringify({ error: `GHL API error: ${errText}` }), {
           status: ghlRes.status, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
@@ -165,9 +170,13 @@ serve(async (req) => {
       const contacts: Record<string, unknown>[] = ghlData.contacts ?? [];
       allContacts.push(...contacts);
 
-      if (contacts.length < limit) break;
-      page++;
-      if (page > 150) break;
+      // Use cursor from meta for next page
+      const meta = ghlData.meta;
+      if (contacts.length < limit || !meta?.startAfter || !meta?.startAfterId) break;
+      startAfter = meta.startAfter;
+      startAfterId = meta.startAfterId;
+      pageNum++;
+      if (pageNum > 150) break;
     }
 
     console.log(`Fetched ${allContacts.length} contacts from GHL`);
