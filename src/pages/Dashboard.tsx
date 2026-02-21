@@ -183,7 +183,12 @@ export default function Dashboard() {
 
       // Count contacts with coordinates
       let searchable = 0;
-      if (user) {
+      if (isGhlMode && ssoPayload) {
+        const { data: finalStats } = await supabase.functions.invoke("ghl-sync-contacts", {
+          body: { stats_only: true, sso_payload: ssoPayload },
+        });
+        searchable = finalStats?.searchable ?? 0;
+      } else if (user) {
         const { count } = await supabase
           .from("localist_contacts")
           .select("id", { count: "exact", head: true })
