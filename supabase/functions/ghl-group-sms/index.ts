@@ -155,6 +155,48 @@ serve(async (req) => {
     });
   }
 
+  // ── Rate limiting ──
+  const HOURLY_LIMIT = 200;
+  const DAILY_LIMIT = 500;
+  const contactCount = validContacts.length;
+  const nowHour = new Date();
+  nowHour.setMinutes(0, 0, 0);
+  const windowStart = nowHour.toISOString();
+  const today = new Date().toISOString().slice(0, 10);
+
+  // Upsert hourly window
+  const { data: rl, error: rlErr } = await supabase
+    .from("sms_rate_limits")
+    .upsert(
+      { location_id: creds.ghlLocationId, window_start: windowStart, send_count: 0, daily_start: today, daily_count: 0 },
+      { onConflict: "location_id,window_start", ignoreDuplicates: true }
+    )
+    .select("send_count, daily_count, daily_start")
+    .eq("location_id", creds.ghlLocationId)
+    .eq("window_start", windowStart)
+    .maybeSingle();
+
+  if (rlErr) {
+    console.error("Rate limit check failed:", rlErr);
+    return new Response(JSON.stringify({ error: "Rate limit check failed" }), {
+      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
+  const hourlyUsed = rl?.send_count ?? 0;
+  const dailyUsed = rl?.daily_start === today ? (rl?.daily_count ?? 0) : 0;
+
+  if (hourlyUsed + contactCount > HOURLY_LIMIT) {
+    return new Response(JSON.stringify({ error: `Hourly SMS limit reached (${HOURLY_LIMIT}). Try again later.` }), {
+      status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+  if (dailyUsed + contactCount > DAILY_LIMIT) {
+    return new Response(JSON.stringify({ error: `Daily SMS limit reached (${DAILY_LIMIT}). Try again tomorrow.` }), {
+      status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
   const results: { contact_id: string; success: boolean; error?: string }[] = [];
 
   for (const contact of validContacts) {
@@ -201,6 +243,16 @@ serve(async (req) => {
 
   const sent = results.filter((r) => r.success).length;
   const failed = results.filter((r) => !r.success).length;
+
+  // Update rate limit counters with actual sent count
+  if (sent > 0) {
+    await supabase.rpc("increment_sms_rate_limit", {
+      p_location_id: creds.ghlLocationId,
+      p_window_start: windowStart,
+      p_count: sent,
+      p_today: today,
+    }).catch((err: unknown) => console.error("Rate limit increment failed:", err));
+  }
 
   return new Response(
     JSON.stringify({ sent, failed, results }),
