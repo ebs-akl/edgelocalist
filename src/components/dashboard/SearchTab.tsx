@@ -45,7 +45,7 @@ interface SearchTabProps {
 type SortKey = "distance_miles" | "lifetime_value" | "last_order_date" | "last_service_date" | "order_count";
 
 export default function SearchTab({ repName, recentSearches, onSearch, contactCount, isGhlMode, ghlRepId }: SearchTabProps) {
-  const { user } = useAuth();
+  const { user, ssoPayload } = useAuth();
   const [address, setAddress] = useState("");
   const [radius, setRadius] = useState<10 | 25 | 50>(25);
   const [loading, setLoading] = useState(false);
@@ -102,14 +102,31 @@ export default function SearchTab({ repName, recentSearches, onSearch, contactCo
     try {
       setSearchCenter(center);
       onSearch(label);
-      const { data, error } = await supabase.rpc("nearby_contacts", {
-        rep: effectiveRepId,
-        center_lat: center.lat,
-        center_lng: center.lng,
-        radius_miles: radius,
-      });
-      if (error) throw error;
-      setResults((data as NearbyContact[]) ?? []);
+
+      if (isGhlMode && ssoPayload) {
+        // GHL mode: use edge function (auth.uid() is null, RPC won't work directly)
+        const { data: fnData, error: fnError } = await supabase.functions.invoke("nearby-search", {
+          body: {
+            sso_payload: ssoPayload,
+            center_lat: center.lat,
+            center_lng: center.lng,
+            radius_miles: radius,
+          },
+        });
+        if (fnError) throw fnError;
+        setResults((fnData?.contacts as NearbyContact[]) ?? []);
+      } else {
+        // Standalone mode: direct RPC call
+        const { data, error } = await supabase.rpc("nearby_contacts", {
+          rep: effectiveRepId,
+          center_lat: center.lat,
+          center_lng: center.lng,
+          radius_miles: radius,
+        });
+        if (error) throw error;
+        setResults((data as NearbyContact[]) ?? []);
+      }
+
       setSearched(true);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Search failed.";
@@ -117,7 +134,7 @@ export default function SearchTab({ repName, recentSearches, onSearch, contactCo
     } finally {
       setLoading(false);
     }
-  }, [effectiveRepId, contactCount, radius, onSearch]);
+  }, [effectiveRepId, contactCount, radius, onSearch, isGhlMode, ssoPayload]);
 
   const handleGPS = () => {
     if (!navigator.geolocation) {

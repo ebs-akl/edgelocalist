@@ -234,6 +234,33 @@ export type Database = {
           zip: string
         }[]
       }
+      nearby_contacts_service: {
+        Args: {
+          center_lat: number
+          center_lng: number
+          radius_miles: number
+          rep: string
+        }
+        Returns: {
+          address: string
+          biz: string
+          cat: string
+          city: string
+          distance_miles: number
+          first_name: string
+          gift_count: number
+          id: string
+          last_name: string
+          last_order_date: string
+          last_service_date: string
+          lifetime_value: number
+          order_count: number
+          phone: string
+          rlt: string
+          state: string
+          zip: string
+        }[]
+      }
       smart_upsert_ghl_contacts:
         | { Args: { p_contacts: Json }; Returns: number }
         | { Args: { p_contacts: Json; p_rep_id: string }; Returns: number }
