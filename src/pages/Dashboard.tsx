@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -276,6 +276,33 @@ export default function Dashboard() {
       }
     }
   }, [userId, isGhlMode, ssoPayload]);
+
+  // ── Realtime subscription for webhook-driven contact updates ──
+  useEffect(() => {
+    if (!ghlLocationId && !user?.id) return;
+
+    const channel = supabase
+      .channel("contact-updates")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "localist_contacts",
+          ...(ghlLocationId ? { filter: `location_id=eq.${ghlLocationId}` } : { filter: `rep_id=eq.${user?.id}` }),
+        },
+        (payload) => {
+          console.log("[Dashboard] Realtime contact event:", payload.eventType);
+          // Refresh stats when contacts are inserted or updated
+          fetchContactStats();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [ghlLocationId, user?.id]);
 
   const handleSearch = (address: string) => {
     setSearchesToday((n) => n + 1);
