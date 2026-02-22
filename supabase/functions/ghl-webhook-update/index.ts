@@ -20,59 +20,36 @@ serve(async (req) => {
     }
 
     const supabase = createClient(supabaseUrl, serviceRoleKey);
-    const body = await req.json();
-    console.log("[ghl-webhook-update] Received payload keys:", Object.keys(body));
+    const payload = await req.json();
+    console.log("[ghl-webhook-update] Received payload keys:", Object.keys(payload));
 
-    // Extract contact_id
-    const contactId = body.id || body.contact_id;
-    if (!contactId) {
+    // 4. Extract the exact data we need
+    const contactId = payload.id || payload.contact_id;
+    const locationId = payload.locationId || payload.location?.id;
+
+    if (!contactId || !locationId) {
       return new Response(
-        JSON.stringify({ error: "Missing contact_id or id in payload" }),
+        JSON.stringify({ error: "Missing Contact ID or Location ID in payload" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Extract location_id
-    const locationId =
-      body.locationId ||
-      body.location_id ||
-      body.location?.id ||
-      null;
+    // GHL sometimes puts custom fields at the root level, sometimes inside customData
+    const customData = payload.customData || payload;
 
-    if (!locationId) {
-      return new Response(
-        JSON.stringify({ error: "Missing locationId in payload" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+    // 🔪 Extract the Knife Emoji fields
+    const rawLtv = customData['🔪Lifetime $'] || null;
+    const lastOrderDate = customData['🔪Last Order Date'] || null;
+
+    // Clean the LTV string (remove '$', ',', and spaces) and convert to a number
+    let parsedLtv = 0;
+    if (rawLtv) {
+      const cleanLtvString = String(rawLtv).replace(/[^0-9.-]+/g, "");
+      parsedLtv = parseFloat(cleanLtvString) || 0;
     }
 
-    // Extract standard fields
-    const firstName = body.firstName || body.first_name || null;
-    const lastName = body.lastName || body.last_name || null;
-    const phone = body.phone ? String(body.phone).replace(/\D/g, "") : null;
-    const address = body.address1 || body.address || null;
-    const city = body.city || null;
-    const state = body.state || null;
-    const zip = body.postalCode || body.zip || null;
-
-    // Extract custom fields (Lifetime Value, Last Order Date)
-    let lifetimeValue: number | null = null;
-    let lastOrderDate: string | null = null;
-
-    const customData = body.customData || body.customFields || body.custom_data;
-    if (customData && typeof customData === "object") {
-      // Try common key patterns
-      for (const [key, val] of Object.entries(customData)) {
-        const k = String(key).toLowerCase();
-        if (k.includes("lifetime") && k.includes("value")) {
-          const parsed = parseFloat(String(val));
-          if (!isNaN(parsed)) lifetimeValue = parsed;
-        }
-        if (k.includes("last") && k.includes("order") && k.includes("date")) {
-          lastOrderDate = val ? String(val) : null;
-        }
-      }
-    }
+    // Extract phone
+    const phone = payload.phone ? String(payload.phone).replace(/\D/g, "") : null;
 
     // Find the rep_id for this location
     const { data: rep, error: repErr } = await supabase
@@ -92,7 +69,7 @@ serve(async (req) => {
 
     const repId = rep.id;
 
-    // Upsert the contact
+    // 5. Format and upsert the contact
     const { error: upsertErr } = await supabase
       .from("localist_contacts")
       .upsert(
@@ -101,14 +78,16 @@ serve(async (req) => {
           contact_id: contactId,
           ghl_contact_id: contactId,
           location_id: locationId,
-          first_name: firstName,
-          last_name: lastName,
+          first_name: payload.first_name || payload.firstName || '',
+          last_name: payload.last_name || payload.lastName || '',
           phone,
-          address,
-          city,
-          state,
-          zip,
-          lifetime_value: lifetimeValue,
+          address: payload.address1 || payload.address || '',
+          city: payload.city || '',
+          state: payload.state || '',
+          zip: payload.postalCode || payload.postal_code || '',
+          latitude: customData['custom_lat'] ? parseFloat(customData['custom_lat']) : null,
+          longitude: customData['custom_lng'] ? parseFloat(customData['custom_lng']) : null,
+          lifetime_value: parsedLtv,
           last_order_date: lastOrderDate,
           source: "ghl",
           updated_at: new Date().toISOString(),
