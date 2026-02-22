@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import CryptoJS from "npm:crypto-js";
+import { refreshGhlToken, isTokenExpired } from "../_shared/ghl-refresh-token.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -141,22 +142,21 @@ serve(async (req) => {
   // Look up rep by location_id, then fallback to any rep with a token
   let { data: rep } = await supabase
     .from("localist_reps")
-    .select("id, ghl_access_token, ghl_location_id")
+    .select("id, ghl_access_token, ghl_refresh_token, ghl_expires_at, ghl_location_id")
     .eq("ghl_location_id", locationId)
     .maybeSingle();
 
   if (!rep?.ghl_access_token) {
-    // Fallback: find any rep with a valid GHL token (location may have changed)
     const { data: tokenRep } = await supabase
       .from("localist_reps")
-      .select("id, ghl_access_token, ghl_location_id")
+      .select("id, ghl_access_token, ghl_refresh_token, ghl_expires_at, ghl_location_id")
       .not("ghl_access_token", "is", null)
       .limit(1)
       .maybeSingle();
 
     if (tokenRep?.ghl_access_token) {
       console.log(`Using rep ${tokenRep.id} with token for location ${tokenRep.ghl_location_id} (SSO location: ${locationId})`);
-      rep = tokenRep; // Keep original ghl_location_id for API calls
+      rep = tokenRep;
     } else {
       return new Response(JSON.stringify({ error: "No rep found for this location" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -165,8 +165,21 @@ serve(async (req) => {
   }
 
   const repId = rep.id;
-  const accessToken = rep.ghl_access_token;
+  let accessToken = rep.ghl_access_token!;
   const ghlLocationId = rep.ghl_location_id!;
+
+  // Auto-refresh expired token
+  if (isTokenExpired(rep.ghl_expires_at) && rep.ghl_refresh_token) {
+    console.log(`Token expired for rep ${repId}, attempting refresh...`);
+    const newToken = await refreshGhlToken(supabase, repId, rep.ghl_refresh_token);
+    if (newToken) {
+      accessToken = newToken;
+    } else {
+      return new Response(JSON.stringify({ error: "CRM token expired and refresh failed. Please reconnect GoHighLevel." }), {
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+  }
 
   // Stats-only mode: return contact count, searchable count, and last sync for this rep
   if (statsOnly) {
