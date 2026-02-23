@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "@/hooks/use-toast";
-import { MapPin, Loader2, Phone, MessageSquare, Map, ExternalLink, ChevronUp, ChevronDown, Filter, Trash2, Send, ArrowUpDown } from "lucide-react";
+import { MapPin, Loader2, Phone, MessageSquare, Map, ExternalLink, ChevronUp, ChevronDown, Filter, Trash2, Send, ArrowUpDown, Tag } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -18,6 +18,7 @@ import { formatPhoneDisplay, formatCurrency, toTitleCase } from "@/lib/contacts"
 import type { NearbyContact } from "@/lib/contacts";
 import ContactDetailModal from "./ContactDetailModal";
 import GroupSmsModal from "./GroupSmsModal";
+import TagContactsModal from "./TagContactsModal";
 import stopBotImg from "@/assets/stopbot.png";
 import {
   AlertDialog,
@@ -45,7 +46,7 @@ interface SearchTabProps {
 type SortKey = "distance_miles" | "lifetime_value" | "last_order_date" | "last_service_date" | "order_count";
 
 export default function SearchTab({ repName, recentSearches, onSearch, contactCount, isGhlMode, ghlRepId }: SearchTabProps) {
-  const { user } = useAuth();
+  const { user, ghlLocationId } = useAuth();
   const [address, setAddress] = useState("");
   const [radius, setRadius] = useState<10 | 25 | 50>(25);
   const [loading, setLoading] = useState(false);
@@ -61,6 +62,7 @@ export default function SearchTab({ repName, recentSearches, onSearch, contactCo
   // Group SMS state
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [groupSmsOpen, setGroupSmsOpen] = useState(false);
+  const [tagModalOpen, setTagModalOpen] = useState(false);
   const [locating, setLocating] = useState(false);
   const watchIdRef = useRef<number | null>(null);
 
@@ -477,14 +479,25 @@ export default function SearchTab({ repName, recentSearches, onSearch, contactCo
             <div className="flex items-center gap-2 flex-wrap">
               {/* Group SMS button — GHL mode only, shown when contacts are selected */}
               {isGhlMode && selectedContacts.length > 0 && (
-                <Button
-                  size="sm"
-                  className="h-8 gap-1.5 text-xs font-semibold"
-                  onClick={() => setGroupSmsOpen(true)}
-                >
-                  <Send className="h-3.5 w-3.5" />
-                  Group Text ({selectedContacts.length})
-                </Button>
+                <>
+                  <Button
+                    size="sm"
+                    className="h-8 gap-1.5 text-xs font-semibold"
+                    onClick={() => setGroupSmsOpen(true)}
+                  >
+                    <Send className="h-3.5 w-3.5" />
+                    Group Text ({selectedContacts.length})
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-8 gap-1.5 text-xs font-semibold"
+                    onClick={() => setTagModalOpen(true)}
+                  >
+                    <Tag className="h-3.5 w-3.5" />
+                    Tag ({selectedContacts.length})
+                  </Button>
+                </>
               )}
               {results.length > 0 && (
                 <>
@@ -649,13 +662,16 @@ export default function SearchTab({ repName, recentSearches, onSearch, contactCo
                         >
                           <Map className="h-4 w-4" />
                         </a>
-                        {isGhlMode && (
-                          <div
-                            className="flex items-center justify-center h-9 w-9 rounded-lg bg-muted hover:bg-muted/80 text-muted-foreground transition-colors"
-                            title="View in GHL"
+                        {isGhlMode && contact.contact_id && (
+                          <a
+                            href={`https://app.gohighlevel.com/v2/location/${ghlLocationId}/contacts/detail/${contact.contact_id}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center justify-center h-9 w-9 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary transition-colors"
+                            title="View in GoHighLevel"
                           >
                             <ExternalLink className="h-4 w-4" />
-                          </div>
+                          </a>
                         )}
                         <button
                           className="flex items-center justify-center h-9 w-9 rounded-lg bg-destructive/10 hover:bg-destructive/20 text-destructive transition-colors"
@@ -717,6 +733,15 @@ export default function SearchTab({ repName, recentSearches, onSearch, contactCo
           onClose={() => setGroupSmsOpen(false)}
           contacts={selectedContacts}
           repName={repName}
+        />
+      )}
+
+      {/* Tag contacts modal */}
+      {isGhlMode && (
+        <TagContactsModal
+          open={tagModalOpen}
+          onClose={() => setTagModalOpen(false)}
+          contacts={selectedContacts}
         />
       )}
     </div>

@@ -43,6 +43,7 @@ export interface NearbyContact {
   order_count: number | null;
   gift_count: number | null;
   distance_miles: number;
+  contact_id?: string;
 }
 
 export function formatPhone(raw: string): string {

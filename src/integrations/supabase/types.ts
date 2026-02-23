@@ -246,6 +246,7 @@ export type Database = {
           biz: string
           cat: string
           city: string
+          contact_id: string
           distance_miles: number
           first_name: string
           gift_count: number
