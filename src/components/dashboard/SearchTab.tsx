@@ -213,14 +213,37 @@ export default function SearchTab({ repName, recentSearches, onSearch, contactCo
         setAddress("Current Location");
         runRadiusQuery({ lat: latitude, lng: longitude }, "Current Location");
       },
-      (err) => {
+      async (err) => {
         if (watchIdRef.current !== null) {
           navigator.geolocation.clearWatch(watchIdRef.current);
           watchIdRef.current = null;
         }
+
+        // If permission denied and we're in an iframe (GHL), try IP-based fallback
+        if (err.code === 1 && isGhlMode) {
+          toast({ title: "GPS blocked inside HighLevel", description: "Falling back to approximate location…" });
+          try {
+            const res = await fetch("https://ipapi.co/json/");
+            if (!res.ok) throw new Error("IP lookup failed");
+            const geo = await res.json();
+            if (geo.latitude && geo.longitude) {
+              setLocating(false);
+              setAddress(`Near ${geo.city || "your location"} (approx.)`);
+              toast({ title: "Using approximate location", description: `City-level accuracy near ${geo.city || "your area"}. For precise GPS, open EdgeLocaList directly.` });
+              runRadiusQuery({ lat: geo.latitude, lng: geo.longitude }, `Near ${geo.city || "your location"}`);
+              return;
+            }
+            throw new Error("No coordinates returned");
+          } catch {
+            setLocating(false);
+            toast({ title: "Could not determine location", description: "Type an address or ZIP code instead.", variant: "destructive" });
+            return;
+          }
+        }
+
         setLocating(false);
         const detail =
-          err.code === 1 ? "Location permission denied." :
+          err.code === 1 ? "Location permission denied. Please allow location access in your browser settings." :
           err.code === 2 ? "Location unavailable. Try again." :
           "Location request timed out.";
         toast({ title: "Could not get location", description: detail, variant: "destructive" });
@@ -374,7 +397,7 @@ export default function SearchTab({ repName, recentSearches, onSearch, contactCo
           size="icon"
           onClick={handleGPS}
           disabled={locating}
-          title="Use my location"
+          title={isGhlMode ? "Use approximate location" : "Use my location"}
           className="min-h-[44px] min-w-[44px] shrink-0"
         >
           {locating ? (
