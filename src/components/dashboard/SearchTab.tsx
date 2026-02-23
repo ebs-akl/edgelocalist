@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -61,6 +61,8 @@ export default function SearchTab({ repName, recentSearches, onSearch, contactCo
   // Group SMS state
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [groupSmsOpen, setGroupSmsOpen] = useState(false);
+  const [locating, setLocating] = useState(false);
+  const watchIdRef = useRef<number | null>(null);
 
   const geocodeAddress = async (addr: string): Promise<{ lat: number; lng: number } | null> => {
     if (!MAPBOX_TOKEN) {
@@ -193,15 +195,37 @@ export default function SearchTab({ repName, recentSearches, onSearch, contactCo
       toast({ title: "GPS not supported on this device", variant: "destructive" });
       return;
     }
-    navigator.geolocation.getCurrentPosition(
+    // Clear any previous watch
+    if (watchIdRef.current !== null) {
+      navigator.geolocation.clearWatch(watchIdRef.current);
+      watchIdRef.current = null;
+    }
+    setLocating(true);
+    watchIdRef.current = navigator.geolocation.watchPosition(
       (pos) => {
         const { latitude, longitude } = pos.coords;
+        // Stop watching once we have a fix
+        if (watchIdRef.current !== null) {
+          navigator.geolocation.clearWatch(watchIdRef.current);
+          watchIdRef.current = null;
+        }
+        setLocating(false);
         setAddress("Current Location");
         runRadiusQuery({ lat: latitude, lng: longitude }, "Current Location");
       },
-      () => {
-        toast({ title: "Could not get location", description: "Check your browser permissions.", variant: "destructive" });
-      }
+      (err) => {
+        if (watchIdRef.current !== null) {
+          navigator.geolocation.clearWatch(watchIdRef.current);
+          watchIdRef.current = null;
+        }
+        setLocating(false);
+        const detail =
+          err.code === 1 ? "Location permission denied." :
+          err.code === 2 ? "Location unavailable. Try again." :
+          "Location request timed out.";
+        toast({ title: "Could not get location", description: detail, variant: "destructive" });
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 30000 }
     );
   };
 
@@ -349,11 +373,19 @@ export default function SearchTab({ repName, recentSearches, onSearch, contactCo
           variant="outline"
           size="icon"
           onClick={handleGPS}
+          disabled={locating}
           title="Use my location"
           className="min-h-[44px] min-w-[44px] shrink-0"
         >
-          <MapPin className="h-4 w-4" />
+          {locating ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <MapPin className="h-4 w-4" />
+          )}
         </Button>
+        {locating && (
+          <span className="text-xs text-muted-foreground animate-pulse">Locating…</span>
+        )}
       </div>
 
       {/* Recent searches */}
