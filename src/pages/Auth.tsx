@@ -13,6 +13,7 @@ import Footer from "@/components/Footer";
 export default function Auth() {
   const [isLogin, setIsLogin] = useState(true);
   const [forgotPassword, setForgotPassword] = useState(false);
+  const [useMagicLink, setUseMagicLink] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
@@ -75,6 +76,28 @@ export default function Auth() {
     }
   };
 
+  const handleMagicLink = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email) {
+      toast({ title: "Enter your email", description: "We'll send you a secure login link.", variant: "destructive" });
+      return;
+    }
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.signInWithOtp({
+        email,
+        options: { emailRedirectTo: `${window.location.origin}/dashboard` },
+      });
+      if (error) throw error;
+      toast({ title: "Check your email!", description: "We sent you a secure login link." });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Something went wrong.";
+      toast({ title: "Error", description: message, variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email) {
@@ -111,6 +134,8 @@ export default function Auth() {
             <CardTitle className="text-base font-normal">
               {forgotPassword
                 ? "Reset your password"
+                : useMagicLink
+                ? "Sign in with Magic Link"
                 : isLogin
                 ? "Sign in to your dashboard"
                 : "Create your account"}
@@ -147,6 +172,37 @@ export default function Auth() {
                     className="text-primary hover:underline font-medium"
                   >
                     Back to sign in
+                  </button>
+                </p>
+              </form>
+            ) : useMagicLink ? (
+              <form onSubmit={handleMagicLink} className="space-y-4">
+                <p className="text-sm text-muted-foreground">
+                  Enter your email and we'll send you a secure login link — no password needed.
+                </p>
+                <div className="space-y-2">
+                  <Label htmlFor="magic-email">Email</Label>
+                  <Input
+                    id="magic-email"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="you@example.com"
+                    style={{ fontSize: "16px" }}
+                    required
+                  />
+                </div>
+                <Button type="submit" className="w-full min-h-[44px]" disabled={loading}>
+                  {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Send Magic Link
+                </Button>
+                <p className="text-center text-sm text-muted-foreground">
+                  <button
+                    type="button"
+                    onClick={() => setUseMagicLink(false)}
+                    className="text-primary hover:underline font-medium"
+                  >
+                    Sign in with password instead
                   </button>
                 </p>
               </form>
@@ -233,6 +289,26 @@ export default function Auth() {
                   {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   {isLogin ? "Sign In" : "Create Account"}
                 </Button>
+                {isLogin && (
+                  <div className="relative my-2">
+                    <div className="absolute inset-0 flex items-center">
+                      <span className="w-full border-t border-border" />
+                    </div>
+                    <div className="relative flex justify-center text-xs uppercase">
+                      <span className="bg-card px-2 text-muted-foreground">or</span>
+                    </div>
+                  </div>
+                )}
+                {isLogin && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full min-h-[44px]"
+                    onClick={() => setUseMagicLink(true)}
+                  >
+                    Sign in with Magic Link
+                  </Button>
+                )}
                 <p className="text-center text-sm text-muted-foreground">
                   {isLogin ? "No account? " : "Already have one? "}
                   <button
