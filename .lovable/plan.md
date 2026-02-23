@@ -1,76 +1,58 @@
 
 
-# Make Rep Number an Immutable Unique Identifier
+# Fix: Geolocation "Permission Denied" in GHL Iframe
 
-## Overview
+## Root Cause
 
-The Cutco rep number will become a required, immutable, unique identifier for each representative. Once set during signup, it cannot be changed. This ensures airtight data isolation -- no rep can access another rep's contacts because their identity is permanently tied to their 8-digit rep number.
+This is **not a code bug**. When your app runs inside GoHighLevel's iframe, the browser blocks geolocation access because GHL's `<iframe>` tag does not include `allow="geolocation"`. This is a browser security policy you cannot override from inside the iframe.
 
-## What Changes
+## What We Can Do
 
-### 1. Database: Add UNIQUE constraint on `rep_number`
+Since we can't control GHL's iframe attributes, the plan focuses on two things:
+1. **Better error messaging** that tells you exactly why it failed and what to do
+2. **An IP-based location fallback** so the "Use My Location" button still works inside GHL (approximate city-level accuracy)
 
-Add a unique constraint to the `localist_reps.rep_number` column so no two reps can share the same number. Currently there are no duplicates in the database, so this is safe to apply.
+---
 
-### 2. Signup: Make rep number required
+## Implementation Steps
 
-The signup form currently treats the rep number as optional. It will become a **required field** during account creation. The form will:
-- Validate it is exactly 8 digits
-- Check against the database for uniqueness before submitting (via a quick query)
-- Show a clear error if the number is already taken
+### 1. Add IP-based geolocation fallback
 
-### 3. Settings: Make rep number read-only
+When `watchPosition` fails with "permission denied" (error code 1) inside the GHL iframe, automatically fall back to an IP geolocation API to get an approximate location.
 
-The Settings page currently allows editing the rep number. Once set, it will be displayed as **read-only text** (no edit button). This prevents a rep from changing their number to impersonate another rep.
+- Use a free IP geolocation service (e.g., `ipapi.co/json/` or `ip-api.com/json`) to get rough lat/lng
+- Show a toast explaining the location is approximate: "Using approximate location (city-level). For precise GPS, open EdgeLocaList directly."
+- Proceed with the radius search using the approximate coordinates
 
-### 4. Database trigger: Prevent updates to `rep_number`
+### 2. Improve the error toast for iframe context
 
-A Postgres trigger will be added to the `localist_reps` table that rejects any `UPDATE` that attempts to change `rep_number` once it has been set. This is a server-side safety net -- even if someone bypasses the UI, the database itself will block the change.
+When geolocation fails inside the GHL iframe, update the error message to be actionable:
+- Detect iframe context (`window.self !== window.top`)
+- Show a specific message: "GPS is blocked inside HighLevel. Falling back to approximate location..." instead of the generic "Location permission denied"
+- If the IP fallback also fails, suggest typing an address manually
+
+### 3. Hide or restyle the GPS button in iframe mode (optional polish)
+
+- When in GHL mode (`isGhlMode`), change the button tooltip to "Use approximate location" so expectations are set
 
 ---
 
 ## Technical Details
 
-### Migration SQL
+**File: `src/components/dashboard/SearchTab.tsx`**
 
-```sql
--- 1. Unique constraint
-ALTER TABLE public.localist_reps
-  ADD CONSTRAINT localist_reps_rep_number_unique UNIQUE (rep_number);
+In the `handleGPS` function's error callback (around line 216), when `err.code === 1` (PERMISSION_DENIED):
 
--- 2. Immutability trigger
-CREATE OR REPLACE FUNCTION public.prevent_rep_number_change()
-  RETURNS trigger
-  LANGUAGE plpgsql
-  SECURITY DEFINER
-  SET search_path TO 'public'
-AS $$
-BEGIN
-  IF OLD.rep_number IS NOT NULL
-     AND NEW.rep_number IS DISTINCT FROM OLD.rep_number THEN
-    RAISE EXCEPTION 'rep_number cannot be changed once set';
-  END IF;
-  RETURN NEW;
-END;
-$$;
-
-CREATE TRIGGER trg_immutable_rep_number
-  BEFORE UPDATE ON public.localist_reps
-  FOR EACH ROW
-  EXECUTE FUNCTION public.prevent_rep_number_change();
+```text
+1. Check if we're in an iframe (window.self !== window.top)
+2. If yes, call IP geolocation API as fallback
+3. On success: run radius query with approximate coords + show info toast
+4. On failure: show "Type an address instead" toast
 ```
 
-### Frontend Changes
+The IP geolocation fetch is a simple `fetch("https://ipapi.co/json/")` returning `{ latitude, longitude, city }`. No new dependencies needed.
 
-| File | Change |
-|---|---|
-| `src/pages/Auth.tsx` | Make `repNumber` required on signup; add uniqueness check before submit |
-| `src/pages/Settings.tsx` | Remove edit button/logic for rep number; display as static text |
+**Changes limited to:**
+- `src/components/dashboard/SearchTab.tsx` — add fallback logic in `handleGPS` error handler (~20 lines), update button tooltip when `isGhlMode`
 
-### What stays the same
-
-- Login flow (email + password) -- unchanged
-- RLS policies -- already enforce `rep_id = auth.uid()` isolation
-- The Account Merge Handshake -- continues to use `rep_number` as the bridge
-- GHL SSO flow -- unaffected
-
+No new files, no new dependencies, no backend changes.
