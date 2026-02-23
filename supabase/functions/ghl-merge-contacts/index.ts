@@ -34,6 +34,7 @@ Deno.serve(async (req) => {
     const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
 
+    const authHeader = req.headers.get("Authorization");
     const body = await req.json();
     const { sso_payload, rep_number } = body;
 
@@ -46,41 +47,75 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Resolve and validate locationId from SSO payload (required)
-    if (!sso_payload) {
+    let locationId: string | null = null;
+
+    // ── Auth: Bearer token (preferred) or SSO payload (legacy) ──
+    if (authHeader?.startsWith("Bearer ")) {
+      const { data: { user }, error: authError } = await supabase.auth.getUser(
+        authHeader.replace("Bearer ", "")
+      );
+      if (authError || !user) {
+        return new Response(
+          JSON.stringify({ error: "Invalid authorization" }),
+          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const { data: rep, error: repError } = await supabase
+        .from("localist_reps")
+        .select("id, rep_number, ghl_location_id")
+        .eq("id", user.id)
+        .single();
+
+      if (repError || !rep) {
+        return new Response(
+          JSON.stringify({ error: "No rep found for this user" }),
+          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      if (rep.rep_number !== trimmedRepNum) {
+        return new Response(
+          JSON.stringify({ error: "Rep number does not match this account" }),
+          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      locationId = rep.ghl_location_id;
+    } else if (sso_payload) {
+      // Legacy SSO payload path
+      locationId = decryptSsoPayload(sso_payload);
+      if (!locationId || !LOCATION_ID_RE.test(locationId)) {
+        return new Response(
+          JSON.stringify({ error: "Invalid SSO payload" }),
+          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      // Verify that this locationId owns this rep_number
+      const { data: rep, error: repError } = await supabase
+        .from("localist_reps")
+        .select("id, rep_number, ghl_location_id")
+        .eq("ghl_location_id", locationId)
+        .single();
+
+      if (repError || !rep) {
+        return new Response(
+          JSON.stringify({ error: "No rep found for this location" }),
+          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      if (rep.rep_number !== trimmedRepNum) {
+        return new Response(
+          JSON.stringify({ error: "Rep number does not match this location" }),
+          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    } else {
       return new Response(
-        JSON.stringify({ error: "SSO payload required" }),
+        JSON.stringify({ error: "Authorization required" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    const locationId = decryptSsoPayload(sso_payload);
-    if (!locationId || !LOCATION_ID_RE.test(locationId)) {
-      return new Response(
-        JSON.stringify({ error: "Invalid SSO payload" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    // Verify that this locationId owns this rep_number
-    const { data: rep, error: repError } = await supabase
-      .from("localist_reps")
-      .select("id, rep_number, ghl_location_id")
-      .eq("ghl_location_id", locationId)
-      .single();
-
-    if (repError || !rep) {
-      return new Response(
-        JSON.stringify({ error: "No rep found for this location" }),
-        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    // The rep_number in the request must match the rep's own rep_number
-    if (rep.rep_number !== trimmedRepNum) {
-      return new Response(
-        JSON.stringify({ error: "Rep number does not match this location" }),
-        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 

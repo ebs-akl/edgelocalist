@@ -14,13 +14,18 @@ Deno.serve(async (req) => {
 
   try {
     const GHL_SSO_KEY = Deno.env.get("GHL_SSO_KEY");
-    if (!GHL_SSO_KEY) {
-      console.error("GHL_SSO_KEY is not configured");
+    const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
+    const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+
+    if (!GHL_SSO_KEY || !SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+      console.error("Missing server config: GHL_SSO_KEY, SUPABASE_URL, or SUPABASE_SERVICE_ROLE_KEY");
       return new Response(
-        JSON.stringify({ error: "Server configuration error: GHL_SSO_KEY not set" }),
+        JSON.stringify({ error: "Server configuration error" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
     let body: { payload?: string } = {};
     try {
@@ -40,17 +45,14 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Decrypt using CryptoJS AES (standard OpenSSL format — "Salted__" prefix)
+    // ── Step 1: Decrypt SSO payload ──
     const bytes = CryptoJS.AES.decrypt(payload, GHL_SSO_KEY);
     const decryptedString = bytes.toString(CryptoJS.enc.Utf8);
 
     if (!decryptedString) {
       console.error("Decryption resulted in empty string. Payload length:", payload.length);
       return new Response(
-        JSON.stringify({
-          error: "Decryption resulted in empty string. Check GHL_SSO_KEY matches the key configured in GoHighLevel.",
-          payload_length: payload.length,
-        }),
+        JSON.stringify({ error: "Decryption failed. Check GHL_SSO_KEY." }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -61,14 +63,12 @@ Deno.serve(async (req) => {
     } catch {
       console.error("Decrypted string is not valid JSON:", decryptedString.substring(0, 100));
       return new Response(
-        JSON.stringify({
-          error: "Decrypted payload is not valid JSON",
-        }),
+        JSON.stringify({ error: "Decrypted payload is not valid JSON" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Fuzzy-match locationId — GHL uses "activeLocation" in SSO payloads
+    // ── Step 2: Extract fields from SSO payload ──
     const locationId =
       userData.activeLocation ||
       userData.locationId ||
@@ -77,7 +77,6 @@ Deno.serve(async (req) => {
       (userData.location && typeof userData.location === "object" && (userData.location as any).id) ||
       null;
 
-    // Fuzzy-match companyId
     const companyId =
       userData.companyId ||
       userData.company_id ||
@@ -88,21 +87,132 @@ Deno.serve(async (req) => {
     if (!locationId) {
       console.log("DECRYPTED USER DATA (no locationId found):", JSON.stringify(userData));
       return new Response(
-        JSON.stringify({
-          error: "Missing location ID — could not find locationId/activeLocation in decrypted payload",
-        }),
+        JSON.stringify({ error: "Missing location ID in SSO payload" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    console.log("✅ SSO verified. locationId:", locationId, "companyId:", companyId);
+    const ssoEmail = (userData.email || userData.userEmail || userData.user_email || "") as string;
+    const firstName = (userData.firstName || userData.first_name || "") as string;
+    const lastName = (userData.lastName || userData.last_name || "") as string;
+    const fullName = `${firstName} ${lastName}`.trim();
+
+    // ── Step 3: Find or create Supabase auth user ──
+    let authUserId: string | null = null;
+    let authEmail: string | null = null;
+
+    // Check if a rep already exists for this GHL location
+    const { data: existingRep } = await supabase
+      .from("localist_reps")
+      .select("id, email, full_name")
+      .eq("ghl_location_id", locationId as string)
+      .maybeSingle();
+
+    if (existingRep) {
+      // Rep row exists — check if a matching auth.users entry exists
+      const { data: { user: existingAuthUser } } = await supabase.auth.admin.getUserById(existingRep.id);
+
+      if (existingAuthUser) {
+        // Auth user exists — reuse it
+        authUserId = existingAuthUser.id;
+        authEmail = existingAuthUser.email!;
+        console.log("Found existing auth user:", authUserId);
+      } else {
+        // Rep exists but no auth user — create one with the SAME ID
+        // so existing localist_contacts.rep_id foreign keys remain valid
+        authEmail = existingRep.email || ssoEmail || `ghl-${locationId}@edgelocalist.app`;
+        const { data: newUser, error: createErr } = await supabase.auth.admin.createUser({
+          id: existingRep.id,
+          email: authEmail,
+          email_confirm: true,
+          user_metadata: fullName ? { full_name: fullName } : undefined,
+        });
+
+        if (createErr) {
+          console.error("Failed to create auth user with rep ID:", createErr.message);
+          return new Response(
+            JSON.stringify({ error: `Cannot provision auth session: ${createErr.message}` }),
+            { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+        authUserId = newUser.user.id;
+        console.log("Created auth user with existing rep ID:", authUserId);
+      }
+    } else {
+      // No rep for this location — create new auth user + rep row
+      authEmail = ssoEmail || `ghl-${locationId}@edgelocalist.app`;
+      const { data: newUser, error: createErr } = await supabase.auth.admin.createUser({
+        email: authEmail,
+        email_confirm: true,
+        user_metadata: fullName ? { full_name: fullName } : undefined,
+      });
+
+      if (createErr) {
+        console.error("Failed to create new auth user:", createErr.message);
+        // Email might already be in use — try finding by email in localist_reps
+        const { data: emailRep } = await supabase
+          .from("localist_reps")
+          .select("id")
+          .eq("email", authEmail)
+          .maybeSingle();
+
+        if (emailRep) {
+          authUserId = emailRep.id;
+          // Link this rep to the GHL location
+          await supabase
+            .from("localist_reps")
+            .update({ ghl_location_id: locationId as string })
+            .eq("id", emailRep.id);
+          console.log("Linked existing rep to GHL location:", authUserId);
+        } else {
+          return new Response(
+            JSON.stringify({ error: `Cannot provision auth session: ${createErr.message}` }),
+            { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+      } else if (newUser?.user) {
+        authUserId = newUser.user.id;
+        // Create the rep row
+        await supabase.from("localist_reps").upsert({
+          id: authUserId,
+          email: authEmail,
+          ghl_location_id: locationId as string,
+          full_name: fullName || null,
+        }, { onConflict: "id" });
+        console.log("Created new auth user + rep:", authUserId);
+      }
+    }
+
+    if (!authUserId || !authEmail) {
+      return new Response(
+        JSON.stringify({ error: "Failed to provision auth session" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // ── Step 4: Generate magic link token for session establishment ──
+    const { data: linkData, error: linkError } = await supabase.auth.admin.generateLink({
+      type: "magiclink",
+      email: authEmail,
+    });
+
+    if (linkError || !linkData?.properties?.hashed_token) {
+      console.error("Failed to generate magic link:", linkError?.message);
+      return new Response(
+        JSON.stringify({ error: "Failed to generate session token" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    console.log("✅ SSO verified + session provisioned. locationId:", locationId, "userId:", authUserId);
 
     return new Response(
       JSON.stringify({
         success: true,
         locationId,
         companyId,
-        userData,
+        hashed_token: linkData.properties.hashed_token,
+        user_id: authUserId,
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

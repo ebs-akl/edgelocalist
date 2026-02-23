@@ -100,6 +100,30 @@ export default function IframeApp() {
           );
         } else if (data?.success && data?.locationId) {
           console.log("✅ SSO verified, locationId:", data.locationId, "companyId:", data.companyId);
+
+          // Establish a real Supabase auth session using the magic link token
+          if (data.hashed_token) {
+            console.log("🔑 Establishing Supabase auth session...");
+            const { error: otpError } = await supabase.auth.verifyOtp({
+              token_hash: data.hashed_token,
+              type: "magiclink",
+            });
+            if (otpError) {
+              console.warn("⚠️ verifyOtp failed, checking existing session:", otpError.message);
+              // Token may have been used already — check for existing session
+              const { data: { session: existingSession } } = await supabase.auth.getSession();
+              if (!existingSession) {
+                console.error("❌ No existing session and verifyOtp failed");
+                setVerifyError("Session establishment failed: " + otpError.message);
+                setVerifying(false);
+                return;
+              }
+              console.log("✅ Found existing session, continuing...");
+            } else {
+              console.log("✅ Supabase auth session established");
+            }
+          }
+
           sessionStorage.setItem("ghl_location_id", data.locationId);
           sessionStorage.setItem("ghl_company_id", data.companyId ?? "");
           setVerifiedLocationId(data.locationId);

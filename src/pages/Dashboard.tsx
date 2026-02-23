@@ -23,9 +23,9 @@ interface StatCard {
 }
 
 export default function Dashboard() {
-  const { user, repProfile, signOut, isGhlMode, ghlLocationId, ghlRepNum, ssoPayload, setSsoPayload } = useAuth();
+  const { user, repProfile, signOut, isGhlMode, ghlLocationId, ghlRepNum } = useAuth();
   // Only run internal SSO hook when NOT already in GHL mode via IframeApp bridge
-  const { ssoPayload: hookPayload, ssoReady, ssoError, isInIframe, retry } = useGhlSso();
+  const { ssoReady, ssoError, isInIframe, retry } = useGhlSso();
   const [contactCount, setContactCount] = useState(0);
   const [lastSync, setLastSync] = useState<string | null>(null);
   const [loadingStats, setLoadingStats] = useState(true);
@@ -38,41 +38,30 @@ export default function Dashboard() {
   const [syncSummary, setSyncSummary] = useState<{ total: number; searchable: number; needsGeocoding: number } | null>(null);
   const [syncError, setSyncError] = useState<string | null>(null);
 
-  // Store SSO payload from hook into context only when NOT already set by IframeApp bridge
-  useEffect(() => {
-    if (hookPayload && !ssoPayload) {
-      setSsoPayload(hookPayload);
-    }
-  }, [hookPayload, ssoPayload, setSsoPayload]);
+  // SSO payload sync no longer needed — auth session handles everything
 
   const userId = user?.id ?? ghlLocationId ?? "unknown";
   const repName = repProfile?.full_name ?? user?.email ?? "Rep";
 
   const fetchContactStats = async () => {
-    if (!user && !ghlLocationId) return;
+    if (!user) return;
     setLoadingStats(true);
     try {
-      if (isGhlMode && ghlLocationId) {
-        // GHL mode: fetch stats via edge function proxy with SSO payload
-        if (!ssoPayload) {
-          // Can't call without SSO payload — skip silently
-          setLoadingStats(false);
-          return;
-        }
+      if (isGhlMode) {
+        // GHL mode: fetch stats via edge function (Bearer auth auto-included)
         const { data, error } = await supabase.functions.invoke("ghl-sync-contacts", {
-          body: { stats_only: true, sso_payload: ssoPayload },
+          body: { stats_only: true },
         });
         if (!error && data) {
           setContactCount(data.count ?? 0);
           setLastSync(data.last_sync ?? null);
           if (data.rep_id) setGhlRepId(data.rep_id);
         }
-      } else if (user) {
-        // Standalone mode: query Supabase directly
+      } else {
+        // Standalone mode: query Supabase directly (RLS filters by rep_id = auth.uid())
         const { count, data } = await supabase
           .from("localist_contacts")
           .select("updated_at", { count: "exact", head: false })
-          .eq("rep_id", user.id)
           .order("updated_at", { ascending: false })
           .limit(1);
 
@@ -89,7 +78,7 @@ export default function Dashboard() {
   };
 
   const handleGhlSync = async () => {
-    if (!ghlLocationId || !ssoPayload) return;
+    if (!isGhlMode) return;
     setRefreshing(true);
     setSyncError(null);
     setSyncSummary(null);
@@ -117,7 +106,7 @@ export default function Dashboard() {
       updateStep("fetch", { status: "active", label: "Fetching your contacts from CRM..." });
 
       const { data, error } = await supabase.functions.invoke("ghl-sync-contacts", {
-        body: { sso_payload: ssoPayload },
+        body: {},
       });
 
       if (error) {
@@ -149,7 +138,7 @@ export default function Dashboard() {
 
       while (remaining > 0 && geocodeRounds < MAX_ROUNDS) {
         const { data: geoData, error: geoErr } = await supabase.functions.invoke("geocode-contacts", {
-          body: { sso_payload: ssoPayload, limit: 500 },
+          body: { limit: 500 },
         });
 
         if (geoErr || !geoData) break;
@@ -179,22 +168,21 @@ export default function Dashboard() {
       updateStep("done", { status: "active" });
 
       const { data: statsData } = await supabase.functions.invoke("ghl-sync-contacts", {
-        body: { stats_only: true, sso_payload: ssoPayload },
+        body: { stats_only: true },
       });
       const totalCount = statsData?.count ?? synced;
 
       // Count contacts with coordinates
       let searchable = 0;
-      if (isGhlMode && ssoPayload) {
+      if (isGhlMode) {
         const { data: finalStats } = await supabase.functions.invoke("ghl-sync-contacts", {
-          body: { stats_only: true, sso_payload: ssoPayload },
+          body: { stats_only: true },
         });
         searchable = finalStats?.searchable ?? 0;
       } else if (user) {
         const { count } = await supabase
           .from("localist_contacts")
           .select("id", { count: "exact", head: true })
-          .eq("rep_id", user.id)
           .not("latitude", "is", null);
         searchable = count ?? 0;
       }
@@ -236,14 +224,14 @@ export default function Dashboard() {
   // ── Account Merge Handshake (server-side) ──
   // If both location_id and rep_num are present, call edge function to claim orphaned contacts
   useEffect(() => {
-    if (!ghlLocationId || !ghlRepNum || !ssoPayload) return;
+    if (!ghlLocationId || !ghlRepNum) return;
     const mergeKey = `merge_done_${ghlLocationId}_${ghlRepNum}`;
     if (localStorage.getItem(mergeKey)) return;
 
     (async () => {
       try {
         const { data, error } = await supabase.functions.invoke("ghl-merge-contacts", {
-          body: { sso_payload: ssoPayload, rep_number: ghlRepNum.trim() },
+          body: { rep_number: ghlRepNum.trim() },
         });
 
         if (!error && data?.merged > 0) {
@@ -254,7 +242,7 @@ export default function Dashboard() {
         // Merge failed silently – not critical
       }
     })();
-  }, [ghlLocationId, ghlRepNum, ssoPayload]);
+  }, [ghlLocationId, ghlRepNum]);
 
   useEffect(() => {
     fetchContactStats();
@@ -263,7 +251,7 @@ export default function Dashboard() {
       try { setRecentSearches(JSON.parse(stored)); } catch { /* ignore */ }
     }
     // Auto-sync GHL on load if connected and payload ready
-    if (isGhlMode && ghlLocationId && ssoPayload) {
+    if (isGhlMode && ghlLocationId) {
       const lastSyncKey = `ghl_last_sync_${ghlLocationId}`;
       const lastSyncTime = localStorage.getItem(lastSyncKey);
       const hoursSince = lastSyncTime
@@ -275,11 +263,11 @@ export default function Dashboard() {
         });
       }
     }
-  }, [userId, isGhlMode, ssoPayload]);
+  }, [userId, isGhlMode]);
 
   // ── Realtime subscription for webhook-driven contact updates ──
   useEffect(() => {
-    if (!ghlLocationId && !user?.id) return;
+    if (!user?.id) return;
 
     const channel = supabase
       .channel("contact-updates")
@@ -289,11 +277,10 @@ export default function Dashboard() {
           event: "*",
           schema: "public",
           table: "localist_contacts",
-          ...(ghlLocationId ? { filter: `location_id=eq.${ghlLocationId}` } : { filter: `rep_id=eq.${user?.id}` }),
+          filter: `rep_id=eq.${user.id}`,
         },
         (payload) => {
           console.log("[Dashboard] Realtime contact event:", payload.eventType);
-          // Refresh stats when contacts are inserted or updated
           fetchContactStats();
         }
       )
@@ -302,7 +289,7 @@ export default function Dashboard() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [ghlLocationId, user?.id]);
+  }, [user?.id]);
 
   const handleSearch = (address: string) => {
     setSearchesToday((n) => n + 1);

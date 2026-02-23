@@ -13,7 +13,7 @@ import { Loader2, MessageSquare, CheckCircle2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import type { NearbyContact } from "@/lib/contacts";
-import { useAuth } from "@/contexts/AuthContext";
+
 
 interface GroupSmsModalProps {
   open: boolean;
@@ -50,7 +50,6 @@ function preview(template: string, repName: string): string {
 }
 
 export default function GroupSmsModal({ open, onClose, contacts, repName }: GroupSmsModalProps) {
-  const { ssoPayload } = useAuth();
   const [selectedTemplate, setSelectedTemplate] = useState<number | "custom">(0);
   const [customMessage, setCustomMessage] = useState("");
   const [sending, setSending] = useState(false);
@@ -77,19 +76,9 @@ export default function GroupSmsModal({ open, onClose, contacts, repName }: Grou
       }));
 
       const body: Record<string, unknown> = { contacts: payload, message_template: activeBody };
-      const headers: Record<string, string> = {};
-
-      if (ssoPayload) {
-        body.sso_payload = ssoPayload;
-      } else {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session) throw new Error("Not authenticated");
-        headers.Authorization = `Bearer ${session.access_token}`;
-      }
 
       const { data, error } = await supabase.functions.invoke("ghl-group-sms", {
         body,
-        headers,
       });
 
       if (error) throw error;
