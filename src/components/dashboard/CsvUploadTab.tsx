@@ -6,7 +6,7 @@ import { toast } from "@/hooks/use-toast";
 import { Upload, RefreshCw, FileText, CheckCircle2, AlertCircle, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { formatPhone, stripAptFromAddress, isPOBox } from "@/lib/contacts";
+import { formatPhone, stripAptFromAddress, isPOBox, toTitleCase } from "@/lib/contacts";
 import Papa from "papaparse";
 import coffeeBotImg from "@/assets/Coffee_Edgar.gif";
 import stopBotImg from "@/assets/stopbot.png";
@@ -154,8 +154,8 @@ export default function CsvUploadTab({ onUploaded, contactCount, lastSync }: Pro
           const repNumber = normalize(row, ["repnumber", "rep#", "repnum", "rep_number", "rep_num", "repno"]);
           return {
             id: `row-${i}`,
-            first_name: normalize(row, ["firstname", "first_name", "first"]),
-            last_name: normalize(row, ["lastname", "last_name", "last"]),
+            first_name: toTitleCase(normalize(row, ["firstname", "first_name", "first"])),
+            last_name: toTitleCase(normalize(row, ["lastname", "last_name", "last"])),
             phone: formatPhone(normalize(row, ["phone", "phonenumber", "phone_number"])),
             address,
             // Geocode only off Address 1 (already without the apt unit)

@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Loader2, MessageSquare, CheckCircle2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { toTitleCase } from "@/lib/contacts";
 import type { NearbyContact } from "@/lib/contacts";
 
 
@@ -70,8 +71,8 @@ export default function GroupSmsModal({ open, onClose, contacts, repName }: Grou
     try {
       const payload = contacts.map((c) => ({
         contact_id: c.id as string,
-        first_name: c.first_name,
-        city: c.city,
+        first_name: toTitleCase(c.first_name),
+        city: toTitleCase(c.city),
         phone: c.phone,
       }));
 

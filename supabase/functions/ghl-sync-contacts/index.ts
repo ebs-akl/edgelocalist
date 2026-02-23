@@ -55,6 +55,11 @@ async function fetchCustomFieldIds(
   }
 }
 
+function toTitleCase(value: string | null | undefined): string {
+  if (!value) return "";
+  return value.toLowerCase().replace(/(?:^|\s)\S/g, (ch) => ch.toUpperCase());
+}
+
 /**
  * Decrypt the SSO payload from GHL Custom Page handshake.
  * Returns the locationId or null on failure.
@@ -276,8 +281,8 @@ serve(async (req) => {
       return {
         rep_id: repId,
         contact_id: c.id as string,
-        first_name: (c.firstName as string) ?? "",
-        last_name: (c.lastName as string) ?? "",
+        first_name: toTitleCase((c.firstName as string) ?? ""),
+        last_name: toTitleCase((c.lastName as string) ?? ""),
         phone: ((c.phone as string) ?? "").replace(/\D/g, ""),
         address: (c.address1 as string) ?? "",
         city: (c.city as string) ?? "",

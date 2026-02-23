@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Phone, MessageSquare, Map, ExternalLink, Loader2 } from "lucide-react";
-import { formatPhoneDisplay, formatCurrency } from "@/lib/contacts";
+import { formatPhoneDisplay, formatCurrency, toTitleCase } from "@/lib/contacts";
 import type { NearbyContact } from "@/lib/contacts";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
@@ -20,7 +20,7 @@ export default function ContactDetailModal({ contact, repName, isGhlMode, onClos
   const [lcCalling, setLcCalling] = useState(false);
 
   const smsBody = encodeURIComponent(
-    `Hi ${contact.first_name}, this is ${repName} from Cutco — I'm in your area and wanted to reach out!`
+    `Hi ${toTitleCase(contact.first_name)}, this is ${repName} from Cutco — I'm in your area and wanted to reach out!`
   );
   const mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(
     `${contact.address}, ${contact.city}, ${contact.state} ${contact.zip}`
@@ -53,7 +53,7 @@ export default function ContactDetailModal({ contact, repName, isGhlMode, onClos
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle style={{ fontFamily: "'Oswald', sans-serif" }}>
-            {contact.first_name} {contact.last_name}
+            {toTitleCase(contact.first_name)} {toTitleCase(contact.last_name)}
           </DialogTitle>
         </DialogHeader>
 

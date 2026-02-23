@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { formatPhoneDisplay, formatCurrency } from "@/lib/contacts";
+import { formatPhoneDisplay, formatCurrency, toTitleCase } from "@/lib/contacts";
 import type { NearbyContact } from "@/lib/contacts";
 import ContactDetailModal from "./ContactDetailModal";
 import GroupSmsModal from "./GroupSmsModal";
@@ -533,9 +533,9 @@ export default function SearchTab({ repName, recentSearches, onSearch, contactCo
                         onClick={() => setSelectedContact(contact)}
                       >
                         <p className="font-medium text-sm truncate">
-                          {contact.first_name} {contact.last_name}
+                          {toTitleCase(contact.first_name)} {toTitleCase(contact.last_name)}
                         </p>
-                        <p className="text-xs text-muted-foreground truncate">{contact.city}, {contact.state}</p>
+                        <p className="text-xs text-muted-foreground truncate">{toTitleCase(contact.city)}, {contact.state?.toUpperCase()}</p>
                       </div>
 
                       {/* Distance */}
@@ -577,7 +577,7 @@ export default function SearchTab({ repName, recentSearches, onSearch, contactCo
                           <Phone className="h-4 w-4" />
                         </a>
                         <a
-                          href={`sms:${contact.phone}?body=Hi ${encodeURIComponent(contact.first_name)}, this is ${encodeURIComponent(repName)} from Cutco — I'm in your area and wanted to reach out!`}
+                          href={`sms:${contact.phone}?body=Hi ${encodeURIComponent(toTitleCase(contact.first_name))}, this is ${encodeURIComponent(repName)} from Cutco — I'm in your area and wanted to reach out!`}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="flex items-center justify-center h-9 w-9 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary transition-colors"
@@ -628,7 +628,7 @@ export default function SearchTab({ repName, recentSearches, onSearch, contactCo
                   STOP!
                 </AlertDialogTitle>
                 <AlertDialogDescription className="text-sm text-foreground">
-                  Are you sure you want to delete <strong>{contactToDelete?.first_name} {contactToDelete?.last_name}</strong>? This cannot be undone.
+                  Are you sure you want to delete <strong>{toTitleCase(contactToDelete?.first_name)} {toTitleCase(contactToDelete?.last_name)}</strong>? This cannot be undone.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter className="sm:justify-center gap-2">
