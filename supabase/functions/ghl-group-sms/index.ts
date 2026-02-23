@@ -66,6 +66,11 @@ async function resolveCredentials(
 
 const ALLOWED_PLACEHOLDERS = new Set(["first_name", "city", "rep_name"]);
 
+function toTitleCase(value: string | null | undefined): string {
+  if (!value) return "";
+  return value.toLowerCase().replace(/(?:^|\s)\S/g, (ch) => ch.toUpperCase());
+}
+
 function sanitizeTemplate(template: string): string {
   return template.replace(/\{\{(\w+)\}\}/g, (match, name) => {
     return ALLOWED_PLACEHOLDERS.has(name) ? match : "";
@@ -201,9 +206,9 @@ serve(async (req) => {
 
   for (const contact of validContacts) {
     const msgBody = safeTemplate
-      .replace(/\{\{first_name\}\}/g, contact.first_name)
-      .replace(/\{\{city\}\}/g, contact.city)
-      .replace(/\{\{rep_name\}\}/g, creds.repName);
+      .replace(/\{\{first_name\}\}/g, toTitleCase(contact.first_name))
+      .replace(/\{\{city\}\}/g, toTitleCase(contact.city))
+      .replace(/\{\{rep_name\}\}/g, toTitleCase(creds.repName));
 
     try {
       const res = await fetch(

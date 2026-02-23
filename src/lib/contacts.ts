@@ -70,3 +70,14 @@ export function stripAptFromAddress(address: string): string {
 export function isPOBox(address: string): boolean {
   return /^\s*p\.?\s*o\.?\s*box/i.test(address);
 }
+
+/**
+ * Title-cases a string: lowercases everything then capitalises the first letter of each word.
+ * Handles null/undefined gracefully.
+ */
+export function toTitleCase(value: string | null | undefined): string {
+  if (!value) return "";
+  return value
+    .toLowerCase()
+    .replace(/(?:^|\s)\S/g, (ch) => ch.toUpperCase());
+}
