@@ -70,7 +70,7 @@ const initialGhlRepNum = getRepNumFromUrl();
 const DEFAULT_STATE: AuthState = {
   user: null,
   session: null,
-  loading: !initialGhlLocationId, // if GHL mode, we don't need to wait for Supabase auth
+  loading: true, // Always wait for Supabase auth session (both modes)
   repProfile: null,
   loadingProfile: false,
   ghlLocationId: initialGhlLocationId,
@@ -117,9 +117,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [state.user?.id, fetchRepProfile]);
 
   useEffect(() => {
-    // Skip Supabase auth listener when in GHL embedded mode
-    if (state.ghlLocationId) return;
-
+    // Listen for Supabase auth state changes in ALL modes
+    // In GHL mode, session is established via verifyOtp in IframeApp
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setState((s) => ({ ...s, session, user: session?.user ?? null, loading: false }));
       setTimeout(() => fetchRepProfile(session?.user?.id), 0);
@@ -131,7 +130,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     return () => subscription.unsubscribe();
-  }, [fetchRepProfile, state.ghlLocationId]);
+  }, [fetchRepProfile]);
 
   const signOut = useCallback(async () => {
     await supabase.auth.signOut();
@@ -150,7 +149,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // ── Derived mode flags ──
   const isGhlMode = !!state.ghlLocationId;
   const isStandaloneMode = !isGhlMode && !!state.user;
-  const isAuthenticated = isGhlMode || !!state.user;
+  const isAuthenticated = !!state.user; // Real Supabase session required in all modes
 
   return (
     <AuthContext.Provider

@@ -45,7 +45,7 @@ interface SearchTabProps {
 type SortKey = "distance_miles" | "lifetime_value" | "last_order_date" | "last_service_date" | "order_count";
 
 export default function SearchTab({ repName, recentSearches, onSearch, contactCount, isGhlMode, ghlRepId }: SearchTabProps) {
-  const { user, ssoPayload } = useAuth();
+  const { user } = useAuth();
   const [address, setAddress] = useState("");
   const [radius, setRadius] = useState<10 | 25 | 50>(25);
   const [loading, setLoading] = useState(false);
@@ -121,11 +121,10 @@ export default function SearchTab({ repName, recentSearches, onSearch, contactCo
       setSearchCenter(center);
       onSearch(label);
 
-      if (isGhlMode && ssoPayload) {
-        // GHL mode: use edge function
+      if (isGhlMode) {
+        // GHL mode: use edge function (Bearer auth auto-included by Supabase client)
         const { data: fnData, error: fnError } = await supabase.functions.invoke("nearby-search", {
           body: {
-            sso_payload: ssoPayload,
             center_lat: center.lat,
             center_lng: center.lng,
             radius_miles: radius,
@@ -152,11 +151,11 @@ export default function SearchTab({ repName, recentSearches, onSearch, contactCo
     } finally {
       setLoading(false);
     }
-  }, [effectiveRepId, contactCount, radius, onSearch, isGhlMode, ssoPayload]);
+  }, [effectiveRepId, contactCount, radius, onSearch, isGhlMode]);
 
   // GHL mode: server-side geocoding + search in one call
   const runServerSearch = useCallback(async (addr: string) => {
-    if (!effectiveRepId || !ssoPayload) return;
+    if (!effectiveRepId) return;
     if (contactCount === 0) {
       toast({ title: "No contacts loaded yet — let's fix that.", description: "Upload a CSV in the Contacts tab first.", variant: "destructive" });
       return;
@@ -168,7 +167,6 @@ export default function SearchTab({ repName, recentSearches, onSearch, contactCo
       onSearch(addr);
       const { data: fnData, error: fnError } = await supabase.functions.invoke("nearby-search", {
         body: {
-          sso_payload: ssoPayload,
           address: addr,
           radius_miles: radius,
         },
@@ -188,7 +186,7 @@ export default function SearchTab({ repName, recentSearches, onSearch, contactCo
     } finally {
       setLoading(false);
     }
-  }, [effectiveRepId, ssoPayload, contactCount, radius, onSearch]);
+  }, [effectiveRepId, contactCount, radius, onSearch]);
 
   const handleGPS = () => {
     if (!navigator.geolocation) {
@@ -227,8 +225,8 @@ export default function SearchTab({ repName, recentSearches, onSearch, contactCo
       return;
     }
 
-    // 3. GHL mode: geocode server-side (client Mapbox token may not be available)
-    if (isGhlMode && ssoPayload) {
+    // 3. GHL mode: geocode server-side
+    if (isGhlMode) {
       await runServerSearch(address.trim());
       return;
     }
@@ -250,7 +248,7 @@ export default function SearchTab({ repName, recentSearches, onSearch, contactCo
       toast({ title: "Search error", description: message, variant: "destructive" });
       setLoading(false);
     }
-  }, [address, searchCenter, effectiveRepId, runRadiusQuery, isGhlMode, ssoPayload, runServerSearch]);
+  }, [address, searchCenter, effectiveRepId, runRadiusQuery, isGhlMode, runServerSearch]);
 
   const handleSort = (key: SortKey) => {
     if (sortKey === key) setSortAsc((a) => !a);
