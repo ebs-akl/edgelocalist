@@ -663,15 +663,26 @@ export default function SearchTab({ repName, recentSearches, onSearch, contactCo
                           <Map className="h-4 w-4" />
                         </a>
                         {isGhlMode && contact.contact_id && (
-                          <a
-                            href={`https://app.gohighlevel.com/v2/location/${ghlLocationId}/contacts/detail/${contact.contact_id}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
+                          <button
+                            onClick={() => {
+                              const url = `https://app.gohighlevel.com/v2/location/${ghlLocationId}/contacts/detail/${contact.contact_id}`;
+                              // Inside GHL iframe, navigate the top frame so GHL handles the route internally
+                              try {
+                                if (window.top && window.top !== window.self) {
+                                  window.top.location.href = url;
+                                } else {
+                                  window.open(url, "_blank", "noopener,noreferrer");
+                                }
+                              } catch {
+                                // Cross-origin restriction — fall back to window.open
+                                window.open(url, "_blank", "noopener,noreferrer");
+                              }
+                            }}
                             className="flex items-center justify-center h-9 w-9 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary transition-colors"
                             title="View in GoHighLevel"
                           >
                             <ExternalLink className="h-4 w-4" />
-                          </a>
+                          </button>
                         )}
                         <button
                           className="flex items-center justify-center h-9 w-9 rounded-lg bg-destructive/10 hover:bg-destructive/20 text-destructive transition-colors"
