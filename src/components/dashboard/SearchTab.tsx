@@ -33,7 +33,7 @@ import {
 } from "@/components/ui/alert-dialog";
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN ?? "";
-const RADIUS_OPTIONS = [10, 25, 50] as const;
+const RADIUS_OPTIONS = [5, 10, 25, 50] as const;
 
 interface SearchTabProps {
   repName: string;
@@ -51,7 +51,7 @@ export default function SearchTab({ repName, recentSearches, onSearch, contactCo
   const fallbackLocationId = typeof window !== "undefined" ? sessionStorage.getItem("ghl_location_id") : null;
   const effectiveGhlLocationId = ghlLocationId ?? repProfile?.ghl_location_id ?? fallbackLocationId;
   const [address, setAddress] = useState("");
-  const [radius, setRadius] = useState<10 | 25 | 50>(25);
+  const [radius, setRadius] = useState<5 | 10 | 25 | 50>(25);
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<NearbyContact[]>([]);
   const [searched, setSearched] = useState(false);
