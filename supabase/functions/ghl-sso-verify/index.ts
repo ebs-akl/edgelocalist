@@ -139,34 +139,43 @@ Deno.serve(async (req) => {
         console.log("Created auth user with existing rep ID:", authUserId);
       }
     } else {
-      // No rep for this location — create new auth user + rep row
-      authEmail = ssoEmail || `ghl-${locationId}@edgelocalist.app`;
+      // No rep for this location — create new auth user + rep row.
+      // IMPORTANT: Always use a location-specific synthetic email to prevent
+      // cross-account hijacking when multiple GHL sub-accounts share the same
+      // agency owner email in their SSO payload.
+      const syntheticEmail = `ghl-${locationId}@edgelocalist.app`;
+      authEmail = syntheticEmail;
+
       const { data: newUser, error: createErr } = await supabase.auth.admin.createUser({
-        email: authEmail,
+        email: syntheticEmail,
         email_confirm: true,
-        user_metadata: fullName ? { full_name: fullName } : undefined,
+        user_metadata: {
+          ...(fullName ? { full_name: fullName } : {}),
+          sso_email: ssoEmail || null,
+        },
       });
 
       if (createErr) {
         console.error("Failed to create new auth user:", createErr.message);
-        // Email might already be in use — try finding by email in localist_reps
-        const { data: emailRep } = await supabase
-          .from("localist_reps")
-          .select("id")
-          .eq("email", authEmail)
-          .maybeSingle();
+        // Synthetic email collision means a user was previously created for this
+        // location but has no rep row (edge case). Look up by synthetic email.
+        const { data: { users: existingUsers } } = await supabase.auth.admin.listUsers();
+        const matchedUser = (existingUsers || []).find((u: any) => u.email === syntheticEmail);
 
-        if (emailRep) {
-          authUserId = emailRep.id;
-          // Link this rep to the GHL location
-          await supabase
-            .from("localist_reps")
-            .update({ ghl_location_id: locationId as string })
-            .eq("id", emailRep.id);
-          console.log("Linked existing rep to GHL location:", authUserId);
+        if (matchedUser) {
+          authUserId = matchedUser.id;
+          authEmail = matchedUser.email!;
+          // Ensure rep row exists
+          await supabase.from("localist_reps").upsert({
+            id: authUserId,
+            email: ssoEmail || syntheticEmail,
+            ghl_location_id: locationId as string,
+            full_name: fullName || null,
+          }, { onConflict: "id" });
+          console.log("Recovered existing synthetic user for location:", authUserId);
         } else {
           return new Response(
-            JSON.stringify({ error: `Cannot provision auth session: ${createErr.message}` }),
+            JSON.stringify({ error: "Cannot provision auth session" }),
             { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
         }
@@ -175,7 +184,7 @@ Deno.serve(async (req) => {
         // Create the rep row
         await supabase.from("localist_reps").upsert({
           id: authUserId,
-          email: authEmail,
+          email: ssoEmail || syntheticEmail,
           ghl_location_id: locationId as string,
           full_name: fullName || null,
         }, { onConflict: "id" });
