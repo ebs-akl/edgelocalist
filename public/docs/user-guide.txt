@@ -1,0 +1,120 @@
+=====================================
+EdgeLocalist — User Guide
+=====================================
+
+Everything you need to know to get the most out of EdgeLocalist.
+
+
+========== STANDALONE VERSION ==========
+
+1. CREATE YOUR ACCOUNT
+----------------------
+Visit edgelocalist.app and click "Start Free Trial" or "Log In." You can sign up with your email and a password, or use the Magic Link option to receive a one-click login link via email.
+
+After signing in for the first time, you'll be asked to enter your 8-digit Rep Number (your Cutco representative ID). This connects your contacts to your account and is required before you can access the dashboard.
+
+
+2. UPLOAD YOUR CONTACTS
+------------------------
+Navigate to the Contacts tab on your dashboard. Click "Choose File" or drag and drop a CSV file containing your customer data.
+
+Required columns: First Name, Last Name, Address, City, State, Zip, Phone
+
+Optional columns: Business Name, Category, Lifetime Value, Last Order Date, Gift Count, Order Count, Relationship
+
+The system automatically detects common column name variations (e.g., "First" or "FirstName" both work). After upload, addresses are geocoded in batches — you'll see a progress indicator showing how many contacts have been processed.
+
+
+3. SEARCH FOR NEARBY CONTACTS
+------------------------------
+Go to the Search tab. Type any address, city, or ZIP code into the search bar. Select your search radius — 5, 10, 25, or 50 miles — and click Search.
+
+Results appear as a scrollable list sorted by distance, and as color-coded pins on an interactive map. Pin colors indicate lifetime value: green for higher-value customers, yellow for mid-range, and red for lower-value.
+
+
+4. VIEW CONTACT DETAILS
+------------------------
+Click any contact in the results list or tap a pin on the map to open the Contact Detail card. This shows the contact's full address, distance from your search center, lifetime value, last order date, and Cutco-specific metrics like gift count and order count.
+
+
+5. QUICK ACTIONS
+----------------
+Each contact card includes one-tap action buttons:
+
+  - Call — opens your phone dialer with the contact's number
+  - Text — opens your messaging app with a pre-filled introduction
+  - Directions — opens Google Maps with turn-by-turn directions to the contact's address
+
+
+6. ACCOUNT SETTINGS
+-------------------
+Click Settings in the top navigation to manage your account. You can update your display name, view your rep number and subscription plan, and access billing management.
+
+
+7. DATA & SECURITY
+------------------
+Your contacts are stored securely with encryption at rest and in transit. Row-level security ensures that only you can see your own data — no other representative has access to your contacts. You can delete all your contacts at any time from the Contacts tab.
+
+
+========== EDGE DMS INTEGRATION VERSION ==========
+
+1. GETTING STARTED
+------------------
+EdgeLocalist is installed directly inside your Edge DMS account by your administrator. Once installed, you'll find it in your CRM's app menu. Simply click to open — no separate account or password is needed. The system automatically provisions your account using a secure single sign-on connection.
+
+
+2. CONTACT SYNC
+---------------
+When you first open EdgeLocalist, it automatically syncs all your CRM contacts. This includes fetching contact details, saving them securely, and geocoding addresses so they're searchable by location.
+
+The sync progress dialog shows each step in real-time:
+
+  1. Connecting to Edge DMS
+  2. Fetching your contacts
+  3. Saving to your account
+  4. Geocoding addresses
+  5. Preparing search results
+
+After the initial sync, contacts refresh automatically every 24 hours. Real-time webhook updates keep individual contact changes in sync instantly. You can also trigger a manual sync anytime with the Refresh button on your control panel.
+
+
+3. NEARBY SEARCH
+----------------
+Enter any address, city, or ZIP code into the search bar on the Search tab. Choose your radius — 5, 10, 25, or 50 miles — and hit Search.
+
+Results are displayed as a sortable list and as color-coded pins on an interactive map. Use the map legend to understand pin colors, which reflect each contact's lifetime value.
+
+
+4. CONTACT DETAILS & ACTIONS
+-----------------------------
+Click any contact to open their detail card. You'll see their full address, distance, revenue metrics, last order date, and Cutco-specific data.
+
+Quick action buttons let you:
+
+  - Call — dial the contact directly
+  - Text — send a pre-filled SMS
+  - Directions — get Google Maps directions
+  - LC Call — initiate a call through your Edge DMS calling system (appears automatically in Edge DMS mode)
+
+
+5. GROUP SMS
+------------
+After running a nearby search, click "Group SMS" to send a personalized text message to multiple contacts at once.
+
+Choose from pre-built templates (appointment scheduling, follow-ups, holiday greetings) or write your own custom message. Messages are personalized with each contact's first name and city using smart merge fields.
+
+A live preview shows exactly what your contacts will receive before you send.
+
+
+6. TAG CONTACTS
+---------------
+Select contacts from your search results and click "Tag Contacts" to apply a custom tag. The tag syncs back to your Edge DMS CRM, making it easy to organize follow-up lists and build targeted campaign audiences.
+
+Tags are applied in batches for reliability, and you'll see a confirmation showing how many contacts were successfully tagged.
+
+
+7. SECURITY & PRIVACY
+---------------------
+All data is encrypted at rest and in transit. OAuth tokens are managed server-side and automatically refreshed — they're never exposed to your browser. Row-level security policies ensure complete data isolation between representatives.
+
+Webhook updates from your CRM are verified before processing. SMS sending is rate-limited to prevent abuse.
