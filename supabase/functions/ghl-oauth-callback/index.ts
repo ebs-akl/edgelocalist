@@ -71,16 +71,9 @@ serve(async (req) => {
     const responseText = await tokenRes.text();
 
     if (!tokenRes.ok) {
-      let ghlError = { error: `GHL API error (${tokenRes.status})`, error_description: responseText };
-      try {
-        const parsed = JSON.parse(responseText);
-        ghlError = {
-          error: parsed.error || ghlError.error,
-          error_description: parsed.error_description || parsed.message || responseText,
-        };
-      } catch (_) { /* use raw text fallback */ }
-      return new Response(JSON.stringify(ghlError), {
-        status: tokenRes.status,
+      console.error(`GHL OAuth error (${tokenRes.status}):`, responseText);
+      return new Response(JSON.stringify({ error: "OAuth authentication failed", hint: "Please try reconnecting GoHighLevel" }), {
+        status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
