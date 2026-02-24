@@ -39,23 +39,32 @@ export default function TagContactsModal({ open, onClose, contacts }: TagContact
 
     setSending(true);
     try {
-      const payload: Record<string, unknown> = {
-        tag: trimmed,
-        contact_ids: contactIds,
-      };
-      if (ssoPayload) payload.sso_payload = ssoPayload;
+      let totalTagged = 0;
+      let totalFailed = 0;
+      const BATCH_SIZE = 400;
 
-      const { data, error } = await supabase.functions.invoke("ghl-tag-contacts", {
-        body: payload,
-      });
+      for (let i = 0; i < contactIds.length; i += BATCH_SIZE) {
+        const batch = contactIds.slice(i, i + BATCH_SIZE);
+        const payload: Record<string, unknown> = {
+          tag: trimmed,
+          contact_ids: batch,
+        };
+        if (ssoPayload) payload.sso_payload = ssoPayload;
 
-      if (error) throw error;
+        const { data, error } = await supabase.functions.invoke("ghl-tag-contacts", {
+          body: payload,
+        });
 
-      setTaggedCount(data?.tagged ?? 0);
+        if (error) throw error;
+        totalTagged += data?.tagged ?? 0;
+        totalFailed += data?.failed ?? 0;
+      }
+
+      setTaggedCount(totalTagged);
       setDone(true);
 
-      if (data?.failed > 0) {
-        toast({ title: `Tagged ${data.tagged} contacts`, description: `${data.failed} failed.`, variant: "destructive" });
+      if (totalFailed > 0) {
+        toast({ title: `Tagged ${totalTagged} contacts`, description: `${totalFailed} failed.`, variant: "destructive" });
       }
     } catch (err: unknown) {
       console.error("Tag error:", err);
