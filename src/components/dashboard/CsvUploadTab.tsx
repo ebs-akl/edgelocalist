@@ -95,8 +95,9 @@ interface ParsedContact {
 }
 
 function normalize(row: CsvRow, keys: string[]): string {
+  const strip = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
   for (const k of keys) {
-    const found = Object.keys(row).find((h) => h.toLowerCase().replace(/[\s_]/g, "") === k.toLowerCase().replace(/[\s_]/g, ""));
+    const found = Object.keys(row).find((h) => strip(h) === strip(k));
     if (found && row[found]) return row[found].trim();
   }
   return "";
@@ -148,7 +149,7 @@ export default function CsvUploadTab({ onUploaded, contactCount, lastSync }: Pro
           const address2 = normalize(row, ["address2"]);
           // Full address stored in DB combines both lines
           const address = address2 ? `${address1}, ${address2}` : address1;
-          const rawLifetime = normalize(row, ["lifetime$", "lifetime", "lifetimevalue"]);
+          const rawLifetime = normalize(row, ["lifetime$", "ltv$", "ltv", "lifetime", "lifetimevalue"]);
           const rawOrders = normalize(row, ["#orders", "orders", "numberoforders", "numorders"]);
           const rawGifts = normalize(row, ["#gifts", "gifts", "numberofgifts", "numgifts"]);
           const repNumber = normalize(row, ["repnumber", "rep#", "repnum", "rep_number", "rep_num", "repno"]);
@@ -164,7 +165,7 @@ export default function CsvUploadTab({ onUploaded, contactCount, lastSync }: Pro
             state: normalize(row, ["state"]),
             zip: normalize(row, ["zip", "zipcode", "zip_code", "postalcode"]),
             poBox: isPOBox(address1),
-            last_order_date: normalize(row, ["lastorderdate", "lastorder"]),
+            last_order_date: normalize(row, ["lastorderdate", "lastorder", "lastord", "lastorderdt"]),
             last_service_date: normalize(row, ["lastservicedate", "lastservice", "servicedate"]),
             rlt: normalize(row, ["rlt"]),
             biz: normalize(row, ["biz"]),
