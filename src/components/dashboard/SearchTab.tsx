@@ -46,7 +46,9 @@ interface SearchTabProps {
 type SortKey = "distance_miles" | "lifetime_value" | "last_order_date" | "last_service_date" | "order_count";
 
 export default function SearchTab({ repName, recentSearches, onSearch, contactCount, isGhlMode, ghlRepId }: SearchTabProps) {
-  const { user, ghlLocationId } = useAuth();
+  const { user, ghlLocationId, repProfile } = useAuth();
+  const fallbackLocationId = typeof window !== "undefined" ? sessionStorage.getItem("ghl_location_id") : null;
+  const effectiveGhlLocationId = ghlLocationId ?? repProfile?.ghl_location_id ?? fallbackLocationId;
   const [address, setAddress] = useState("");
   const [radius, setRadius] = useState<10 | 25 | 50>(25);
   const [loading, setLoading] = useState(false);
@@ -662,20 +664,23 @@ export default function SearchTab({ repName, recentSearches, onSearch, contactCo
                         >
                           <Map className="h-4 w-4" />
                         </a>
-                        {isGhlMode && contact.contact_id && (
+                        {isGhlMode && contact.contact_id && effectiveGhlLocationId && (
                           <button
                             onClick={() => {
-                              const url = `https://app.gohighlevel.com/v2/location/${ghlLocationId}/contacts/detail/${contact.contact_id}`;
-                              // Inside GHL iframe, navigate the top frame so GHL handles the route internally
+                              const url = `https://app.gohighlevel.com/v2/location/${effectiveGhlLocationId}/contacts/detail/${contact.contact_id}`;
                               try {
-                                if (window.top && window.top !== window.self) {
-                                  window.top.location.href = url;
-                                } else {
+                                // Most reliable in iframe user-gesture context
+                                window.open(url, "_top");
+                              } catch {
+                                try {
+                                  if (window.top && window.top !== window.self) {
+                                    window.top.location.href = url;
+                                  } else {
+                                    window.location.href = url;
+                                  }
+                                } catch {
                                   window.open(url, "_blank", "noopener,noreferrer");
                                 }
-                              } catch {
-                                // Cross-origin restriction — fall back to window.open
-                                window.open(url, "_blank", "noopener,noreferrer");
                               }
                             }}
                             className="flex items-center justify-center h-9 w-9 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary transition-colors"
