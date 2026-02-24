@@ -54,7 +54,7 @@ export default function SyncProgressDialog({
                 src={syncAnimation}
                 alt="Syncing contacts"
                 className="h-28 w-auto object-contain rounded-lg"
-                style={{ backgroundColor: "#f9edde" }}
+                style={{ backgroundColor: "#ffffff" }}
               />
             </div>
           )}
