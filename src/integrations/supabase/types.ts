@@ -226,7 +226,9 @@ export type Database = {
           last_name: string
           last_order_date: string
           last_service_date: string
+          latitude: number
           lifetime_value: number
+          longitude: number
           order_count: number
           phone: string
           rlt: string
@@ -254,7 +256,9 @@ export type Database = {
           last_name: string
           last_order_date: string
           last_service_date: string
+          latitude: number
           lifetime_value: number
+          longitude: number
           order_count: number
           phone: string
           rlt: string
