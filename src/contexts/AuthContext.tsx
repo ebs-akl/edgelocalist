@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { useInactivityTimeout } from "@/hooks/use-inactivity-timeout";
 import type { User, Session } from "@supabase/supabase-js";
 
 export interface RepProfile {
@@ -137,6 +138,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setState({ ...DEFAULT_STATE, loading: false, ghlLocationId: null });
     navigate("/auth", { replace: true });
   }, [navigate]);
+
+  useInactivityTimeout(signOut, !!state.user);
 
   const setSsoPayload = useCallback((payload: string | null) => {
     setState((s) => ({ ...s, ssoPayload: payload }));
