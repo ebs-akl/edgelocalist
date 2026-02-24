@@ -22,6 +22,73 @@ function getCustomFieldById(contact: Record<string, unknown>, fieldId: string): 
   return fields.find((f) => f.id === fieldId)?.value ?? null;
 }
 
+type ContactCustomField = { id: string; value: unknown; fieldKey?: string; key?: string };
+
+function looksLikeDate(value: string): boolean {
+  const v = value.trim();
+  if (!v) return false;
+  if (/^\d{4}-\d{1,2}-\d{1,2}/.test(v)) return true;
+  const parsed = Date.parse(v);
+  return Number.isFinite(parsed) && v.length >= 8;
+}
+
+function inferMetricFieldIdsFromContacts(
+  contacts: Record<string, unknown>[]
+): { ltvFieldId: string | null; lastOrdFieldId: string | null } {
+  const stats = new Map<string, { numeric: number; date: number; currency: number; highValue: number; latLike: number; total: number }>();
+
+  for (const contact of contacts.slice(0, 600)) {
+    const fields = (contact.customFields as ContactCustomField[] | undefined) ?? [];
+    for (const field of fields) {
+      if (!field?.id) continue;
+      const raw = String(field.value ?? "").trim();
+      if (!raw) continue;
+
+      const current = stats.get(field.id) ?? { numeric: 0, date: 0, currency: 0, highValue: 0, latLike: 0, total: 0 };
+      current.total += 1;
+
+      const cleanedNumeric = raw.replace(/[^0-9.-]+/g, "");
+      const parsed = Number.parseFloat(cleanedNumeric);
+      if (Number.isFinite(parsed)) {
+        current.numeric += 1;
+        if (/[$,]/.test(raw)) current.currency += 1;
+        if (Math.abs(parsed) >= 200) current.highValue += 1;
+        if (Math.abs(parsed) <= 90) current.latLike += 1;
+      }
+
+      if (looksLikeDate(raw)) {
+        current.date += 1;
+      }
+
+      stats.set(field.id, current);
+    }
+  }
+
+  let ltvFieldId: string | null = null;
+  let ltvScore = Number.NEGATIVE_INFINITY;
+  let lastOrdFieldId: string | null = null;
+  let dateScore = Number.NEGATIVE_INFINITY;
+
+  for (const [fieldId, s] of stats.entries()) {
+    const numericRatio = s.total ? s.numeric / s.total : 0;
+    const dateRatio = s.total ? s.date / s.total : 0;
+
+    const candidateLtvScore = s.currency * 4 + s.highValue * 2 + s.numeric - s.latLike * 2;
+    if (numericRatio >= 0.5 && candidateLtvScore > ltvScore) {
+      ltvScore = candidateLtvScore;
+      ltvFieldId = fieldId;
+    }
+
+    if (dateRatio >= 0.5 && s.date > dateScore) {
+      dateScore = s.date;
+      lastOrdFieldId = fieldId;
+    }
+  }
+
+  console.log(`Fallback inference candidates inspected: ${stats.size}. inferred ltv=${ltvFieldId}, lastOrd=${lastOrdFieldId}`);
+  return { ltvFieldId, lastOrdFieldId };
+}
+
 async function discoverFieldIdsFromContact(
   accessToken: string,
   contactId: string
@@ -266,7 +333,15 @@ serve(async (req) => {
 
     // Discover custom field IDs by fetching a single contact's full details
     const firstContactId = allContacts[0].id as string;
-    const { latFieldId, lngFieldId, ltvFieldId, lastOrdFieldId } = await discoverFieldIdsFromContact(accessToken, firstContactId);
+    let { latFieldId, lngFieldId, ltvFieldId, lastOrdFieldId } = await discoverFieldIdsFromContact(accessToken, firstContactId);
+
+    // Fallback: infer IDs directly from contact values when GHL omits fieldKey metadata
+    if (!ltvFieldId || !lastOrdFieldId) {
+      const inferred = inferMetricFieldIdsFromContacts(allContacts);
+      if (!ltvFieldId) ltvFieldId = inferred.ltvFieldId;
+      if (!lastOrdFieldId) lastOrdFieldId = inferred.lastOrdFieldId;
+      console.log(`Post-fallback field IDs: ltv=${ltvFieldId}, lastOrd=${lastOrdFieldId}`);
+    }
 
     let coordCount = 0;
     const rows = allContacts.map((c) => {
