@@ -49,7 +49,7 @@ export default function Auth() {
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
-          options: { emailRedirectTo: `${window.location.origin}/auth` },
+          options: { emailRedirectTo: `https://edgelocalist.lovable.app/auth` },
         });
         if (error) throw error;
         if (data.user) {
@@ -86,7 +86,7 @@ export default function Auth() {
     try {
       const { error } = await supabase.auth.signInWithOtp({
         email,
-        options: { emailRedirectTo: `${window.location.origin}/dashboard` },
+        options: { emailRedirectTo: `https://edgelocalist.lovable.app/dashboard` },
       });
       if (error) throw error;
       toast({ title: "Check your email!", description: "We sent you a secure login link." });
@@ -107,7 +107,7 @@ export default function Auth() {
     setLoading(true);
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/reset-password`,
+        redirectTo: `https://edgelocalist.lovable.app/reset-password`,
       });
       if (error) throw error;
       toast({ title: "Reset link sent", description: "Check your inbox." });
