@@ -244,21 +244,9 @@ serve(async (req) => {
     .maybeSingle();
 
   if (!rep?.ghl_access_token) {
-    const { data: tokenRep } = await supabase
-      .from("localist_reps")
-      .select("id, ghl_access_token, ghl_refresh_token, ghl_expires_at, ghl_location_id")
-      .not("ghl_access_token", "is", null)
-      .limit(1)
-      .maybeSingle();
-
-    if (tokenRep?.ghl_access_token) {
-      console.log(`Using rep ${tokenRep.id} with token for location ${tokenRep.ghl_location_id} (SSO location: ${locationId})`);
-      rep = tokenRep;
-    } else {
-      return new Response(JSON.stringify({ error: "No rep found for this location" }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    return new Response(JSON.stringify({ error: "No CRM connection found for this location. Please connect GoHighLevel first." }), {
+      status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 
   const repId = rep.id;
