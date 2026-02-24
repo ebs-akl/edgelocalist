@@ -27,15 +27,33 @@ type ContactCustomField = { id: string; value: unknown; fieldKey?: string; key?:
 function looksLikeDate(value: string): boolean {
   const v = value.trim();
   if (!v) return false;
-  if (/^\d{4}-\d{1,2}-\d{1,2}/.test(v)) return true;
+
+  return (
+    /^\d{4}-\d{1,2}-\d{1,2}(?:[T\s].*)?$/.test(v) ||
+    /^\d{1,2}[/-]\d{1,2}[/-]\d{2,4}$/.test(v) ||
+    /^[A-Za-z]{3,9}\s+\d{1,2},\s*\d{4}$/.test(v)
+  );
+}
+
+function looksLikeEpochMillis(value: number): boolean {
+  const abs = Math.abs(value);
+  return abs >= 1e11 && abs <= 4e12;
+}
+
+function normalizeDateForDb(value: string): string | null {
+  const v = value.trim();
+  if (!looksLikeDate(v)) return null;
+
   const parsed = Date.parse(v);
-  return Number.isFinite(parsed) && v.length >= 8;
+  if (!Number.isFinite(parsed)) return null;
+
+  return new Date(parsed).toISOString().slice(0, 10);
 }
 
 function inferMetricFieldIdsFromContacts(
   contacts: Record<string, unknown>[]
 ): { ltvFieldId: string | null; lastOrdFieldId: string | null } {
-  const stats = new Map<string, { numeric: number; date: number; currency: number; highValue: number; latLike: number; total: number }>();
+  const stats = new Map<string, { numeric: number; date: number; currency: number; highValue: number; latLike: number; epochLike: number; total: number }>();
 
   for (const contact of contacts.slice(0, 600)) {
     const fields = (contact.customFields as ContactCustomField[] | undefined) ?? [];
@@ -44,16 +62,18 @@ function inferMetricFieldIdsFromContacts(
       const raw = String(field.value ?? "").trim();
       if (!raw) continue;
 
-      const current = stats.get(field.id) ?? { numeric: 0, date: 0, currency: 0, highValue: 0, latLike: 0, total: 0 };
+      const current = stats.get(field.id) ?? { numeric: 0, date: 0, currency: 0, highValue: 0, latLike: 0, epochLike: 0, total: 0 };
       current.total += 1;
 
       const cleanedNumeric = raw.replace(/[^0-9.-]+/g, "");
       const parsed = Number.parseFloat(cleanedNumeric);
       if (Number.isFinite(parsed)) {
+        const isEpoch = looksLikeEpochMillis(parsed);
         current.numeric += 1;
         if (/[$,]/.test(raw)) current.currency += 1;
-        if (Math.abs(parsed) >= 200) current.highValue += 1;
+        if (Math.abs(parsed) >= 200 && !isEpoch) current.highValue += 1;
         if (Math.abs(parsed) <= 90) current.latLike += 1;
+        if (isEpoch) current.epochLike += 1;
       }
 
       if (looksLikeDate(raw)) {
@@ -72,9 +92,10 @@ function inferMetricFieldIdsFromContacts(
   for (const [fieldId, s] of stats.entries()) {
     const numericRatio = s.total ? s.numeric / s.total : 0;
     const dateRatio = s.total ? s.date / s.total : 0;
+    const epochRatio = s.total ? s.epochLike / s.total : 0;
 
-    const candidateLtvScore = s.currency * 4 + s.highValue * 2 + s.numeric - s.latLike * 2;
-    if (numericRatio >= 0.5 && candidateLtvScore > ltvScore) {
+    const candidateLtvScore = s.currency * 6 + s.highValue * 2 + s.numeric - s.latLike * 3 - s.epochLike * 8 - s.date * 2;
+    if (numericRatio >= 0.5 && epochRatio < 0.2 && candidateLtvScore > ltvScore) {
       ltvScore = candidateLtvScore;
       ltvFieldId = fieldId;
     }
@@ -365,14 +386,15 @@ serve(async (req) => {
         const ltvStr = getCustomFieldById(c, ltvFieldId);
         if (ltvStr) {
           const cleaned = String(ltvStr).replace(/[^0-9.-]+/g, "");
-          lifetimeValue = parseFloat(cleaned) || null;
+          const parsedLtv = Number.parseFloat(cleaned);
+          lifetimeValue = Number.isFinite(parsedLtv) && !looksLikeEpochMillis(parsedLtv) ? parsedLtv : null;
         }
       }
 
       // Extract Last Order Date from custom field
       if (lastOrdFieldId) {
         const ordStr = getCustomFieldById(c, lastOrdFieldId);
-        if (ordStr) lastOrderDate = String(ordStr);
+        if (ordStr) lastOrderDate = normalizeDateForDb(String(ordStr));
       }
 
       return {
