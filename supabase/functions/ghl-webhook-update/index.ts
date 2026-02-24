@@ -13,6 +13,16 @@ serve(async (req) => {
   }
 
   try {
+    // Verify shared secret
+    const url = new URL(req.url);
+    const secret = url.searchParams.get("secret");
+    if (secret !== Deno.env.get("GHL_WEBHOOK_SECRET")) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     if (!supabaseUrl || !serviceRoleKey) {
