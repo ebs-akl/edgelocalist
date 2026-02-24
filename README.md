@@ -1,73 +1,118 @@
-# Welcome to your Lovable project
+# EdgeLocalist
 
-## Project info
+**Proximity-based contact search for Cutco sales representatives.**
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+EdgeLocalist helps you find customers near any location, plan efficient routes, and maximize your face-to-face selling time. Upload your contacts or sync them from Edge DMS, and search by address with configurable radius options.
 
-## How can I edit this code?
+---
 
-There are several ways of editing your application.
+## Features
 
-**Use Lovable**
+### Core
+- **Nearby Search** — Find contacts within 5, 10, 25, or 50 miles of any address
+- **Interactive Map** — View results as color-coded pins (by lifetime value) on a Mapbox-powered map
+- **Contact Details** — Full customer profile with revenue metrics, order history, and Cutco-specific data
+- **Quick Actions** — One-tap call, text, and Google Maps directions from any contact card
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+### Standalone Mode
+- **CSV Upload** — Import contacts from any spreadsheet; auto-detects common column names
+- **Automatic Geocoding** — Addresses are converted to coordinates in batches after upload
+- **Deduplication** — Smart matching by phone number prevents duplicate records
+- **Account Settings** — Manage display name, rep number, and subscription
 
-Changes made via Lovable will be committed automatically to this repo.
+### Edge DMS Integration
+- **Automatic Sync** — Contacts pull from your CRM automatically with real-time webhook updates
+- **Single Sign-On** — No extra passwords; opens directly from your Edge DMS dashboard
+- **Group SMS** — Send personalized texts to multiple nearby contacts with merge-field templates
+- **Tag Contacts** — Apply tags that sync back to your CRM for campaign targeting
+- **LC Call** — Initiate calls through your CRM's calling system from contact detail cards
 
-**Use your preferred IDE**
+---
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+## Tech Stack
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+| Layer | Technology |
+|-------|-----------|
+| Frontend | React 18 · TypeScript · Vite · Tailwind CSS |
+| UI Components | shadcn/ui · Radix Primitives · Framer Motion |
+| Backend | Supabase (Auth · Postgres · Edge Functions · Realtime) |
+| Maps | Mapbox GL JS |
+| CRM Integration | Edge DMS OAuth + REST API |
 
-Follow these steps:
+---
+
+## Getting Started
+
+### Prerequisites
+- Node.js 18+ (recommend [nvm](https://github.com/nvm-sh/nvm))
+- A Supabase project with the EdgeLocalist schema
+- Mapbox access token (for geocoding and map display)
+
+### Local Development
 
 ```sh
-# Step 1: Clone the repository using the project's Git URL.
+# Clone the repository
 git clone <YOUR_GIT_URL>
+cd edgelocalist
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+# Install dependencies
+npm install
 
-# Step 3: Install the necessary dependencies.
-npm i
+# Set environment variables
+cp .env.example .env
+# Edit .env with your VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY, and VITE_MAPBOX_ACCESS_TOKEN
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+# Start the dev server
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+### Environment Variables
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `VITE_SUPABASE_URL` | Yes | Your Supabase project URL |
+| `VITE_SUPABASE_ANON_KEY` | Yes | Supabase anonymous/public key |
+| `VITE_MAPBOX_ACCESS_TOKEN` | Yes | Mapbox GL token for maps and geocoding |
 
-**Use GitHub Codespaces**
+---
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+## Project Structure
 
-## What technologies are used for this project?
+```
+src/
+├── assets/          # Images, logos, animations
+├── components/
+│   ├── dashboard/   # SearchTab, CsvUploadTab, ContactMapView, modals
+│   └── ui/          # shadcn/ui component library
+├── contexts/        # AuthContext (session + GHL bridge)
+├── hooks/           # useGhlSso, useInactivityTimeout, useMobile
+├── integrations/    # Supabase client + generated types
+├── lib/             # Utility functions
+├── pages/           # Landing, Auth, Dashboard, Settings, FAQ, UserGuide
+└── main.tsx         # App entry point
 
-This project is built with:
+supabase/
+├── functions/       # Edge Functions (sync, search, SMS, tagging, webhooks)
+└── migrations/      # Database schema migrations
+```
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+---
 
-## How can I deploy this project?
+## Documentation
 
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
+- **[FAQ](/faq)** — Common questions with answers for both Standalone and Edge DMS users
+- **[User Guide](/guide)** — Step-by-step walkthrough of every feature
 
-## Can I connect a custom domain to my Lovable project?
+---
 
-Yes, you can!
+## Deployment
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+The app is deployed via [Lovable](https://lovable.dev). Frontend changes require clicking "Update" in the publish dialog. Backend changes (Edge Functions, migrations) deploy automatically.
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+**Live URL:** [edgelocalist.lovable.app](https://edgelocalist.lovable.app)
+
+---
+
+## License
+
+Proprietary — All rights reserved.
