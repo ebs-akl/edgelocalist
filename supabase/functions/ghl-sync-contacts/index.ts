@@ -264,6 +264,18 @@ serve(async (req) => {
 
     console.log(`Fetched ${allContacts.length} contacts from GHL`);
 
+    // Debug: log first contact's custom fields structure
+    if (allContacts.length > 0) {
+      const sample = allContacts[0];
+      console.log(`Sample contact keys: ${Object.keys(sample).join(", ")}`);
+      console.log(`Sample customFields: ${JSON.stringify(sample.customFields ?? "MISSING")}`);
+      // Also check if LTV/LastOrd might be at root level with emoji keys
+      const rootKeys = Object.keys(sample).filter(k => k.includes("Lifetime") || k.includes("Last Order") || k.includes("🔪") || k.includes("lifetime") || k.includes("last_order"));
+      if (rootKeys.length > 0) {
+        console.log(`Root-level LTV/LastOrd keys found: ${rootKeys.join(", ")} => ${rootKeys.map(k => sample[k]).join(", ")}`);
+      }
+    }
+
     if (allContacts.length === 0) {
       return new Response(JSON.stringify({ synced: 0 }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
