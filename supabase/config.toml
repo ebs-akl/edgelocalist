@@ -23,3 +23,6 @@ verify_jwt = false
 
 [functions.ghl-webhook-update]
 verify_jwt = false
+
+[functions.ghl-tag-contacts]
+verify_jwt = false
