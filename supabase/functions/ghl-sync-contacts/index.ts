@@ -9,9 +9,11 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
-// GHL custom field keys for lat/lng
+// GHL custom field keys for lat/lng and Cutco metrics
 const LAT_FIELD_KEY = "contact.custom_lat";
 const LNG_FIELD_KEY = "contact.custom_lng";
+const LTV_FIELD_KEY = "contact.lifetime_";
+const LAST_ORD_FIELD_KEY = "contact.last_order_date";
 
 const LOCATION_ID_RE = /^[a-zA-Z0-9]{5,50}$/;
 
@@ -23,7 +25,7 @@ function getCustomFieldById(contact: Record<string, unknown>, fieldId: string): 
 async function fetchCustomFieldIds(
   accessToken: string,
   locationId: string
-): Promise<{ latFieldId: string | null; lngFieldId: string | null }> {
+): Promise<{ latFieldId: string | null; lngFieldId: string | null; ltvFieldId: string | null; lastOrdFieldId: string | null }> {
   try {
     const url = `https://services.leadconnectorhq.com/locations/${locationId}/customFields`;
     const res = await fetch(url, {
@@ -36,22 +38,27 @@ async function fetchCustomFieldIds(
     });
     if (!res.ok) {
       console.error(`Failed to fetch custom fields: ${res.status}`);
-      return { latFieldId: null, lngFieldId: null };
+      return { latFieldId: null, lngFieldId: null, ltvFieldId: null, lastOrdFieldId: null };
     }
     const data = await res.json();
     const fields = data.customFields ?? [];
     let latFieldId: string | null = null;
     let lngFieldId: string | null = null;
+    let ltvFieldId: string | null = null;
+    let lastOrdFieldId: string | null = null;
     for (const f of fields) {
       const fk = f.fieldKey ?? f.field_key ?? "";
+      const name = (f.name ?? "").toLowerCase();
       if (fk === LAT_FIELD_KEY) latFieldId = f.id;
       if (fk === LNG_FIELD_KEY) lngFieldId = f.id;
+      if (fk === LTV_FIELD_KEY || name.includes("lifetime")) ltvFieldId = f.id;
+      if (fk === LAST_ORD_FIELD_KEY || name.includes("last order")) lastOrdFieldId = f.id;
     }
-    console.log(`Custom field lookup: lat=${latFieldId}, lng=${lngFieldId}`);
-    return { latFieldId, lngFieldId };
+    console.log(`Custom field lookup: lat=${latFieldId}, lng=${lngFieldId}, ltv=${ltvFieldId}, lastOrd=${lastOrdFieldId}`);
+    return { latFieldId, lngFieldId, ltvFieldId, lastOrdFieldId };
   } catch (err) {
     console.error("Error fetching custom field definitions:", err);
-    return { latFieldId: null, lngFieldId: null };
+    return { latFieldId: null, lngFieldId: null, ltvFieldId: null, lastOrdFieldId: null };
   }
 }
 
@@ -211,7 +218,7 @@ serve(async (req) => {
 
   try {
     // Fetch custom field IDs for lat/lng
-    const { latFieldId, lngFieldId } = await fetchCustomFieldIds(accessToken, ghlLocationId);
+    const { latFieldId, lngFieldId, ltvFieldId, lastOrdFieldId } = await fetchCustomFieldIds(accessToken, ghlLocationId);
 
     // Paginate through all GHL contacts using cursor-based pagination
     const allContacts: Record<string, unknown>[] = [];
@@ -267,6 +274,8 @@ serve(async (req) => {
     const rows = allContacts.map((c) => {
       let lat: number | null = null;
       let lng: number | null = null;
+      let lifetimeValue: number | null = null;
+      let lastOrderDate: string | null = null;
 
       if (latFieldId && lngFieldId) {
         const latStr = getCustomFieldById(c, latFieldId);
@@ -276,6 +285,21 @@ serve(async (req) => {
         if (isNaN(lat!)) lat = null;
         if (isNaN(lng!)) lng = null;
         if (lat !== null && lng !== null) coordCount++;
+      }
+
+      // Extract LTV from custom field
+      if (ltvFieldId) {
+        const ltvStr = getCustomFieldById(c, ltvFieldId);
+        if (ltvStr) {
+          const cleaned = String(ltvStr).replace(/[^0-9.-]+/g, "");
+          lifetimeValue = parseFloat(cleaned) || null;
+        }
+      }
+
+      // Extract Last Order Date from custom field
+      if (lastOrdFieldId) {
+        const ordStr = getCustomFieldById(c, lastOrdFieldId);
+        if (ordStr) lastOrderDate = String(ordStr);
       }
 
       return {
@@ -290,6 +314,8 @@ serve(async (req) => {
         zip: (c.postalCode as string) ?? "",
         latitude: lat,
         longitude: lng,
+        lifetime_value: lifetimeValue,
+        last_order_date: lastOrderDate,
       };
     });
 
