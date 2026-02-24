@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "@/hooks/use-toast";
-import { MapPin, Loader2, Phone, MessageSquare, Map, ExternalLink, ChevronUp, ChevronDown, Filter, Trash2, Send, ArrowUpDown, Tag } from "lucide-react";
+import { MapPin, Loader2, Phone, MessageSquare, Map, ExternalLink, ChevronUp, ChevronDown, Filter, Trash2, Send, ArrowUpDown, Tag, List } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -19,6 +19,7 @@ import type { NearbyContact } from "@/lib/contacts";
 import ContactDetailModal from "./ContactDetailModal";
 import GroupSmsModal from "./GroupSmsModal";
 import TagContactsModal from "./TagContactsModal";
+import ContactMapView from "./ContactMapView";
 import stopBotImg from "@/assets/stopbot.png";
 import {
   AlertDialog,
@@ -66,6 +67,7 @@ export default function SearchTab({ repName, recentSearches, onSearch, contactCo
   const [groupSmsOpen, setGroupSmsOpen] = useState(false);
   const [tagModalOpen, setTagModalOpen] = useState(false);
   const [locating, setLocating] = useState(false);
+  const [viewMode, setViewMode] = useState<"list" | "map">("list");
   const watchIdRef = useRef<number | null>(null);
 
   const geocodeAddress = async (addr: string): Promise<{ lat: number; lng: number } | null> => {
@@ -473,11 +475,40 @@ export default function SearchTab({ repName, recentSearches, onSearch, contactCo
       {searched && (
         <div className="space-y-3">
           <div className="flex items-center justify-between gap-3 flex-wrap">
-            <p className="text-sm text-muted-foreground">
-              {results.length === 0
-                ? "No contacts found in that area — try a wider radius."
-                : `${results.length} contact${results.length !== 1 ? "s" : ""} within ${radius} miles`}
-            </p>
+            <div className="flex items-center gap-3">
+              <p className="text-sm text-muted-foreground">
+                {results.length === 0
+                  ? "No contacts found in that area — try a wider radius."
+                  : `${results.length} contact${results.length !== 1 ? "s" : ""} within ${radius} miles`}
+              </p>
+              {/* List / Map toggle */}
+              {results.length > 0 && (
+                <div className="flex rounded-lg border overflow-hidden">
+                  <button
+                    onClick={() => setViewMode("list")}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium transition-colors ${
+                      viewMode === "list"
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-background hover:bg-muted text-foreground"
+                    }`}
+                  >
+                    <List className="h-3.5 w-3.5" />
+                    List
+                  </button>
+                  <button
+                    onClick={() => setViewMode("map")}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium transition-colors ${
+                      viewMode === "map"
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-background hover:bg-muted text-foreground"
+                    }`}
+                  >
+                    <Map className="h-3.5 w-3.5" />
+                    Map
+                  </button>
+                </div>
+              )}
+            </div>
             <div className="flex items-center gap-2 flex-wrap">
               {/* Group SMS button — GHL mode only, shown when contacts are selected */}
               {isGhlMode && selectedContacts.length > 0 && (
@@ -501,7 +532,7 @@ export default function SearchTab({ repName, recentSearches, onSearch, contactCo
                   </Button>
                 </>
               )}
-              {results.length > 0 && (
+              {results.length > 0 && viewMode === "list" && (
                 <>
                   <Select
                     value={`${sortKey}_${sortAsc ? "asc" : "desc"}`}
@@ -543,7 +574,20 @@ export default function SearchTab({ repName, recentSearches, onSearch, contactCo
             </div>
           </div>
 
-          {filtered.length > 0 && (
+          {/* Map View */}
+          {viewMode === "map" && results.length > 0 && (
+            <ContactMapView
+              contacts={filtered}
+              center={searchCenter}
+              repName={repName}
+              isGhlMode={isGhlMode}
+              ghlLocationId={effectiveGhlLocationId}
+              onSelectContact={(c) => setSelectedContact(c)}
+            />
+          )}
+
+          {/* List View */}
+          {viewMode === "list" && filtered.length > 0 && (
             <div className="rounded-lg border overflow-hidden">
               {/* Table header */}
               <div className={`hidden sm:grid gap-2 bg-muted/50 px-4 py-2 text-xs font-medium text-muted-foreground uppercase tracking-wide items-center ${isGhlMode ? "grid-cols-[24px_1fr_80px_80px_80px_85px_160px]" : "grid-cols-[1fr_80px_80px_80px_85px_160px]"}`}>
@@ -669,7 +713,6 @@ export default function SearchTab({ repName, recentSearches, onSearch, contactCo
                             onClick={() => {
                               const url = `https://app.gohighlevel.com/v2/location/${effectiveGhlLocationId}/contacts/detail/${contact.contact_id}`;
                               try {
-                                // Most reliable in iframe user-gesture context
                                 window.open(url, "_top");
                               } catch {
                                 try {

@@ -44,6 +44,8 @@ export interface NearbyContact {
   gift_count: number | null;
   distance_miles: number;
   contact_id?: string;
+  latitude?: number | null;
+  longitude?: number | null;
 }
 
 export function formatPhone(raw: string): string {
