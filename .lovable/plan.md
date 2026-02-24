@@ -1,58 +1,25 @@
 
 
-# Fix: Geolocation "Permission Denied" in GHL Iframe
+## Plan: Add GHL_WEBHOOK_SECRET and Secure the Webhook
 
-## Root Cause
+### Step 1: Store the secret
+Add `GHL_WEBHOOK_SECRET` with the provided value to the project's Supabase secrets.
 
-This is **not a code bug**. When your app runs inside GoHighLevel's iframe, the browser blocks geolocation access because GHL's `<iframe>` tag does not include `allow="geolocation"`. This is a browser security policy you cannot override from inside the iframe.
+### Step 2: Update `supabase/functions/ghl-webhook-update/index.ts`
+Add secret verification at the top of the request handler (after the OPTIONS check):
+- Read the `?secret=` query parameter from the incoming request URL
+- Compare it against `Deno.env.get("GHL_WEBHOOK_SECRET")`
+- Return `401 Unauthorized` if missing or mismatched
+- Continue processing only if the secret matches
 
-## What We Can Do
+### Step 3: Mark security finding resolved
+Delete the `webhook_no_auth` security finding since the endpoint will now require secret verification.
 
-Since we can't control GHL's iframe attributes, the plan focuses on two things:
-1. **Better error messaging** that tells you exactly why it failed and what to do
-2. **An IP-based location fallback** so the "Use My Location" button still works inside GHL (approximate city-level accuracy)
-
----
-
-## Implementation Steps
-
-### 1. Add IP-based geolocation fallback
-
-When `watchPosition` fails with "permission denied" (error code 1) inside the GHL iframe, automatically fall back to an IP geolocation API to get an approximate location.
-
-- Use a free IP geolocation service (e.g., `ipapi.co/json/` or `ip-api.com/json`) to get rough lat/lng
-- Show a toast explaining the location is approximate: "Using approximate location (city-level). For precise GPS, open EdgeLocaList directly."
-- Proceed with the radius search using the approximate coordinates
-
-### 2. Improve the error toast for iframe context
-
-When geolocation fails inside the GHL iframe, update the error message to be actionable:
-- Detect iframe context (`window.self !== window.top`)
-- Show a specific message: "GPS is blocked inside HighLevel. Falling back to approximate location..." instead of the generic "Location permission denied"
-- If the IP fallback also fails, suggest typing an address manually
-
-### 3. Hide or restyle the GPS button in iframe mode (optional polish)
-
-- When in GHL mode (`isGhlMode`), change the button tooltip to "Use approximate location" so expectations are set
-
----
-
-## Technical Details
-
-**File: `src/components/dashboard/SearchTab.tsx`**
-
-In the `handleGPS` function's error callback (around line 216), when `err.code === 1` (PERMISSION_DENIED):
-
-```text
-1. Check if we're in an iframe (window.self !== window.top)
-2. If yes, call IP geolocation API as fallback
-3. On success: run radius query with approximate coords + show info toast
-4. On failure: show "Type an address instead" toast
+### Webhook URL for GHL configuration
+Once deployed, the webhook URL to paste into GoHighLevel will be:
+```
+https://kimyzwmniidwnixezqdi.supabase.co/functions/v1/ghl-webhook-update?secret=srfghaetrdfbhasdq345rtfjedsad567w4y5hebgsrt
 ```
 
-The IP geolocation fetch is a simple `fetch("https://ipapi.co/json/")` returning `{ latitude, longitude, city }`. No new dependencies needed.
+No database changes required.
 
-**Changes limited to:**
-- `src/components/dashboard/SearchTab.tsx` — add fallback logic in `handleGPS` error handler (~20 lines), update button tooltip when `isGhlMode`
-
-No new files, no new dependencies, no backend changes.
