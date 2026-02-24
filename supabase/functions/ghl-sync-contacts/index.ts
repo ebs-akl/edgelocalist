@@ -22,13 +22,13 @@ function getCustomFieldById(contact: Record<string, unknown>, fieldId: string): 
   return fields.find((f) => f.id === fieldId)?.value ?? null;
 }
 
-async function fetchCustomFieldIds(
+async function discoverFieldIdsFromContact(
   accessToken: string,
-  locationId: string
+  contactId: string
 ): Promise<{ latFieldId: string | null; lngFieldId: string | null; ltvFieldId: string | null; lastOrdFieldId: string | null }> {
+  const result = { latFieldId: null as string | null, lngFieldId: null as string | null, ltvFieldId: null as string | null, lastOrdFieldId: null as string | null };
   try {
-    const url = `https://services.leadconnectorhq.com/locations/${locationId}/customFields`;
-    const res = await fetch(url, {
+    const res = await fetch(`https://services.leadconnectorhq.com/contacts/${contactId}`, {
       headers: {
         Authorization: `Bearer ${accessToken}`,
         Version: "2021-07-28",
@@ -37,28 +37,25 @@ async function fetchCustomFieldIds(
       signal: AbortSignal.timeout(10000),
     });
     if (!res.ok) {
-      console.error(`Failed to fetch custom fields: ${res.status}`);
-      return { latFieldId: null, lngFieldId: null, ltvFieldId: null, lastOrdFieldId: null };
+      console.error(`Failed to fetch single contact for field discovery: ${res.status}`);
+      return result;
     }
     const data = await res.json();
-    const fields = data.customFields ?? [];
-    let latFieldId: string | null = null;
-    let lngFieldId: string | null = null;
-    let ltvFieldId: string | null = null;
-    let lastOrdFieldId: string | null = null;
+    const contact = data.contact ?? data;
+    const fields = contact.customFields as Array<{ id: string; value: unknown; fieldKey?: string; key?: string }> ?? [];
+    console.log(`Field discovery from contact ${contactId}: ${JSON.stringify(fields.map(f => ({ id: f.id, key: f.fieldKey ?? f.key })))}`);
     for (const f of fields) {
-      const fk = f.fieldKey ?? f.field_key ?? "";
-      const name = (f.name ?? "").toLowerCase();
-      if (fk === LAT_FIELD_KEY) latFieldId = f.id;
-      if (fk === LNG_FIELD_KEY) lngFieldId = f.id;
-      if (fk === LTV_FIELD_KEY || name.includes("lifetime")) ltvFieldId = f.id;
-      if (fk === LAST_ORD_FIELD_KEY || name.includes("last order")) lastOrdFieldId = f.id;
+      const key = f.fieldKey ?? f.key ?? "";
+      if (key === LAT_FIELD_KEY) result.latFieldId = f.id;
+      if (key === LNG_FIELD_KEY) result.lngFieldId = f.id;
+      if (key === LTV_FIELD_KEY || key.includes("lifetime")) result.ltvFieldId = f.id;
+      if (key === LAST_ORD_FIELD_KEY || key.includes("last_order")) result.lastOrdFieldId = f.id;
     }
-    console.log(`Custom field lookup: lat=${latFieldId}, lng=${lngFieldId}, ltv=${ltvFieldId}, lastOrd=${lastOrdFieldId}`);
-    return { latFieldId, lngFieldId, ltvFieldId, lastOrdFieldId };
+    console.log(`Discovered field IDs: lat=${result.latFieldId}, lng=${result.lngFieldId}, ltv=${result.ltvFieldId}, lastOrd=${result.lastOrdFieldId}`);
+    return result;
   } catch (err) {
-    console.error("Error fetching custom field definitions:", err);
-    return { latFieldId: null, lngFieldId: null, ltvFieldId: null, lastOrdFieldId: null };
+    console.error("Error discovering custom field IDs:", err);
+    return result;
   }
 }
 
@@ -217,9 +214,6 @@ serve(async (req) => {
   }
 
   try {
-    // Fetch custom field IDs for lat/lng
-    const { latFieldId, lngFieldId, ltvFieldId, lastOrdFieldId } = await fetchCustomFieldIds(accessToken, ghlLocationId);
-
     // Paginate through all GHL contacts using cursor-based pagination
     const allContacts: Record<string, unknown>[] = [];
     const limit = 100;
@@ -264,23 +258,15 @@ serve(async (req) => {
 
     console.log(`Fetched ${allContacts.length} contacts from GHL`);
 
-    // Debug: log first contact's custom fields structure
-    if (allContacts.length > 0) {
-      const sample = allContacts[0];
-      console.log(`Sample contact keys: ${Object.keys(sample).join(", ")}`);
-      console.log(`Sample customFields: ${JSON.stringify(sample.customFields ?? "MISSING")}`);
-      // Also check if LTV/LastOrd might be at root level with emoji keys
-      const rootKeys = Object.keys(sample).filter(k => k.includes("Lifetime") || k.includes("Last Order") || k.includes("🔪") || k.includes("lifetime") || k.includes("last_order"));
-      if (rootKeys.length > 0) {
-        console.log(`Root-level LTV/LastOrd keys found: ${rootKeys.join(", ")} => ${rootKeys.map(k => sample[k]).join(", ")}`);
-      }
-    }
-
     if (allContacts.length === 0) {
       return new Response(JSON.stringify({ synced: 0 }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
+    // Discover custom field IDs by fetching a single contact's full details
+    const firstContactId = allContacts[0].id as string;
+    const { latFieldId, lngFieldId, ltvFieldId, lastOrdFieldId } = await discoverFieldIdsFromContact(accessToken, firstContactId);
 
     let coordCount = 0;
     const rows = allContacts.map((c) => {
