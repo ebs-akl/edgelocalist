@@ -49,7 +49,7 @@ export default function Dashboard() {
     try {
       if (isGhlMode) {
         // GHL mode: fetch stats via edge function (Bearer auth auto-included)
-        const { data, error } = await supabase.functions.invoke("ghl-sync-contacts", {
+const { data, error } = await supabase.functions.invoke("localist-sync-contacts", {
           body: { stats_only: true },
         });
         if (!error && data) {
@@ -105,7 +105,7 @@ export default function Dashboard() {
       updateStep("connect", { status: "done", detail: "Secure connection established" });
       updateStep("fetch", { status: "active", label: "Fetching your contacts from CRM..." });
 
-      const { data, error } = await supabase.functions.invoke("ghl-sync-contacts", {
+const { data, error } = await supabase.functions.invoke("localist-sync-contacts", {
         body: {},
       });
 
@@ -137,7 +137,7 @@ export default function Dashboard() {
       const MAX_ROUNDS = 20; // 500 per round × 20 = up to 10,000 contacts
 
       while (remaining > 0 && geocodeRounds < MAX_ROUNDS) {
-        const { data: geoData, error: geoErr } = await supabase.functions.invoke("geocode-contacts", {
+        const { data: geoData, error: geoErr } = await supabase.functions.invoke("localist-geocode-contacts", {
           body: { limit: 500 },
         });
 
@@ -167,7 +167,7 @@ export default function Dashboard() {
       // Step 5: get final stats
       updateStep("done", { status: "active" });
 
-      const { data: statsData } = await supabase.functions.invoke("ghl-sync-contacts", {
+      const { data: statsData } = await supabase.functions.invoke("localist-sync-contacts", {
         body: { stats_only: true },
       });
       const totalCount = statsData?.count ?? synced;
@@ -175,7 +175,7 @@ export default function Dashboard() {
       // Count contacts with coordinates
       let searchable = 0;
       if (isGhlMode) {
-        const { data: finalStats } = await supabase.functions.invoke("ghl-sync-contacts", {
+        const { data: finalStats } = await supabase.functions.invoke("localist-sync-contacts", {
           body: { stats_only: true },
         });
         searchable = finalStats?.searchable ?? 0;
@@ -230,7 +230,7 @@ export default function Dashboard() {
 
     (async () => {
       try {
-        const { data, error } = await supabase.functions.invoke("ghl-merge-contacts", {
+        const { data, error } = await supabase.functions.invoke("localist-merge-contacts", {
           body: { rep_number: ghlRepNum.trim() },
         });
 

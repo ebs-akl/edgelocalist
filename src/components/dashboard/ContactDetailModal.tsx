@@ -35,7 +35,7 @@ export default function ContactDetailModal({ contact, repName, isGhlMode, onClos
     try {
       const body: Record<string, unknown> = { contact_id: contact.id, to_number: contact.phone };
 
-      const { data, error } = await supabase.functions.invoke("ghl-lc-call", {
+      const { data, error } = await supabase.functions.invoke("localist-lc-call", {
         body,
       });
       if (error || !data?.success) throw new Error(data?.error ?? error?.message ?? "Call failed");

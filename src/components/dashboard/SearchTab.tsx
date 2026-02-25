@@ -131,7 +131,7 @@ export default function SearchTab({ repName, recentSearches, onSearch, contactCo
 
       if (isGhlMode) {
         // GHL mode: use edge function (Bearer auth auto-included by Supabase client)
-        const { data: fnData, error: fnError } = await supabase.functions.invoke("nearby-search", {
+const { data: fnData, error: fnError } = await supabase.functions.invoke("localist-nearby-search", {
           body: {
             center_lat: center.lat,
             center_lng: center.lng,
@@ -173,7 +173,7 @@ export default function SearchTab({ repName, recentSearches, onSearch, contactCo
     setSelectedIds(new Set());
     try {
       onSearch(addr);
-      const { data: fnData, error: fnError } = await supabase.functions.invoke("nearby-search", {
+const { data: fnData, error: fnError } = await supabase.functions.invoke("localist-nearby-search", {
         body: {
           address: addr,
           radius_miles: radius,

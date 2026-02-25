@@ -51,7 +51,7 @@ export default function TagContactsModal({ open, onClose, contacts }: TagContact
         };
         if (ssoPayload) payload.sso_payload = ssoPayload;
 
-        const { data, error } = await supabase.functions.invoke("ghl-tag-contacts", {
+        const { data, error } = await supabase.functions.invoke("localist-tag-contacts", {
           body: payload,
         });
 

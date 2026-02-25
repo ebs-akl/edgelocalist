@@ -272,7 +272,7 @@ export default function CsvUploadTab({ onUploaded, contactCount, lastSync }: Pro
             const MAX_ROUNDS = 20;
 
             while (remaining > 0 && rounds < MAX_ROUNDS) {
-              const { data: geoData, error: geoErr } = await supabase.functions.invoke("geocode-contacts", {
+              const { data: geoData, error: geoErr } = await supabase.functions.invoke("localist-geocode-contacts", {
                 body: { limit: 500 },
               });
               if (geoErr || !geoData) break;
