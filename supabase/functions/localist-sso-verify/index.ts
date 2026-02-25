@@ -7,6 +7,51 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+const BASE64_LIKE_RE = /^[A-Za-z0-9+/=_-]+$/;
+
+function normalizeCipherPayload(raw: string): string | null {
+  let normalized = raw.trim();
+  if (!normalized) return null;
+
+  try {
+    if (/%[0-9A-Fa-f]{2}/.test(normalized)) {
+      normalized = decodeURIComponent(normalized);
+    }
+  } catch {
+    // noop
+  }
+
+  normalized = normalized.replace(/\s+/g, "");
+  normalized = normalized.replace(/-/g, "+").replace(/_/g, "/");
+
+  if (!BASE64_LIKE_RE.test(normalized) || normalized.length < 20) {
+    return null;
+  }
+
+  const remainder = normalized.length % 4;
+  if (remainder !== 0) {
+    normalized = normalized.padEnd(normalized.length + (4 - remainder), "=");
+  }
+
+  return normalized;
+}
+
+function tryDecryptPayload(payload: string, decryptionKeys: string[]): string | null {
+  for (const key of decryptionKeys) {
+    try {
+      const bytes = CryptoJS.AES.decrypt(payload, key);
+      const decrypted = bytes.toString(CryptoJS.enc.Utf8);
+      if (decrypted && decrypted.trim()) {
+        return decrypted;
+      }
+    } catch (decryptErr) {
+      console.warn("AES decryption attempt failed:", decryptErr instanceof Error ? decryptErr.message : String(decryptErr));
+    }
+  }
+
+  return null;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -14,17 +59,19 @@ Deno.serve(async (req) => {
 
   try {
     const GHL_SSO_KEY = Deno.env.get("GHL_SSO_KEY");
+    const GHL_SHARED_SECRET = Deno.env.get("VITE_GHL_SHARED_SECRET");
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
-    if (!GHL_SSO_KEY || !SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-      console.error("Missing server config: GHL_SSO_KEY, SUPABASE_URL, or SUPABASE_SERVICE_ROLE_KEY");
+    if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY || (!GHL_SSO_KEY && !GHL_SHARED_SECRET)) {
+      console.error("Missing server config: GHL_SSO_KEY/VITE_GHL_SHARED_SECRET, SUPABASE_URL, or SUPABASE_SERVICE_ROLE_KEY");
       return new Response(
         JSON.stringify({ error: "Server configuration error" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
+    const decryptionKeys = [GHL_SSO_KEY, GHL_SHARED_SECRET].filter((key): key is string => Boolean(key));
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
     let body: { payload?: string } = {};
@@ -45,23 +92,21 @@ Deno.serve(async (req) => {
       );
     }
 
-    // ── Step 1: Decrypt SSO payload ──
-    let decryptedString = "";
-    try {
-      const bytes = CryptoJS.AES.decrypt(payload, GHL_SSO_KEY);
-      decryptedString = bytes.toString(CryptoJS.enc.Utf8);
-    } catch (decryptErr) {
-      console.error("AES decryption threw:", decryptErr.message, "Payload length:", payload.length, "First 40 chars:", payload.substring(0, 40));
+    const normalizedPayload = normalizeCipherPayload(payload);
+    if (!normalizedPayload) {
       return new Response(
-        JSON.stringify({ error: "Decryption failed — payload may not be a valid AES-encrypted SSO token. Ensure GHL_SSO_KEY matches." }),
+        JSON.stringify({ error: "Invalid payload format for decryption" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
+    // ── Step 1: Decrypt SSO payload ──
+    const decryptedString = tryDecryptPayload(normalizedPayload, decryptionKeys);
+
     if (!decryptedString) {
-      console.error("Decryption resulted in empty string. Payload length:", payload.length, "First 40 chars:", payload.substring(0, 40));
+      console.error("Decryption failed for all configured keys. Payload length:", normalizedPayload.length, "First 40 chars:", normalizedPayload.substring(0, 40));
       return new Response(
-        JSON.stringify({ error: "Decryption failed. Check GHL_SSO_KEY." }),
+        JSON.stringify({ error: "Decryption failed — payload may not be a valid AES-encrypted SSO token. Ensure GHL_SSO_KEY matches." }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
