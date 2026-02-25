@@ -7,20 +7,51 @@ import { useEffect, useState, useCallback, useRef } from "react";
  */
 
 const SSO_URL_KEYS = ["payload", "sso", "session", "token", "userData"];
+const BASE64_LIKE_RE = /^[A-Za-z0-9+/=_-]+$/;
+
+function normalizeSsoCandidate(value: string | null | undefined): string | null {
+  if (!value) return null;
+
+  let normalized = value.trim();
+  if (!normalized) return null;
+
+  try {
+    if (/%[0-9A-Fa-f]{2}/.test(normalized)) {
+      normalized = decodeURIComponent(normalized);
+    }
+  } catch {
+    // noop
+  }
+
+  normalized = normalized.replace(/\s+/g, "");
+  normalized = normalized.replace(/-/g, "+").replace(/_/g, "/");
+
+  if (!BASE64_LIKE_RE.test(normalized) || normalized.length < 20) {
+    return null;
+  }
+
+  const remainder = normalized.length % 4;
+  if (remainder !== 0) {
+    normalized = normalized.padEnd(normalized.length + (4 - remainder), "=");
+  }
+
+  return normalized;
+}
 
 function getSsoFromUrl(): string | null {
   try {
     const params = new URLSearchParams(window.location.search);
     for (const key of SSO_URL_KEYS) {
-      const val = params.get(key);
-      if (val && val.length > 20) return val;
+      const val = normalizeSsoCandidate(params.get(key));
+      if (val) return val;
     }
+
     // Also check hash params (some GHL versions use hash)
     if (window.location.hash) {
       const hashParams = new URLSearchParams(window.location.hash.substring(1));
       for (const key of SSO_URL_KEYS) {
-        const val = hashParams.get(key);
-        if (val && val.length > 20) return val;
+        const val = normalizeSsoCandidate(hashParams.get(key));
+        if (val) return val;
       }
     }
   } catch {}
@@ -40,11 +71,7 @@ function extractPayloadFromMessage(data: any): string | null {
       const parsed = JSON.parse(data);
       return extractPayloadFromMessage(parsed);
     } catch {
-      // Only accept if it looks like a base64/AES cipher (contains only valid chars)
-      if (/^[A-Za-z0-9+/=]+$/.test(data.trim())) {
-        return data.trim();
-      }
-      return null;
+      return normalizeSsoCandidate(data);
     }
   }
 
@@ -60,18 +87,13 @@ function extractPayloadFromMessage(data: any): string | null {
   for (const key of payloadKeys) {
     const val = data[key];
     if (typeof val === "string" && val.length > 20) {
-      // Validate it looks like an encrypted payload (base64-ish)
-      if (/^[A-Za-z0-9+/=]+$/.test(val.trim())) {
-        return val.trim();
-      }
-      // Also accept if it contains the CryptoJS OpenSSL header format (U2FsdGVk = "Salted")
-      if (val.startsWith("U2FsdGVk")) {
-        return val.trim();
-      }
+      const normalized = normalizeSsoCandidate(val);
+      if (normalized) return normalized;
     }
     // Nested object with payload
     if (val && typeof val === "object" && val.payload && typeof val.payload === "string" && val.payload.length > 20) {
-      return val.payload;
+      const nested = normalizeSsoCandidate(val.payload);
+      if (nested) return nested;
     }
   }
 
