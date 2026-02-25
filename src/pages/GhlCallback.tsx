@@ -28,7 +28,7 @@ export default function GhlCallback() {
       try {
         const redirectUri = "https://edgelocalist.app/callback";
 
-        const { data, error } = await supabase.functions.invoke("ghl-oauth-callback", {
+        const { data, error } = await supabase.functions.invoke("localist-oauth-callback", {
           body: { code, redirect_uri: redirectUri },
         });
 

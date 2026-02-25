@@ -78,7 +78,7 @@ export default function GroupSmsModal({ open, onClose, contacts, repName }: Grou
 
       const body: Record<string, unknown> = { contacts: payload, message_template: activeBody };
 
-      const { data, error } = await supabase.functions.invoke("ghl-group-sms", {
+      const { data, error } = await supabase.functions.invoke("localist-group-sms", {
         body,
       });
 

@@ -75,7 +75,7 @@ export default function IframeApp() {
     console.log("🔐 Verifying SSO payload server-side (one-shot)...");
 
     supabase.functions
-      .invoke("ghl-sso-verify", { body: { payload: ssoPayload } })
+      .invoke("localist-sso-verify", { body: { payload: ssoPayload } })
       .then(async ({ data, error }) => {
         if (error) {
           let detail = error.message;
