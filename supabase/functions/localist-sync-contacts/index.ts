@@ -14,6 +14,12 @@ const LAT_FIELD_KEY = "contact.custom_lat";
 const LNG_FIELD_KEY = "contact.custom_lng";
 const LTV_FIELD_KEY = "contact.lifetime_";
 const LAST_ORD_FIELD_KEY = "contact.last_order_date";
+const ORDER_COUNT_FIELD_KEY = "contact.order_count";
+const GIFT_COUNT_FIELD_KEY = "contact.gift_count";
+const RLT_FIELD_KEY = "contact.rlt";
+const BIZ_FIELD_KEY = "contact.biz";
+const CAT_FIELD_KEY = "contact.cat";
+const LAST_SERVICE_FIELD_KEY = "contact.last_service";
 
 const LOCATION_ID_RE = /^[a-zA-Z0-9]{5,50}$/;
 
@@ -113,8 +119,20 @@ function inferMetricFieldIdsFromContacts(
 async function discoverFieldIdsFromContact(
   accessToken: string,
   contactId: string
-): Promise<{ latFieldId: string | null; lngFieldId: string | null; ltvFieldId: string | null; lastOrdFieldId: string | null }> {
-  const result = { latFieldId: null as string | null, lngFieldId: null as string | null, ltvFieldId: null as string | null, lastOrdFieldId: null as string | null };
+): Promise<{
+  latFieldId: string | null; lngFieldId: string | null;
+  ltvFieldId: string | null; lastOrdFieldId: string | null;
+  orderCountFieldId: string | null; giftCountFieldId: string | null;
+  rltFieldId: string | null; bizFieldId: string | null;
+  catFieldId: string | null; lastServiceFieldId: string | null;
+}> {
+  const result = {
+    latFieldId: null as string | null, lngFieldId: null as string | null,
+    ltvFieldId: null as string | null, lastOrdFieldId: null as string | null,
+    orderCountFieldId: null as string | null, giftCountFieldId: null as string | null,
+    rltFieldId: null as string | null, bizFieldId: null as string | null,
+    catFieldId: null as string | null, lastServiceFieldId: null as string | null,
+  };
   try {
     const res = await fetch(`https://services.leadconnectorhq.com/contacts/${contactId}`, {
       headers: {
@@ -133,13 +151,19 @@ async function discoverFieldIdsFromContact(
     const fields = contact.customFields as Array<{ id: string; value: unknown; fieldKey?: string; key?: string }> ?? [];
     console.log(`Field discovery from contact ${contactId}: ${JSON.stringify(fields.map(f => ({ id: f.id, key: f.fieldKey ?? f.key })))}`);
     for (const f of fields) {
-      const key = f.fieldKey ?? f.key ?? "";
+      const key = (f.fieldKey ?? f.key ?? "").toLowerCase();
       if (key === LAT_FIELD_KEY) result.latFieldId = f.id;
       if (key === LNG_FIELD_KEY) result.lngFieldId = f.id;
       if (key === LTV_FIELD_KEY || key.includes("lifetime")) result.ltvFieldId = f.id;
       if (key === LAST_ORD_FIELD_KEY || key.includes("last_order")) result.lastOrdFieldId = f.id;
+      if (key === ORDER_COUNT_FIELD_KEY || key.includes("order_count") || key.includes("orders")) result.orderCountFieldId = f.id;
+      if (key === GIFT_COUNT_FIELD_KEY || key.includes("gift_count") || key.includes("gifts")) result.giftCountFieldId = f.id;
+      if (key === RLT_FIELD_KEY || key.includes("rlt") || key.includes("relationship")) result.rltFieldId = f.id;
+      if (key === BIZ_FIELD_KEY || key.includes("biz") || key.includes("business")) result.bizFieldId = f.id;
+      if (key === CAT_FIELD_KEY || key.includes("cat") && !key.includes("category_id")) result.catFieldId = f.id;
+      if (key === LAST_SERVICE_FIELD_KEY || key.includes("last_service") || key.includes("service_date")) result.lastServiceFieldId = f.id;
     }
-    console.log(`Discovered field IDs: lat=${result.latFieldId}, lng=${result.lngFieldId}, ltv=${result.ltvFieldId}, lastOrd=${result.lastOrdFieldId}`);
+    console.log(`Discovered field IDs: lat=${result.latFieldId}, lng=${result.lngFieldId}, ltv=${result.ltvFieldId}, lastOrd=${result.lastOrdFieldId}, orders=${result.orderCountFieldId}, gifts=${result.giftCountFieldId}, rlt=${result.rltFieldId}, biz=${result.bizFieldId}, cat=${result.catFieldId}, lastService=${result.lastServiceFieldId}`);
     return result;
   } catch (err) {
     console.error("Error discovering custom field IDs:", err);
@@ -342,7 +366,7 @@ serve(async (req) => {
 
     // Discover custom field IDs by fetching a single contact's full details
     const firstContactId = allContacts[0].id as string;
-    let { latFieldId, lngFieldId, ltvFieldId, lastOrdFieldId } = await discoverFieldIdsFromContact(accessToken, firstContactId);
+    let { latFieldId, lngFieldId, ltvFieldId, lastOrdFieldId, orderCountFieldId, giftCountFieldId, rltFieldId, bizFieldId, catFieldId, lastServiceFieldId } = await discoverFieldIdsFromContact(accessToken, firstContactId);
 
     // Fallback: infer IDs directly from contact values when GHL omits fieldKey metadata
     if (!ltvFieldId || !lastOrdFieldId) {
@@ -358,6 +382,12 @@ serve(async (req) => {
       let lng: number | null = null;
       let lifetimeValue: number | null = null;
       let lastOrderDate: string | null = null;
+      let orderCount: number | null = null;
+      let giftCount: number | null = null;
+      let rlt: string | null = null;
+      let biz: string | null = null;
+      let cat: string | null = null;
+      let lastServiceDate: string | null = null;
 
       if (latFieldId && lngFieldId) {
         const latStr = getCustomFieldById(c, latFieldId);
@@ -385,6 +415,32 @@ serve(async (req) => {
         if (ordStr) lastOrderDate = normalizeDateForDb(String(ordStr));
       }
 
+      // Extract Cutco metrics from custom fields
+      if (orderCountFieldId) {
+        const val = getCustomFieldById(c, orderCountFieldId);
+        if (val) { const n = parseInt(String(val), 10); orderCount = Number.isFinite(n) ? n : null; }
+      }
+      if (giftCountFieldId) {
+        const val = getCustomFieldById(c, giftCountFieldId);
+        if (val) { const n = parseInt(String(val), 10); giftCount = Number.isFinite(n) ? n : null; }
+      }
+      if (rltFieldId) {
+        const val = getCustomFieldById(c, rltFieldId);
+        if (val) rlt = String(val).trim() || null;
+      }
+      if (bizFieldId) {
+        const val = getCustomFieldById(c, bizFieldId);
+        if (val) biz = String(val).trim() || null;
+      }
+      if (catFieldId) {
+        const val = getCustomFieldById(c, catFieldId);
+        if (val) cat = String(val).trim() || null;
+      }
+      if (lastServiceFieldId) {
+        const val = getCustomFieldById(c, lastServiceFieldId);
+        if (val) lastServiceDate = normalizeDateForDb(String(val)) ?? String(val).trim();
+      }
+
       return {
         rep_id: repId,
         contact_id: c.id as string,
@@ -399,6 +455,12 @@ serve(async (req) => {
         longitude: lng,
         lifetime_value: lifetimeValue,
         last_order_date: lastOrderDate,
+        order_count: orderCount,
+        gift_count: giftCount,
+        rlt,
+        biz,
+        cat,
+        last_service_date: lastServiceDate,
       };
     });
 
