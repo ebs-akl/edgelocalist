@@ -3,10 +3,10 @@ import { useEffect, useState, useCallback, useRef } from "react";
 /**
  * GHL Custom Page SSO handshake hook.
  * Posts REQUEST_USER_DATA to parent/top frames, captures the encrypted payload.
- * Uses a `handshakeComplete` ref to prevent duplicate processing.
+ * Hardened to accept multiple GHL message formats.
  */
 
-const SSO_URL_KEYS = ["payload", "sso", "session"];
+const SSO_URL_KEYS = ["payload", "sso", "session", "token", "userData"];
 
 function getSsoFromUrl(): string | null {
   try {
@@ -15,19 +15,60 @@ function getSsoFromUrl(): string | null {
       const val = params.get(key);
       if (val && val.length > 20) return val;
     }
+    // Also check hash params (some GHL versions use hash)
+    if (window.location.hash) {
+      const hashParams = new URLSearchParams(window.location.hash.substring(1));
+      for (const key of SSO_URL_KEYS) {
+        const val = hashParams.get(key);
+        if (val && val.length > 20) return val;
+      }
+    }
   } catch {}
   return null;
 }
 
-function isResponseMessage(data: any): boolean {
-  if (!data || typeof data !== "object") return false;
-  const tag = data.message || data.type || data.action;
-  return tag === "REQUEST_USER_DATA_RESPONSE";
-}
+/**
+ * Extract a payload from ANY incoming postMessage event.
+ * GHL has shipped multiple message formats over time, so we cast a wide net.
+ */
+function extractPayloadFromMessage(data: any): string | null {
+  if (!data) return null;
 
-function getPayloadFromEvent(data: any): string | null {
-  if (!data || typeof data !== "object") return null;
-  return data.payload || data.ssoPayload || data.userData || null;
+  // If the message itself is a long string, it might BE the payload
+  if (typeof data === "string" && data.length > 20) {
+    try {
+      const parsed = JSON.parse(data);
+      return extractPayloadFromMessage(parsed);
+    } catch {
+      // Raw encrypted string
+      return data;
+    }
+  }
+
+  if (typeof data !== "object") return null;
+
+  // Standard GHL response format
+  if (data.payload && typeof data.payload === "string" && data.payload.length > 20) {
+    return data.payload;
+  }
+
+  // Alternative field names GHL has used
+  const payloadKeys = [
+    "payload", "ssoPayload", "userData", "userPayload",
+    "sso_payload", "encryptedPayload", "encrypted_payload",
+    "token", "ssoToken", "data"
+  ];
+
+  for (const key of payloadKeys) {
+    const val = data[key];
+    if (typeof val === "string" && val.length > 20) return val;
+    // Nested object with payload
+    if (val && typeof val === "object" && val.payload && typeof val.payload === "string" && val.payload.length > 20) {
+      return val.payload;
+    }
+  }
+
+  return null;
 }
 
 export function useGhlSso() {
@@ -36,6 +77,7 @@ export function useGhlSso() {
   const [ssoError, setSsoError] = useState<string | null>(null);
   const handshakeComplete = useRef(false);
   const listenerRef = useRef<((event: MessageEvent) => void) | null>(null);
+  const messageCount = useRef(0);
 
   const isInIframe = useCallback(() => {
     try {
@@ -46,13 +88,22 @@ export function useGhlSso() {
   }, []);
 
   const sendRequest = useCallback(() => {
-    const msg = { message: "REQUEST_USER_DATA" };
-    window.parent.postMessage(msg, "*");
-    try {
-      if (window.top && window.top !== window.parent) {
-        window.top.postMessage(msg, "*");
-      }
-    } catch {}
+    // Send multiple message formats GHL might expect
+    const messages = [
+      { message: "REQUEST_USER_DATA" },
+      { type: "REQUEST_USER_DATA" },
+      { action: "REQUEST_USER_DATA" },
+      "REQUEST_USER_DATA",
+    ];
+    for (const msg of messages) {
+      try { window.parent.postMessage(msg, "*"); } catch {}
+      try {
+        if (window.top && window.top !== window.parent) {
+          window.top.postMessage(msg, "*");
+        }
+      } catch {}
+    }
+    console.log("📤 Sent REQUEST_USER_DATA (all formats)");
   }, []);
 
   const killListener = useCallback(() => {
@@ -85,55 +136,75 @@ export function useGhlSso() {
     const handleMessage = (event: MessageEvent) => {
       if (handshakeComplete.current) return;
 
-      if (isResponseMessage(event.data)) {
-        const payload = getPayloadFromEvent(event.data);
-        if (payload) {
-          console.log("✅ SSO payload captured — killing listener immediately");
-          handshakeComplete.current = true;
-          // Kill listener IMMEDIATELY so no more messages are processed
-          killListener();
-          setSsoPayload(payload);
-          setSsoReady(true);
-          setSsoError(null);
-        }
+      messageCount.current++;
+      // Log ALL messages for debugging (first 5 only to avoid spam)
+      if (messageCount.current <= 5) {
+        console.log(`📨 Message #${messageCount.current} from ${event.origin}:`,
+          typeof event.data === "string"
+            ? event.data.substring(0, 100)
+            : JSON.stringify(event.data)?.substring(0, 200)
+        );
+      }
+
+      const payload = extractPayloadFromMessage(event.data);
+      if (payload) {
+        console.log("✅ SSO payload captured — killing listener immediately");
+        handshakeComplete.current = true;
+        killListener();
+        setSsoPayload(payload);
+        setSsoReady(true);
+        setSsoError(null);
       }
     };
 
     listenerRef.current = handleMessage;
     window.addEventListener("message", handleMessage);
 
-    const initialDelay = setTimeout(() => {
+    // Send immediately, then retry at increasing intervals
+    sendRequest();
+
+    const retry1 = setTimeout(() => {
       if (handshakeComplete.current) return;
+      console.log("🔄 Retry 1...");
       sendRequest();
+    }, 1500);
 
-      const retryTimeout = setTimeout(() => {
-        if (handshakeComplete.current) return;
-        console.warn("Handshake timeout, retrying...");
-        sendRequest();
+    const retry2 = setTimeout(() => {
+      if (handshakeComplete.current) return;
+      console.log("🔄 Retry 2...");
+      sendRequest();
+    }, 4000);
 
-        const finalTimeout = setTimeout(() => {
-          if (!handshakeComplete.current) {
-            killListener();
-            setSsoError("SSO handshake timed out. The HighLevel connection could not be established.");
-            setSsoReady(true);
-          }
-        }, 3000);
-        (window as any).__ghlFinalTimeout = finalTimeout;
-      }, 3000);
-      (window as any).__ghlRetryTimeout = retryTimeout;
-    }, 500);
-    (window as any).__ghlInitialDelay = initialDelay;
+    const retry3 = setTimeout(() => {
+      if (handshakeComplete.current) return;
+      console.log("🔄 Retry 3...");
+      sendRequest();
+    }, 7000);
+
+    const finalTimeout = setTimeout(() => {
+      if (!handshakeComplete.current) {
+        killListener();
+        console.error(`❌ SSO handshake timed out after ${messageCount.current} messages received`);
+        setSsoError(
+          `SSO handshake timed out (${messageCount.current} messages received). ` +
+          "The HighLevel connection could not be established."
+        );
+        setSsoReady(true);
+      }
+    }, 10000); // Extended to 10s
 
     return () => {
       killListener();
-      clearTimeout(initialDelay);
-      clearTimeout((window as any).__ghlRetryTimeout);
-      clearTimeout((window as any).__ghlFinalTimeout);
+      clearTimeout(retry1);
+      clearTimeout(retry2);
+      clearTimeout(retry3);
+      clearTimeout(finalTimeout);
     };
   }, [isInIframe, sendRequest, killListener]);
 
   const retry = useCallback(() => {
     handshakeComplete.current = false;
+    messageCount.current = 0;
     setSsoPayload(null);
     setSsoReady(false);
     setSsoError(null);
