@@ -118,8 +118,7 @@ Deno.serve(async (req) => {
         authEmail = existingAuthUser.email!;
         console.log("Found existing auth user:", authUserId);
       } else {
-        // Rep exists but no auth user — create one with the SAME ID
-        // so existing localist_contacts.rep_id foreign keys remain valid
+        // Rep exists but no auth user by that ID — try to create, or find existing by email
         authEmail = existingRep.email || ssoEmail || `ghl-${locationId}@edgelocalist.app`;
         const { data: newUser, error: createErr } = await supabase.auth.admin.createUser({
           id: existingRep.id,
@@ -129,14 +128,39 @@ Deno.serve(async (req) => {
         });
 
         if (createErr) {
-          console.error("Failed to create auth user with rep ID:", createErr.message);
-          return new Response(
-            JSON.stringify({ error: `Cannot provision auth session: ${createErr.message}` }),
-            { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
+          console.warn("createUser failed (may already exist):", createErr.message);
+          // Email already registered under a different ID — look up by email
+          const { data: { users: foundUsers } } = await supabase.auth.admin.listUsers({
+            filter: { email: authEmail },
+          } as any);
+          const matchedUser = (foundUsers || []).find((u: any) => u.email === authEmail);
+          if (matchedUser) {
+            authUserId = matchedUser.id;
+            authEmail = matchedUser.email!;
+            // Update the rep row to point to the actual auth user ID
+            if (matchedUser.id !== existingRep.id) {
+              console.log(`Re-linking rep from ${existingRep.id} to auth user ${matchedUser.id}`);
+              // Update contacts to the correct auth user
+              await supabase.from("localist_contacts").update({ rep_id: matchedUser.id }).eq("rep_id", existingRep.id);
+              await supabase.from("localist_reps").delete().eq("id", existingRep.id);
+              await supabase.from("localist_reps").upsert({
+                id: matchedUser.id,
+                email: ssoEmail || authEmail,
+                ghl_location_id: locationId as string,
+                full_name: fullName || existingRep.full_name || null,
+              }, { onConflict: "id" });
+            }
+            console.log("Recovered auth user by email:", authUserId);
+          } else {
+            return new Response(
+              JSON.stringify({ error: "Cannot provision auth session" }),
+              { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            );
+          }
+        } else {
+          authUserId = newUser.user.id;
+          console.log("Created auth user with existing rep ID:", authUserId);
         }
-        authUserId = newUser.user.id;
-        console.log("Created auth user with existing rep ID:", authUserId);
       }
     } else {
       // No rep for this location — create new auth user + rep row.
