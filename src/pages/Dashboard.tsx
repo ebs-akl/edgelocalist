@@ -250,19 +250,8 @@ const { data, error } = await supabase.functions.invoke("localist-sync-contacts"
     if (stored) {
       try { setRecentSearches(JSON.parse(stored)); } catch { /* ignore */ }
     }
-    // Auto-sync GHL on load if connected and payload ready
-    if (isGhlMode && ghlLocationId) {
-      const lastSyncKey = `ghl_last_sync_${ghlLocationId}`;
-      const lastSyncTime = localStorage.getItem(lastSyncKey);
-      const hoursSince = lastSyncTime
-        ? (Date.now() - parseInt(lastSyncTime)) / 3600000
-        : Infinity;
-      if (hoursSince > 24) {
-        handleGhlSync().then(() => {
-          localStorage.setItem(lastSyncKey, Date.now().toString());
-        });
-      }
-    }
+    // Auto-sync removed — reps should manually sync via the Refresh button
+    // to avoid "Too Many Requests" errors from rapid API calls on load.
   }, [userId, isGhlMode]);
 
   // ── Realtime subscription for webhook-driven contact updates ──
