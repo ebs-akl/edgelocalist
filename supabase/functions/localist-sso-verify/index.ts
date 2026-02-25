@@ -46,11 +46,20 @@ Deno.serve(async (req) => {
     }
 
     // ── Step 1: Decrypt SSO payload ──
-    const bytes = CryptoJS.AES.decrypt(payload, GHL_SSO_KEY);
-    const decryptedString = bytes.toString(CryptoJS.enc.Utf8);
+    let decryptedString = "";
+    try {
+      const bytes = CryptoJS.AES.decrypt(payload, GHL_SSO_KEY);
+      decryptedString = bytes.toString(CryptoJS.enc.Utf8);
+    } catch (decryptErr) {
+      console.error("AES decryption threw:", decryptErr.message, "Payload length:", payload.length, "First 40 chars:", payload.substring(0, 40));
+      return new Response(
+        JSON.stringify({ error: "Decryption failed — payload may not be a valid AES-encrypted SSO token. Ensure GHL_SSO_KEY matches." }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     if (!decryptedString) {
-      console.error("Decryption resulted in empty string. Payload length:", payload.length);
+      console.error("Decryption resulted in empty string. Payload length:", payload.length, "First 40 chars:", payload.substring(0, 40));
       return new Response(
         JSON.stringify({ error: "Decryption failed. Check GHL_SSO_KEY." }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }

@@ -73,6 +73,7 @@ export default function IframeApp() {
     setVerifying(true);
 
     console.log("🔐 Verifying SSO payload server-side (one-shot)...");
+    console.log("📦 Payload preview:", ssoPayload.substring(0, 60), "... length:", ssoPayload.length);
 
     supabase.functions
       .invoke("localist-sso-verify", { body: { payload: ssoPayload } })

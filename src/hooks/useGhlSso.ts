@@ -40,19 +40,17 @@ function extractPayloadFromMessage(data: any): string | null {
       const parsed = JSON.parse(data);
       return extractPayloadFromMessage(parsed);
     } catch {
-      // Raw encrypted string
-      return data;
+      // Only accept if it looks like a base64/AES cipher (contains only valid chars)
+      if (/^[A-Za-z0-9+/=]+$/.test(data.trim())) {
+        return data.trim();
+      }
+      return null;
     }
   }
 
   if (typeof data !== "object") return null;
 
   // Standard GHL response format
-  if (data.payload && typeof data.payload === "string" && data.payload.length > 20) {
-    return data.payload;
-  }
-
-  // Alternative field names GHL has used
   const payloadKeys = [
     "payload", "ssoPayload", "userData", "userPayload",
     "sso_payload", "encryptedPayload", "encrypted_payload",
@@ -61,7 +59,16 @@ function extractPayloadFromMessage(data: any): string | null {
 
   for (const key of payloadKeys) {
     const val = data[key];
-    if (typeof val === "string" && val.length > 20) return val;
+    if (typeof val === "string" && val.length > 20) {
+      // Validate it looks like an encrypted payload (base64-ish)
+      if (/^[A-Za-z0-9+/=]+$/.test(val.trim())) {
+        return val.trim();
+      }
+      // Also accept if it contains the CryptoJS OpenSSL header format (U2FsdGVk = "Salted")
+      if (val.startsWith("U2FsdGVk")) {
+        return val.trim();
+      }
+    }
     // Nested object with payload
     if (val && typeof val === "object" && val.payload && typeof val.payload === "string" && val.payload.length > 20) {
       return val.payload;
