@@ -12,6 +12,7 @@ import GhlCallback from "./pages/GhlCallback";
 import Faq from "./pages/Faq";
 import UserGuide from "./pages/UserGuide";
 import NotFound from "./pages/NotFound";
+import ResetPassword from "./pages/ResetPassword";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { supabaseConfigured } from "@/integrations/supabase/client";
 import { MapPin, AlertTriangle } from "lucide-react";
@@ -112,6 +113,7 @@ const App = () => {
               <Route path="/localist-setup" element={<GhlCallback />} />
               <Route path="/callback" element={<GhlCallback />} />
               <Route path="/leadconnector/oauth" element={<GhlCallback />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </AuthProvider>
