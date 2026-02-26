@@ -186,6 +186,10 @@ const { data: fnData, error: fnError } = await supabase.functions.invoke("locali
         return;
       }
       if (fnData?.error) throw new Error(fnData.error);
+      // Set search center from server-geocoded coordinates for map view
+      if (typeof fnData?.center_lat === "number" && typeof fnData?.center_lng === "number") {
+        setSearchCenter({ lat: fnData.center_lat, lng: fnData.center_lng });
+      }
       setResults((fnData?.contacts as NearbyContact[]) ?? []);
       setSearched(true);
     } catch (err: unknown) {
