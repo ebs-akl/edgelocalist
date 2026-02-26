@@ -185,7 +185,7 @@ serve(async (req) => {
     });
   }
 
-  return new Response(JSON.stringify({ contacts: data ?? [] }), {
+  return new Response(JSON.stringify({ contacts: data ?? [], center_lat: centerLat, center_lng: centerLng }), {
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 });
