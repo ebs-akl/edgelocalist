@@ -392,7 +392,7 @@ export default function Landing() {
       <footer className="border-t py-8 bg-background">
         <div className="container mx-auto px-4 text-center">
           <div className="flex items-center justify-center mb-4">
-            <img src={edgeBrandingLogo} alt="Edge Branding Solutions" className="h-16 w-auto object-contain" />
+            <img src={edgeBrandingLogo} alt="Edge Branding Solutions" className="h-32 w-auto object-contain" />
           </div>
           <p className="text-sm text-muted-foreground">
             © {new Date().getFullYear()} Edge Branding Solutions · Part of the EdgeDMS Platform
