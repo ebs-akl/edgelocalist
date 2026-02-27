@@ -84,3 +84,33 @@ export function toTitleCase(value: string | null | undefined): string {
     .toLowerCase()
     .replace(/(?:^|\s)\S/g, (ch) => ch.toUpperCase());
 }
+
+/**
+ * Normalise a date string (M/D/YYYY, MM/DD/YYYY, YYYY-MM-DD, etc.) into
+ * the ISO date format YYYY-MM-DD that Postgres expects for a `date` column.
+ * Returns null when the value is empty or unparseable.
+ */
+export function normalizeDateForDb(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const v = value.trim();
+  if (!v) return null;
+
+  // Handle M/D/YYYY or MM/DD/YYYY (slash or dash separator)
+  const mdyMatch = v.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/);
+  if (mdyMatch) {
+    const [, m, d, y] = mdyMatch;
+    return `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`;
+  }
+
+  // Already ISO? YYYY-MM-DD with optional time suffix
+  if (/^\d{4}-\d{1,2}-\d{1,2}/.test(v)) {
+    const parsed = Date.parse(v);
+    if (Number.isFinite(parsed)) return new Date(parsed).toISOString().slice(0, 10);
+  }
+
+  // Fallback: try Date.parse
+  const parsed = Date.parse(v);
+  if (Number.isFinite(parsed)) return new Date(parsed).toISOString().slice(0, 10);
+
+  return null;
+}

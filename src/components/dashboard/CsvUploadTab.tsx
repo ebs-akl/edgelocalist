@@ -6,7 +6,7 @@ import { toast } from "@/hooks/use-toast";
 import { Upload, RefreshCw, FileText, CheckCircle2, AlertCircle, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { formatPhone, stripAptFromAddress, isPOBox, toTitleCase } from "@/lib/contacts";
+import { formatPhone, stripAptFromAddress, isPOBox, toTitleCase, normalizeDateForDb } from "@/lib/contacts";
 import Papa from "papaparse";
 import coffeeBotImg from "@/assets/upload-bot.gif";
 import stopBotImg from "@/assets/stopbot.png";
@@ -165,7 +165,7 @@ export default function CsvUploadTab({ onUploaded, contactCount, lastSync }: Pro
             state: normalize(row, ["state"]),
             zip: normalize(row, ["zip", "zipcode", "zip_code", "postalcode"]),
             poBox: isPOBox(address1),
-            last_order_date: normalize(row, ["lastorderdate", "lastorder", "lastord", "lastorderdt"]),
+            last_order_date: normalizeDateForDb(normalize(row, ["lastorderdate", "lastorder", "lastord", "lastorderdt"])) || "",
             last_service_date: normalize(row, ["lastservicedate", "lastservice", "servicedate"]),
             rlt: normalize(row, ["rlt"]),
             biz: normalize(row, ["biz"]),
