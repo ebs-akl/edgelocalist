@@ -7,7 +7,7 @@ import { Sheet, SheetContent, SheetTrigger, SheetClose } from "@/components/ui/s
 import { motion } from "framer-motion";
 import { MapPin, Upload, Search, Menu, CheckCircle2, ArrowRight, Zap, BarChart3 } from "lucide-react";
 import heroBg from "@/assets/hero-bg.gif";
-import aklLogo from "@/assets/AKL_With_White.png";
+import edgeBrandingLogo from "@/assets/Edge_Branding_Landscape.png";
 import Footer from "@/components/Footer";
 
 const fadeUp = {
@@ -392,7 +392,7 @@ export default function Landing() {
       <footer className="border-t py-8 bg-background">
         <div className="container mx-auto px-4 text-center">
           <div className="flex items-center justify-center mb-4">
-            <img src={aklLogo} alt="Automated Knife Life" className="h-16 w-auto object-contain" />
+            <img src={edgeBrandingLogo} alt="Edge Branding Solutions" className="h-16 w-auto object-contain" />
           </div>
           <p className="text-sm text-muted-foreground">
             © {new Date().getFullYear()} Edge Branding Solutions · Part of the EdgeDMS Platform
