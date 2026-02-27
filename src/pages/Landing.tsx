@@ -59,24 +59,36 @@ const pricingPlans = [
   "Call & SMS one-tap actions",
   "Lifetime value tracking",
   "Unlimited searches"],
-
   cta: "Start Free Trial",
   highlighted: false
+},
+{
+  name: "Snack Pack",
+  price: "$16",
+  period: "/mo",
+  description: "ALOMAR + EdgeLocalist together — everything you need to run your Cutco biz.",
+  features: [
+  "ALOMAR Order Catcher included",
+  "EdgeLocalist radius search",
+  "CSV Upload from VectorConnect",
+  "Call & SMS one-tap actions",
+  "Lifetime value tracking"],
+  cta: "Start Free Trial",
+  highlighted: true
 },
 {
   name: "EdgeDMS",
   price: "$97",
   period: "/mo",
-  description: "Included in the full EdgeDMS platform with GHL sync.",
+  description: "The full EdgeDMS platform with GHL sync and automation.",
   features: [
-  "Everything in Standalone",
+  "Everything in Snack Pack",
   "Auto-sync from GoHighLevel",
   "LC Call integration",
   "24-hour contact refresh",
   "Full EdgeDMS suite"],
-
-  cta: "Get EdgeDMS",
-  highlighted: true
+  cta: "Start 7-Day Free Trial",
+  highlighted: false
 }];
 
 
@@ -319,7 +331,7 @@ export default function Landing() {
               Simple Pricing. No Guessing.
             </h2>
           </div>
-          <div className="grid gap-6 sm:grid-cols-2 max-w-3xl mx-auto">
+          <div className="grid gap-6 sm:grid-cols-3 max-w-5xl mx-auto">
             {pricingPlans.map((plan, i) =>
             <motion.div
               key={plan.name}
