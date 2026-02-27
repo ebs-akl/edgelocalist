@@ -49,7 +49,21 @@ serve(async (req) => {
 
     // 🔪 Extract the Knife Emoji fields
     const rawLtv = customData['🔪Lifetime $'] || null;
-    const lastOrderDate = customData['🔪Last Order Date'] || null;
+    const rawLastOrder = customData['🔪Last Order Date'] || null;
+
+    // Normalize the last order date to YYYY-MM-DD for Postgres
+    let lastOrderDate: string | null = null;
+    if (rawLastOrder) {
+      const v = String(rawLastOrder).trim();
+      const mdyMatch = v.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/);
+      if (mdyMatch) {
+        const [, m, d, y] = mdyMatch;
+        lastOrderDate = `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`;
+      } else {
+        const parsed = Date.parse(v);
+        lastOrderDate = Number.isFinite(parsed) ? new Date(parsed).toISOString().slice(0, 10) : null;
+      }
+    }
 
     // Clean the LTV string (remove '$', ',', and spaces) and convert to a number
     let parsedLtv = 0;
