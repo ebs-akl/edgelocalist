@@ -177,9 +177,7 @@ export default function Landing() {
           src={heroBg}
           alt=""
           aria-hidden="true"
-          className="absolute inset-0 w-full h-full object-cover opacity-20 pointer-events-none select-none" />
-
-        <HexBackground />
+          className="absolute inset-0 w-full h-full object-cover pointer-events-none select-none" />
         <div className="container relative mx-auto px-4 text-center">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
