@@ -9,18 +9,19 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
 import { LogOut, ArrowLeft, ExternalLink, Rocket, Pencil, Check, X, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { TIERS } from "@/lib/stripe-tiers";
 import localistLogo from "@/assets/Localist_Logo-2.png";
 import Footer from "@/components/Footer";
 
 const UPGRADE_URL = "#";
 
 export default function Settings() {
-  const { user, repProfile, signOut, isGhlMode, refreshProfile } = useAuth();
-  const loading = false; // Billing portal not yet implemented
+  const { user, repProfile, signOut, isGhlMode, refreshProfile, subscription, loadingSubscription, refreshSubscription, session } = useAuth();
 
   const [editing, setEditing] = useState<"name" | null>(null);
   const [editName, setEditName] = useState(repProfile?.full_name ?? "");
   const [saving, setSaving] = useState(false);
+  const [portalLoading, setPortalLoading] = useState(false);
 
   useEffect(() => {
     setEditName(repProfile?.full_name ?? "");
@@ -52,12 +53,31 @@ export default function Settings() {
     setEditing(null);
   };
 
-  const handleManageBilling = () => {
-    toast({
-      title: "Coming Soon",
-      description: "The billing portal is not yet available. Stay tuned!",
-    });
+  const handleManageBilling = async () => {
+    if (!subscription.subscribed) {
+      toast({ title: "No active subscription", description: "Subscribe to a plan first.", variant: "destructive" });
+      return;
+    }
+    setPortalLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("localist-customer-portal", {
+        headers: { Authorization: `Bearer ${session?.access_token}` },
+      });
+      if (error) throw error;
+      if (data?.url) {
+        window.open(data.url, "_blank");
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to open billing portal";
+      toast({ title: "Billing portal error", description: msg, variant: "destructive" });
+    } finally {
+      setPortalLoading(false);
+    }
   };
+
+  const currentTierName = subscription.tier
+    ? TIERS[subscription.tier]?.name ?? subscription.tier
+    : "None";
 
   return (
     <div className="min-h-screen bg-background">
@@ -105,13 +125,13 @@ export default function Settings() {
               )}
             </div>
 
-            {/* Email (read-only) */}
+            {/* Email */}
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Email</span>
               <span className="font-medium">{user?.email}</span>
             </div>
 
-            {/* Rep Number (read-only once set) */}
+            {/* Rep Number */}
             <div className="flex items-center justify-between text-sm min-h-[36px]">
               <Label className="text-muted-foreground">Rep Number (8-digit ID)</Label>
               <span className="font-medium font-mono tracking-wide">{repProfile?.rep_number ?? "—"}</span>
@@ -119,8 +139,20 @@ export default function Settings() {
 
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Plan</span>
-              <Badge variant="secondary" className="capitalize">{repProfile?.subscription_tier ?? "standalone"}</Badge>
+              {loadingSubscription ? (
+                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+              ) : (
+                <Badge variant={subscription.subscribed ? "default" : "secondary"} className="capitalize">
+                  {subscription.subscribed ? currentTierName : "No Plan"}
+                </Badge>
+              )}
             </div>
+            {subscription.subscribed && subscription.subscriptionEnd && (
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Renews</span>
+                <span className="font-medium">{new Date(subscription.subscriptionEnd).toLocaleDateString()}</span>
+              </div>
+            )}
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Mode</span>
               <Badge variant={isGhlMode ? "default" : "secondary"}>{isGhlMode ? "GHL Mode" : "CSV Mode"}</Badge>
@@ -134,9 +166,15 @@ export default function Settings() {
           </CardHeader>
           <CardContent className="space-y-3">
             <p className="text-sm text-muted-foreground">Manage your subscription, update payment method, or cancel anytime.</p>
-            <Button variant="outline" onClick={handleManageBilling} disabled={loading} className="w-full min-h-[44px]">
-              <ExternalLink className="mr-2 h-4 w-4" />
+            <Button variant="outline" onClick={handleManageBilling} disabled={portalLoading || !subscription.subscribed} className="w-full min-h-[44px]">
+              {portalLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ExternalLink className="mr-2 h-4 w-4" />}
               Open Billing Portal
+            </Button>
+            {!subscription.subscribed && (
+              <p className="text-xs text-muted-foreground text-center">Subscribe to a plan to access the billing portal.</p>
+            )}
+            <Button variant="ghost" size="sm" onClick={() => refreshSubscription()} className="w-full text-xs text-muted-foreground">
+              Refresh Subscription Status
             </Button>
           </CardContent>
         </Card>
