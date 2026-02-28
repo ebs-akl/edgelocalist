@@ -251,10 +251,10 @@ export default function Landing() {
               </p>
 
               <div className="flex flex-col items-center md:items-start gap-4">
-                <Link to="/auth">
+                <Link to="/auth" className="w-full sm:w-64">
                   <Button
                     size="lg"
-                    className="text-base px-8 min-h-[48px] w-full sm:w-auto"
+                    className="text-base px-8 min-h-[48px] w-full"
                     style={{ backgroundColor: "#34dfdf", color: "#0a1a1a" }}>
                     Start Free Trial <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
@@ -262,7 +262,7 @@ export default function Landing() {
                 <Button
                   size="lg"
                   variant="outline"
-                  className="border-primary-foreground/30 hover:bg-primary-foreground/10 min-h-[48px] w-full sm:w-auto" style={{ color: "#485856" }}>
+                  className="border-primary-foreground/30 hover:bg-primary-foreground/10 min-h-[48px] w-full sm:w-64 text-base px-8" style={{ color: "#485856" }}>
                   Watch Demo
                 </Button>
               </div>
