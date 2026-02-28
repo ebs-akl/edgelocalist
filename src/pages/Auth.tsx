@@ -126,7 +126,7 @@ export default function Auth() {
         <Card className="w-full max-w-md">
           <CardHeader className="text-center">
             <div className="flex items-center justify-center mb-2">
-              <img src="/lovable-uploads/localist-final-logo-2.png" alt="EdgeLocalist" className="h-14 w-auto object-contain" />
+              <img src="/lovable-uploads/localist-final-logo-2.png" alt="AKL LocaList" className="h-14 w-auto object-contain" />
             </div>
             <CardTitle className="text-base font-normal">
               {forgotPassword

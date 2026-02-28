@@ -84,7 +84,7 @@ export default function Settings() {
       <nav className="fixed top-0 left-0 right-0 z-50 border-b bg-background/80 backdrop-blur-md">
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
           <Link to="/dashboard" className="flex items-center">
-            <img src={localistLogo} alt="EdgeLocalist" className="h-10 w-auto object-contain" />
+            <img src={localistLogo} alt="AKL LocaList" className="h-10 w-auto object-contain" />
           </Link>
           <Button variant="ghost" size="sm" onClick={signOut}>
             <LogOut className="h-4 w-4 mr-1" />
