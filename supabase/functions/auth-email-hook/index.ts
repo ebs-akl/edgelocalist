@@ -162,26 +162,53 @@ function buildHtml(content: { subject: string; heading: string; body: string; bu
 }
 
 async function verifySignature(req: Request, body: string): Promise<boolean> {
-  const signature = req.headers.get("x-supabase-signature");
-  if (!signature) return false;
+  const signatureHeader = req.headers.get("webhook-signature");
+  if (!signatureHeader) return false;
 
   const secret = Deno.env.get("SEND_EMAIL_HOOK_SECRET");
   if (!secret) return false;
 
+  // Extract the base64 key from "v1,whsec_<base64>"
+  const parts = secret.split("whsec_");
+  if (parts.length < 2) return false;
+  const secretBytes = Uint8Array.from(atob(parts[1]), (c) => c.charCodeAt(0));
+
+  // Parse timestamp and signatures from header: "v1,<ts>,<sig>"
+  const sigParts = signatureHeader.split(",");
+  // Find v1 signatures
+  const timestamp = sigParts.find((p) => p.startsWith("t="))?.slice(2);
+  const v1Sigs = sigParts
+    .filter((p) => p.startsWith("v1,") || p.startsWith("v1="))
+    .map((p) => p.slice(3));
+
+  // If standard format: "v1,<base64sig>" with msgId and timestamp
+  const msgId = req.headers.get("webhook-id") || "";
+  const msgTimestamp = req.headers.get("webhook-timestamp") || timestamp || "";
+
+  // Construct signed content per Standard Webhooks spec
+  const signedContent = `${msgId}.${msgTimestamp}.${body}`;
+
   const encoder = new TextEncoder();
   const key = await crypto.subtle.importKey(
     "raw",
-    encoder.encode(secret),
+    secretBytes,
     { name: "HMAC", hash: "SHA-256" },
     false,
     ["sign"]
   );
-  const sig = await crypto.subtle.sign("HMAC", key, encoder.encode(body));
-  const computed = Array.from(new Uint8Array(sig))
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
+  const sig = await crypto.subtle.sign("HMAC", key, encoder.encode(signedContent));
+  const computed = btoa(String.fromCharCode(...new Uint8Array(sig)));
 
-  return computed === signature;
+  // Compare against all v1 signatures in the header
+  if (v1Sigs.length > 0) {
+    return v1Sigs.some((s) => s === computed);
+  }
+
+  // Fallback: compare full signature parts
+  return signatureHeader.split(" ").some((part) => {
+    const val = part.startsWith("v1,") ? part.slice(3) : part;
+    return val === computed;
+  });
 }
 
 Deno.serve(async (req) => {
