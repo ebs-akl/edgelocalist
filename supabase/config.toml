@@ -38,3 +38,12 @@ verify_jwt = false
 
 [functions.localist-lc-call]
 verify_jwt = false
+
+[functions.localist-check-subscription]
+verify_jwt = false
+
+[functions.localist-create-checkout]
+verify_jwt = false
+
+[functions.localist-customer-portal]
+verify_jwt = false

@@ -5,7 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Sheet, SheetContent, SheetTrigger, SheetClose } from "@/components/ui/sheet";
 import { motion } from "framer-motion";
-import { MapPin, Upload, Search, Menu, CheckCircle2, ArrowRight, Zap, BarChart3 } from "lucide-react";
+import { MapPin, Upload, Search, Menu, CheckCircle2, ArrowRight, Zap, BarChart3, Loader2 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { TIERS, type TierKey } from "@/lib/stripe-tiers";
+import { toast } from "@/hooks/use-toast";
 import heroBg from "@/assets/hero-bg.gif";
 import edgeBrandingLogo from "@/assets/Edge_Branding_Landscape.png";
 import Footer from "@/components/Footer";
@@ -47,9 +50,10 @@ const features = [
 }];
 
 
-const pricingPlans = [
+const pricingPlans: { name: string; tierKey: TierKey | null; price: string; period: string; description: string; features: string[]; cta: string; highlighted: boolean }[] = [
 {
   name: "Standalone",
+  tierKey: "standalone",
   price: "$9",
   period: "/mo",
   description: "Perfect for reps who want radius search without a full CRM.",
@@ -64,6 +68,7 @@ const pricingPlans = [
 },
 {
   name: "Snack Pack",
+  tierKey: "snack_pack",
   price: "$16",
   period: "/mo",
   description: "ALOMAR + EdgeLocalist together — everything you need to run your Cutco biz.",
@@ -78,6 +83,7 @@ const pricingPlans = [
 },
 {
   name: "EdgeDMS",
+  tierKey: null,
   price: "$97",
   period: "/mo",
   description: "The full EdgeDMS platform with GHL sync and automation.",
@@ -87,7 +93,7 @@ const pricingPlans = [
   "LC Call integration",
   "24-hour contact refresh",
   "Full EdgeDMS suite"],
-  cta: "Start 7-Day Free Trial",
+  cta: "Coming Soon",
   highlighted: false
 }];
 
@@ -123,14 +129,39 @@ function HexBackground() {
 
 export default function Landing() {
   const [contactCount] = useState(500000);
-  const { isAuthenticated, loading } = useAuth();
+  const { isAuthenticated, loading, session, subscription } = useAuth();
   const navigate = useNavigate();
+  const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
 
   useEffect(() => {
     if (!loading && isAuthenticated) {
       navigate("/dashboard", { replace: true });
     }
   }, [isAuthenticated, loading, navigate]);
+
+  const handleCheckout = async (tierKey: TierKey) => {
+    if (!isAuthenticated) {
+      navigate("/auth");
+      return;
+    }
+    setCheckoutLoading(tierKey);
+    try {
+      const priceId = TIERS[tierKey].price_id;
+      const { data, error } = await supabase.functions.invoke("localist-create-checkout", {
+        headers: { Authorization: `Bearer ${session?.access_token}` },
+        body: { priceId },
+      });
+      if (error) throw error;
+      if (data?.url) {
+        window.open(data.url, "_blank");
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Checkout failed";
+      toast({ title: "Checkout error", description: msg, variant: "destructive" });
+    } finally {
+      setCheckoutLoading(null);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background overflow-x-hidden">
@@ -372,14 +403,21 @@ export default function Landing() {
                         </li>
                     )}
                     </ul>
-                    <Link to="/auth">
+                    {plan.tierKey ? (
                       <Button
-                      className="w-full min-h-[44px]"
-                      variant={plan.highlighted ? "default" : "outline"}>
-
+                        className="w-full min-h-[44px]"
+                        variant={plan.highlighted ? "default" : "outline"}
+                        disabled={checkoutLoading === plan.tierKey || (subscription.subscribed && subscription.tier === plan.tierKey)}
+                        onClick={() => handleCheckout(plan.tierKey!)}
+                      >
+                        {checkoutLoading === plan.tierKey && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        {subscription.subscribed && subscription.tier === plan.tierKey ? "Your Plan" : plan.cta}
+                      </Button>
+                    ) : (
+                      <Button className="w-full min-h-[44px]" variant="outline" disabled>
                         {plan.cta}
                       </Button>
-                    </Link>
+                    )}
                   </CardContent>
                 </Card>
               </motion.div>
