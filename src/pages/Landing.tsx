@@ -50,35 +50,31 @@ const features = [
 }];
 
 
-const pricingPlans: { name: string; tierKey: TierKey | null; price: string; period: string; description: string; features: string[]; cta: string; highlighted: boolean }[] = [
+const pricingPlans: { name: string; tierKey: TierKey | null; price: string; period: string; features: string[]; cta: string; highlighted: boolean }[] = [
 {
-  name: "Standalone",
+  name: "Edge LocaList",
   tierKey: "standalone",
   price: "$9",
   period: "/mo",
-  description: "Perfect for reps who want radius search without a full CRM.",
   features: [
-  "CSV Upload from VectorConnect",
-  "Radius Search (10/25/50 mi)",
-  "Call & SMS one-tap actions",
-  "Lifetime value tracking",
-  "Unlimited searches"],
-  cta: "Start Free Trial",
+    "CSV Upload from VectorConnect",
+    "Radius Search (10/25/50 mi)",
+    "Call & SMS one-tap actions",
+    "Lifetime value tracking"],
+  cta: "Get Started",
   highlighted: false
 },
 {
-  name: "Snack Pack",
+  name: "AKL Snack Pack",
   tierKey: "snack_pack",
   price: "$16",
   period: "/mo",
-  description: "ALOMAR + EdgeLocalist together — everything you need to run your Cutco biz.",
   features: [
-  "ALOMAR Order Catcher included",
-  "EdgeLocalist radius search",
-  "CSV Upload from VectorConnect",
-  "Call & SMS one-tap actions",
-  "Lifetime value tracking"],
-  cta: "Start Free Trial",
+    "Everything in Edge LocaList",
+    "ALOMAR Order Catcher included",
+    "Full email parsing & CRM sync",
+    "Best value — save $2/mo"],
+  cta: "Get the Bundle",
   highlighted: true
 },
 {
@@ -86,13 +82,11 @@ const pricingPlans: { name: string; tierKey: TierKey | null; price: string; peri
   tierKey: null,
   price: "$97",
   period: "/mo",
-  description: "The full EdgeDMS platform with GHL sync and automation.",
   features: [
-  "Everything in Snack Pack",
-  "Auto-sync from GoHighLevel",
-  "LC Call integration",
-  "24-hour contact refresh",
-  "Full EdgeDMS suite"],
+    "Everything in Snack Pack",
+    "Auto-sync from GoHighLevel",
+    "LC Call integration",
+    "Full EdgeDMS suite"],
   cta: "Coming Soon",
   highlighted: false
 }];
@@ -355,58 +349,41 @@ export default function Landing() {
       </section>
 
       {/* Pricing */}
-      <section className="py-16 sm:py-24">
+      <section className="py-12 sm:py-20 bg-muted/30">
         <div className="container mx-auto px-4">
           <div className="text-center mb-14">
-            <h2 className="text-3xl font-bold" style={{ fontFamily: "'Oswald', sans-serif" }}>
-              Simple Pricing. No Guessing.
+            <h2 className="text-3xl font-bold tracking-tight" style={{ fontFamily: "'Oswald', sans-serif" }}>
+              Simple, Transparent Pricing
             </h2>
+            <p className="mt-3 text-muted-foreground max-w-xl mx-auto">
+              Start with a free trial — no credit card required. Upgrade when you're ready.
+            </p>
           </div>
-          <div className="grid gap-6 sm:grid-cols-3 max-w-5xl mx-auto">
-            {pricingPlans.map((plan, i) =>
-            <motion.div
-              key={plan.name}
-              custom={i}
-              initial="hidden"
-              whileInView="visible"
-              viewport={{ once: true }}
-              variants={fadeUp}>
-
-                <Card
-                className={`h-full ${
-                plan.highlighted ?
-                "border-primary ring-2 ring-primary/20" :
-                "border-border/60"}`
-                }>
-
-                  <CardContent className="p-6">
-                    {plan.highlighted &&
-                  <div className="mb-3 inline-block rounded-full bg-primary px-3 py-0.5 text-xs font-semibold text-primary-foreground">
-                        Most Popular
-                      </div>
-                  }
-                    <h3 className="text-2xl font-bold mb-1" style={{ fontFamily: "'Oswald', sans-serif" }}>
-                      {plan.name}
-                    </h3>
-                    <div className="flex items-baseline gap-1 mb-3">
-                      <span className="text-4xl font-bold" style={{ fontFamily: "'Oswald', sans-serif" }}>
-                        {plan.price}
-                      </span>
-                      <span className="text-muted-foreground">{plan.period}</span>
-                    </div>
-                    <p className="text-sm text-muted-foreground mb-5">{plan.description}</p>
-                    <ul className="space-y-2 mb-6">
-                      {plan.features.map((feat) =>
-                    <li key={feat} className="flex items-center gap-2 text-sm">
-                          <CheckCircle2 className="h-4 w-4 text-success shrink-0" />
-                          {feat}
-                        </li>
+          <div className="grid gap-6 sm:grid-cols-3 max-w-4xl mx-auto">
+            {pricingPlans.map((plan, i) => (
+              <motion.div key={plan.name} custom={i} initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeUp}>
+                <Card className={`h-full flex flex-col ${plan.highlighted ? 'border-primary shadow-lg ring-2 ring-primary/20' : 'border-border/60'}`}>
+                  <CardContent className="p-6 flex flex-col flex-1">
+                    {plan.highlighted && (
+                      <span className="inline-block self-start mb-3 rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">Most Popular</span>
                     )}
+                    <h3 className="text-lg font-semibold mb-1" style={{ fontFamily: "'Oswald', sans-serif" }}>{plan.name}</h3>
+                    <div className="mb-4">
+                      <span className="text-3xl font-bold" style={{ fontFamily: "'Oswald', sans-serif" }}>{plan.price}</span>
+                      <span className="text-sm text-muted-foreground">{plan.period}</span>
+                    </div>
+                    <ul className="space-y-2 mb-6 flex-1">
+                      {plan.features.map((f) => (
+                        <li key={f} className="flex items-start gap-2 text-sm text-muted-foreground">
+                          <CheckCircle2 className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                          {f}
+                        </li>
+                      ))}
                     </ul>
                     {plan.tierKey ? (
                       <Button
-                        className="w-full min-h-[44px]"
-                        variant={plan.highlighted ? "default" : "outline"}
+                        className={`w-full ${plan.highlighted ? 'bg-primary text-primary-foreground' : ''}`}
+                        variant={plan.highlighted ? 'default' : 'outline'}
                         disabled={checkoutLoading === plan.tierKey || (subscription.subscribed && subscription.tier === plan.tierKey)}
                         onClick={() => handleCheckout(plan.tierKey!)}
                       >
@@ -414,14 +391,14 @@ export default function Landing() {
                         {subscription.subscribed && subscription.tier === plan.tierKey ? "Your Plan" : plan.cta}
                       </Button>
                     ) : (
-                      <Button className="w-full min-h-[44px]" variant="outline" disabled>
+                      <Button className="w-full" variant="outline" disabled>
                         {plan.cta}
                       </Button>
                     )}
                   </CardContent>
                 </Card>
               </motion.div>
-            )}
+            ))}
           </div>
         </div>
       </section>
