@@ -163,7 +163,7 @@ export default function Landing() {
       <nav className="fixed top-0 left-0 right-0 z-50 border-b bg-background/80 backdrop-blur-md">
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
           <div className="flex items-center">
-            <img alt="Automated Knife Life" className="h-10 w-auto object-contain" src="/lovable-uploads/36fd507d-e7a8-484e-bdf1-b0b75b66dc59.png" />
+            <img alt="EdgeLocalist" className="h-10 w-auto object-contain" src="/lovable-uploads/localist-final-logo-2.png" />
           </div>
 
           {/* Desktop nav */}
