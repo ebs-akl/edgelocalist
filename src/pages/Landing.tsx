@@ -262,7 +262,7 @@ export default function Landing() {
                 <Button
                   size="lg"
                   variant="outline"
-                  className="border-primary-foreground/30 text-primary-foreground hover:bg-primary-foreground/10 min-h-[48px] w-full sm:w-auto">
+                  className="border-primary-foreground/30 hover:bg-primary-foreground/10 min-h-[48px] w-full sm:w-auto" style={{ color: "#485856" }}>
                   Watch Demo
                 </Button>
               </div>
