@@ -221,7 +221,7 @@ export default function Landing() {
               <img
                 src={heroPhone}
                 alt="AKL LocaList app on phone"
-                className="w-64 sm:w-72 md:w-80 lg:w-96 object-contain drop-shadow-2xl"
+                className="w-[28rem] sm:w-[32rem] md:w-[36rem] lg:w-[42rem] object-contain drop-shadow-2xl"
               />
             </motion.div>
 
