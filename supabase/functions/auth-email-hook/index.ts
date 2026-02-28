@@ -161,12 +161,46 @@ function buildHtml(content: { subject: string; heading: string; body: string; bu
 </html>`;
 }
 
+async function verifySignature(req: Request, body: string): Promise<boolean> {
+  const signature = req.headers.get("x-supabase-signature");
+  if (!signature) return false;
+
+  const secret = Deno.env.get("SEND_EMAIL_HOOK_SECRET");
+  if (!secret) return false;
+
+  const encoder = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    "raw",
+    encoder.encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"]
+  );
+  const sig = await crypto.subtle.sign("HMAC", key, encoder.encode(body));
+  const computed = Array.from(new Uint8Array(sig))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+
+  return computed === signature;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
+    const body = await req.text();
+
+    const valid = await verifySignature(req, body);
+    if (!valid) {
+      console.error("Invalid or missing HMAC signature");
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
     if (!RESEND_API_KEY) {
       console.error("Missing RESEND_API_KEY");
@@ -176,7 +210,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    const payload: HookPayload = await req.json();
+    const payload: HookPayload = JSON.parse(body);
     const { user, email_data } = payload;
 
     if (!user?.email || !email_data?.email_action_type) {
