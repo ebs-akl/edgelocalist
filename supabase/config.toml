@@ -47,3 +47,6 @@ verify_jwt = false
 
 [functions.localist-customer-portal]
 verify_jwt = false
+
+[functions.auth-email-hook]
+verify_jwt = false
