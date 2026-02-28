@@ -8,7 +8,7 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { ArrowLeft } from "lucide-react";
-import localistLogo from "@/assets/Localist_Logo-2.png";
+import localistLogo from "@/assets/Localist-Final-Logo.png";
 import Footer from "@/components/Footer";
 
 const standaloneFaq = [
