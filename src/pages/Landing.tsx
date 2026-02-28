@@ -203,7 +203,7 @@ export default function Landing() {
       </nav>
 
       {/* Hero */}
-      <section className="relative pt-24 pb-16 sm:pt-36 sm:pb-24 overflow-hidden bg-primary">
+      <section className="relative pt-24 pb-0 sm:pt-36 overflow-hidden bg-primary">
         {/* GIF background */}
         <img
           src={heroBg}
