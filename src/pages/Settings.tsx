@@ -10,7 +10,7 @@ import { toast } from "@/hooks/use-toast";
 import { LogOut, ArrowLeft, ExternalLink, Rocket, Pencil, Check, X, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { TIERS } from "@/lib/stripe-tiers";
-import localistLogo from "@/assets/Localist_Logo-2.png";
+import localistLogo from "@/assets/Localist-Final-Logo.png";
 import Footer from "@/components/Footer";
 
 const UPGRADE_URL = "#";

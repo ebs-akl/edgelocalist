@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
 import { ArrowLeft, Upload, Search, MapPin, Phone, MessageSquare, RefreshCw, Tag, Users, Settings, Shield } from "lucide-react";
-import localistLogo from "@/assets/Localist_Logo-2.png";
+import localistLogo from "@/assets/Localist-Final-Logo.png";
 import Footer from "@/components/Footer";
 
 function Section({ icon: Icon, title, children }: { icon: React.ElementType; title: string; children: React.ReactNode }) {
