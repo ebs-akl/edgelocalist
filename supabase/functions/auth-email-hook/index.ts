@@ -10,7 +10,7 @@ const BG = "#f2f2f2";
 const CARD_BG = "#ffffff";
 const TEXT = "#1a1a1a";
 const MUTED = "#666666";
-const LOGO_URL = "https://edgelocalist.lovable.app/lovable-uploads/36fd507d-e7a8-484e-bdf1-b0b75b66dc59.png";
+const LOGO_URL = "https://edgelocalist.lovable.app/lovable-uploads/localist-final-logo-2.png";
 const APP_NAME = "Edge LocaList";
 const SUPPORT_EMAIL = "support@edgedms.com";
 
