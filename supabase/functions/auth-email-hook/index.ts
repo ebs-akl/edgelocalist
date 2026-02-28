@@ -11,7 +11,7 @@ const CARD_BG = "#ffffff";
 const TEXT = "#1a1a1a";
 const MUTED = "#666666";
 const LOGO_URL = "https://edgelocalist.lovable.app/lovable-uploads/localist-final-logo-2.png";
-const APP_NAME = "Edge LocaList";
+const APP_NAME = "AKL LocaList";
 const SUPPORT_EMAIL = "support@edgedms.com";
 
 interface EmailData {

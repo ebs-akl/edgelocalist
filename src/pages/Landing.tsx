@@ -11,6 +11,7 @@ import { TIERS, type TierKey } from "@/lib/stripe-tiers";
 import { toast } from "@/hooks/use-toast";
 import heroBg from "@/assets/hero-bg.gif";
 import edgeBrandingLogo from "@/assets/Edge_Branding_Landscape.png";
+import heroPhone from "@/assets/Localist_Hero_Phone.png";
 import Footer from "@/components/Footer";
 
 const fadeUp = {
@@ -21,12 +22,6 @@ const fadeUp = {
     transition: { delay: i * 0.1, duration: 0.5, ease: "easeOut" as const }
   })
 };
-
-const stats = [
-{ label: "Contacts Searchable", value: "500K+" },
-{ label: "Reps Active", value: "85+" },
-{ label: "Searches / Day", value: "1,200+" },
-{ label: "Accuracy Rate", value: "99.1%" }];
 
 
 const features = [
@@ -52,7 +47,7 @@ const features = [
 
 const pricingPlans: { name: string; tierKey: TierKey | null; price: string; period: string; features: string[]; cta: string; highlighted: boolean }[] = [
 {
-  name: "Edge LocaList",
+  name: "AKL LocaList",
   tierKey: "standalone",
   price: "$9",
   period: "/mo",
@@ -163,7 +158,7 @@ export default function Landing() {
       <nav className="fixed top-0 left-0 right-0 z-50 border-b bg-background/80 backdrop-blur-md">
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
           <div className="flex items-center">
-            <img alt="EdgeLocalist" className="h-10 w-auto object-contain" src="/lovable-uploads/localist-final-logo-2.png" />
+            <img alt="AKL LocaList" className="h-10 w-auto object-contain" src="/lovable-uploads/localist-final-logo-2.png" />
           </div>
 
           {/* Desktop nav */}
@@ -215,73 +210,64 @@ export default function Landing() {
           alt=""
           aria-hidden="true"
           className="absolute inset-0 w-full h-full object-cover pointer-events-none select-none" />
-        <div className="container relative mx-auto px-4 text-center">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}>
+        <div className="container relative mx-auto px-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-end">
+            {/* Phone image - left */}
+            <motion.div
+              initial={{ opacity: 0, x: -40 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.7 }}
+              className="flex justify-center md:justify-end items-end order-2 md:order-1">
+              <img
+                src={heroPhone}
+                alt="AKL LocaList app on phone"
+                className="w-64 sm:w-72 md:w-80 lg:w-96 object-contain drop-shadow-2xl"
+              />
+            </motion.div>
 
-            <div className="inline-flex items-center gap-2 mb-5 rounded-full bg-primary-foreground/15 px-4 py-1.5 border border-primary-foreground/20">
-              <Zap className="h-4 w-4 text-primary-foreground" />
-              <span className="text-sm font-medium text-primary-foreground">Part of the EdgeDMS Platform</span>
-            </div>
+            {/* Hero text - right */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6 }}
+              className="text-center md:text-left order-1 md:order-2 flex flex-col justify-center py-8">
 
-            <h1
-              className="mb-5 text-4xl text-primary-foreground sm:text-5xl lg:text-7xl uppercase leading-none"
-              style={{ fontFamily: "'Anton', sans-serif", letterSpacing: "0.03em" }}>
+              <div className="inline-flex items-center gap-2 mb-5 rounded-full bg-primary-foreground/15 px-4 py-1.5 border border-primary-foreground/20 self-center md:self-start">
+                <Zap className="h-4 w-4 text-primary-foreground" />
+                <span className="text-sm font-medium text-primary-foreground">Part of the Automated Knife Life Platform</span>
+              </div>
 
-              YOUR CUTCO CUSTOMERS.
-              <br />
-              <span className="text-primary-foreground/75">FOUND IN SECONDS.</span>
-            </h1>
+              <h1
+                className="mb-5 text-4xl text-primary-foreground sm:text-5xl lg:text-7xl uppercase leading-none"
+                style={{ fontFamily: "'Anton', sans-serif", letterSpacing: "0.03em" }}>
+                YOUR CUTCO CUSTOMERS.
+                <br />
+                <span className="text-primary-foreground/75">FOUND IN SECONDS.</span>
+              </h1>
 
-            <p className="mx-auto mb-10 max-w-2xl text-base sm:text-lg text-primary-foreground/70">
-              EdgeLocalist finds every customer within driving distance — automatically.
-              No spreadsheets. No guessing.
-            </p>
+              <p className="mb-10 max-w-lg text-base sm:text-lg text-primary-foreground/70">
+                AKL LocaList finds every customer within driving distance — automatically.
+                No spreadsheets. No guessing.
+              </p>
 
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <Link to="/auth">
+              <div className="flex flex-col items-center md:items-start gap-4">
+                <Link to="/auth">
+                  <Button
+                    size="lg"
+                    className="text-base px-8 min-h-[48px] w-full sm:w-auto"
+                    style={{ backgroundColor: "#34dfdf", color: "#0a1a1a" }}>
+                    Start Free Trial <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </Link>
                 <Button
                   size="lg"
-                  className="text-base px-8 min-h-[48px]"
-                  style={{ backgroundColor: "#34dfdf", color: "#0a1a1a" }}>
-
-                  Start Free Trial <ArrowRight className="ml-2 h-4 w-4" />
+                  variant="outline"
+                  className="border-primary-foreground/30 text-primary-foreground hover:bg-primary-foreground/10 min-h-[48px] w-full sm:w-auto">
+                  Watch Demo
                 </Button>
-              </Link>
-              <Button
-                size="lg"
-                variant="outline"
-                className="border-primary-foreground/30 text-primary-foreground hover:bg-primary-foreground/10 min-h-[48px]">
-
-                Watch Demo
-              </Button>
-            </div>
-          </motion.div>
-
-          {/* Stats bar */}
-          <motion.div
-            initial={{ opacity: 0, y: 40 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3, duration: 0.6 }}
-            className="mt-16 grid grid-cols-2 sm:grid-cols-4 gap-4 max-w-3xl mx-auto">
-
-            {stats.map((stat) =>
-            <div
-              key={stat.label}
-              className="rounded-lg bg-primary-foreground/10 p-4 backdrop-blur-sm border border-primary-foreground/20">
-
-                <div
-                className="text-2xl font-bold text-primary-foreground"
-                style={{ fontFamily: "'Oswald', sans-serif" }}>
-
-                  {stat.value}
-                </div>
-                <div className="text-xs text-primary-foreground/60">{stat.label}</div>
               </div>
-            )}
-          </motion.div>
+            </motion.div>
+          </div>
         </div>
       </section>
 
@@ -334,13 +320,13 @@ export default function Landing() {
             custom={0}>
 
             <div className="inline-flex items-center gap-2 mb-4 rounded-full bg-primary/10 px-4 py-1.5 text-sm font-medium text-primary">
-              <BarChart3 className="h-4 w-4" /> Part of the EdgeDMS Platform
+              <BarChart3 className="h-4 w-4" /> Part of the Automated Knife Life Platform
             </div>
             <h2 className="text-3xl font-bold mb-4" style={{ fontFamily: "'Oswald', sans-serif" }}>
               Better Together with ALOMAR
             </h2>
             <p className="text-muted-foreground leading-relaxed">
-              EdgeLocalist is the field tool. ALOMAR Order Catcher is the back-office engine. Together they form
+              AKL LocaList is the field tool. ALOMAR Order Catcher is the back-office engine. Together they form
               the complete Automated Knife Life stack — so your Cutco business runs itself, from the first
               customer visit to the final commission deposit.
             </p>

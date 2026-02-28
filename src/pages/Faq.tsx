@@ -13,12 +13,12 @@ import Footer from "@/components/Footer";
 
 const standaloneFaq = [
   {
-    q: "What is EdgeLocalist?",
-    a: "EdgeLocalist is a proximity-based contact search tool built for Cutco sales representatives. It lets you upload your customer list, geocode their addresses, and instantly find contacts near any location — so you can plan efficient routes and maximize your door-knocking time.",
+    q: "What is AKL LocaList?",
+    a: "AKL LocaList is a proximity-based contact search tool built for Cutco sales representatives. It lets you upload your customer list, geocode their addresses, and instantly find contacts near any location — so you can plan efficient routes and maximize your door-knocking time.",
   },
   {
     q: "How do I get started?",
-    a: "Create an account at edgelocalist.app, log in, and navigate to the Contacts tab on your dashboard. From there, upload a CSV file containing your customer data. EdgeLocalist will automatically geocode the addresses and make them searchable.",
+    a: "Create an account at the app, log in, and navigate to the Contacts tab on your dashboard. From there, upload a CSV file containing your customer data. AKL LocaList will automatically geocode the addresses and make them searchable.",
   },
   {
     q: "What format does my CSV need to be in?",
@@ -26,11 +26,11 @@ const standaloneFaq = [
   },
   {
     q: "How does the nearby search work?",
-    a: "Enter any address or location in the search bar, choose a radius (5, 10, 25, or 50 miles), and EdgeLocalist will return all your contacts within that area, sorted by distance. You can view results on a map or as a list.",
+    a: "Enter any address or location in the search bar, choose a radius (5, 10, 25, or 50 miles), and AKL LocaList will return all your contacts within that area, sorted by distance. You can view results on a map or as a list.",
   },
   {
     q: "What does geocoding mean?",
-    a: "Geocoding converts street addresses into latitude/longitude coordinates. This is what allows EdgeLocalist to calculate distances and show contacts on the map. The system geocodes your contacts automatically when you upload them.",
+    a: "Geocoding converts street addresses into latitude/longitude coordinates. This is what allows AKL LocaList to calculate distances and show contacts on the map. The system geocodes your contacts automatically when you upload them.",
   },
   {
     q: "Is my data secure?",
@@ -53,8 +53,8 @@ const standaloneFaq = [
     a: "There is no hard limit on contacts. However, very large lists (10,000+) may take a few minutes to fully geocode. The system processes addresses in batches to ensure reliability.",
   },
   {
-    q: "Can I use EdgeLocalist on my phone?",
-    a: "Yes! EdgeLocalist is fully responsive and works great on mobile browsers. You can search for nearby contacts, view them on the map, and make calls or send texts directly from the contact detail cards.",
+    q: "Can I use AKL LocaList on my phone?",
+    a: "Yes! AKL LocaList is fully responsive and works great on mobile browsers. You can search for nearby contacts, view them on the map, and make calls or send texts directly from the contact detail cards.",
   },
   {
     q: "How do I delete all my contacts and start fresh?",
@@ -64,20 +64,20 @@ const standaloneFaq = [
 
 const edgeDmsFaq = [
   {
-    q: "What is EdgeLocalist?",
-    a: "EdgeLocalist is a proximity-based contact search tool that integrates directly with your Edge DMS CRM. It syncs your CRM contacts, geocodes their addresses, and lets you instantly find customers near any location — perfect for planning routes and maximizing face-to-face time.",
+    q: "What is AKL LocaList?",
+    a: "AKL LocaList is a proximity-based contact search tool that integrates directly with your Edge DMS CRM. It syncs your CRM contacts, geocodes their addresses, and lets you instantly find customers near any location — perfect for planning routes and maximizing face-to-face time.",
   },
   {
-    q: "How does EdgeLocalist connect to Edge DMS?",
-    a: "EdgeLocalist is installed as an app inside your Edge DMS account. Once your administrator installs it, you'll find it in your CRM's navigation. It automatically syncs your contacts and keeps them up to date.",
+    q: "How does AKL LocaList connect to Edge DMS?",
+    a: "AKL LocaList is installed as an app inside your Edge DMS account. Once your administrator installs it, you'll find it in your CRM's navigation. It automatically syncs your contacts and keeps them up to date.",
   },
   {
     q: "Do I need to create a separate account?",
-    a: "No. When you open EdgeLocalist from within Edge DMS, it automatically provisions your account using a secure single sign-on handshake. You're logged in instantly with no extra passwords to remember.",
+    a: "No. When you open AKL LocaList from within Edge DMS, it automatically provisions your account using a secure single sign-on handshake. You're logged in instantly with no extra passwords to remember.",
   },
   {
     q: "How does the contact sync work?",
-    a: "When you first open EdgeLocalist (or every 24 hours), it automatically pulls your contacts from Edge DMS, geocodes any new addresses, and makes them available for nearby search. You can also trigger a manual sync using the Refresh button on your dashboard.",
+    a: "When you first open AKL LocaList (or every 24 hours), it automatically pulls your contacts from Edge DMS, geocodes any new addresses, and makes them available for nearby search. You can also trigger a manual sync using the Refresh button on your dashboard.",
   },
   {
     q: "What does the sync progress dialog show?",
@@ -85,10 +85,10 @@ const edgeDmsFaq = [
   },
   {
     q: "How does the nearby search work?",
-    a: "Enter any address or location in the search bar, choose a radius (5, 10, 25, or 50 miles), and EdgeLocalist will return all your contacts within that area, sorted by distance. You can view results on a map or as a list.",
+    a: "Enter any address or location in the search bar, choose a radius (5, 10, 25, or 50 miles), and AKL LocaList will return all your contacts within that area, sorted by distance. You can view results on a map or as a list.",
   },
   {
-    q: "Can I call or text contacts from EdgeLocalist?",
+    q: "Can I call or text contacts from AKL LocaList?",
     a: "Yes! Each contact card has quick-action buttons for calling, texting, and getting driving directions via Google Maps. In Edge DMS mode, you can also initiate LC calls directly from the contact detail view.",
   },
   {
@@ -112,12 +112,12 @@ const edgeDmsFaq = [
     a: "Contacts need a valid address to appear in nearby search results. If a contact has no address or an address that couldn't be geocoded, they won't appear on the map. Check the sync summary to see how many contacts are 'searchable' vs total.",
   },
   {
-    q: "Can I use EdgeLocalist on my phone?",
-    a: "Yes! EdgeLocalist is fully responsive. When accessed through Edge DMS on mobile, you get the same search, map, and quick-action features optimized for smaller screens.",
+    q: "Can I use AKL LocaList on my phone?",
+    a: "Yes! AKL LocaList is fully responsive. When accessed through Edge DMS on mobile, you get the same search, map, and quick-action features optimized for smaller screens.",
   },
   {
     q: "How do I get the LC Call feature?",
-    a: "The LC Call button appears automatically when you're using EdgeLocalist within Edge DMS. It initiates a call through your CRM's calling system directly from the contact detail card.",
+    a: "The LC Call button appears automatically when you're using AKL LocaList within Edge DMS. It initiates a call through your CRM's calling system directly from the contact detail card.",
   },
 ];
 
@@ -127,7 +127,7 @@ export default function Faq() {
       <nav className="fixed top-0 left-0 right-0 z-50 border-b bg-background/80 backdrop-blur-md">
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
           <Link to="/" className="flex items-center">
-            <img src={localistLogo} alt="EdgeLocalist" className="h-10 w-auto object-contain" />
+            <img src={localistLogo} alt="AKL LocaList" className="h-10 w-auto object-contain" />
           </Link>
           <Link to="/">
             <Button variant="ghost" size="sm">
@@ -145,7 +145,7 @@ export default function Faq() {
           Frequently Asked Questions
         </h1>
         <p className="text-muted-foreground mb-8">
-          Find answers to common questions about EdgeLocalist.
+          Find answers to common questions about AKL LocaList.
         </p>
 
         <Tabs defaultValue="standalone" className="space-y-6">

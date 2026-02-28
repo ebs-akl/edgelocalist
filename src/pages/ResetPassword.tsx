@@ -59,11 +59,8 @@ export default function ResetPassword() {
       <div className="flex-1 flex items-center justify-center px-4">
         <Card className="w-full max-w-md">
           <CardHeader className="text-center">
-            <div className="flex items-center justify-center gap-2 mb-2">
-              <MapPin className="h-7 w-7 text-primary" />
-              <span className="text-2xl font-bold" style={{ fontFamily: "'Oswald', sans-serif" }}>
-                EdgeLocalist
-              </span>
+            <div className="flex items-center justify-center mb-2">
+              <img src="/lovable-uploads/localist-final-logo-2.png" alt="AKL LocaList" className="h-14 w-auto object-contain" />
             </div>
             <CardTitle className="text-base font-normal">Set your new password</CardTitle>
           </CardHeader>

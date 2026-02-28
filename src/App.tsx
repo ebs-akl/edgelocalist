@@ -43,7 +43,7 @@ function MissingCredentials() {
         <div className="flex items-center justify-center gap-2 mb-6">
           <MapPin className="h-7 w-7 text-primary" />
           <span className="text-2xl font-bold" style={{ fontFamily: "'Oswald', sans-serif" }}>
-            EdgeLocalist
+            AKL LocaList
           </span>
         </div>
         <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-6 space-y-3">

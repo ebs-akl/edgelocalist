@@ -332,7 +332,7 @@ const { data, error } = await supabase.functions.invoke("localist-sync-contacts"
       <nav className="fixed top-0 left-0 right-0 z-50 border-b bg-background/80 backdrop-blur-md">
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
           <Link to="/" className="flex items-center">
-            <img src={localistLogo} alt="EdgeLocalist" className="h-10 w-auto object-contain" />
+            <img src={localistLogo} alt="AKL LocaList" className="h-10 w-auto object-contain" />
           </Link>
 
           {!isGhlMode && (
