@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "@/hooks/use-toast";
 import { Loader2, MapPin } from "lucide-react";
+import { validatePasswordStrength } from "@/lib/password-validation";
 import Footer from "@/components/Footer";
 
 export default function ResetPassword() {
@@ -32,8 +33,9 @@ export default function ResetPassword() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (password.length < 6) {
-      toast({ title: "Password too short", description: "Use at least 6 characters.", variant: "destructive" });
+    const strength = validatePasswordStrength(password);
+    if (!strength.valid) {
+      toast({ title: "Weak password", description: strength.message, variant: "destructive" });
       return;
     }
     if (password !== confirmPassword) {
@@ -82,7 +84,7 @@ export default function ResetPassword() {
                     placeholder="••••••••"
                     style={{ fontSize: "16px" }}
                     required
-                    minLength={6}
+                    minLength={8}
                   />
                 </div>
                 <div className="space-y-2">
@@ -95,7 +97,7 @@ export default function ResetPassword() {
                     placeholder="••••••••"
                     style={{ fontSize: "16px" }}
                     required
-                    minLength={6}
+                    minLength={8}
                   />
                 </div>
                 <Button type="submit" className="w-full min-h-[44px]" disabled={loading}>

@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "@/hooks/use-toast";
 import { Loader2, MapPin } from "lucide-react";
+import { validatePasswordStrength } from "@/lib/password-validation";
 import Footer from "@/components/Footer";
 
 export default function Auth() {
@@ -36,6 +37,11 @@ export default function Auth() {
     if (!isLogin) {
       if (!repNumber.trim() || !/^\d{8}$/.test(repNumber.trim())) {
         toast({ title: "Rep Number Required", description: "Enter your 8-digit Cutco rep number.", variant: "destructive" });
+        return;
+      }
+      const strength = validatePasswordStrength(password);
+      if (!strength.valid) {
+        toast({ title: "Weak password", description: strength.message, variant: "destructive" });
         return;
       }
     }
