@@ -112,8 +112,8 @@ export default function Auth() {
     }
     setLoading(true);
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `https://edgelocalist.lovable.app/reset-password`,
+      const { error } = await supabase.functions.invoke("send-reset-email", {
+        body: { email, redirectTo: "https://edgelocalist.lovable.app/reset-password" },
       });
       if (error) throw error;
       toast({ title: "Reset link sent", description: "Check your inbox." });

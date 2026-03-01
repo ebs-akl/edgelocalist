@@ -18,17 +18,31 @@ export default function ResetPassword() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Supabase will auto-exchange the recovery token from the URL hash
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      if (event === "PASSWORD_RECOVERY") {
-        setReady(true);
-      }
-    });
-    // Also check if already in a session (link clicked, token already exchanged)
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) setReady(true);
-    });
-    return () => subscription.unsubscribe();
+    const params = new URLSearchParams(window.location.search);
+    const tokenHash = params.get("token_hash");
+    const type = params.get("type");
+
+    if (tokenHash && type === "recovery") {
+      supabase.auth.verifyOtp({ token_hash: tokenHash, type: "recovery" })
+        .then(({ error }) => {
+          if (error) {
+            toast({ title: "Invalid or expired link", description: error.message, variant: "destructive" });
+          } else {
+            setReady(true);
+          }
+        });
+    } else {
+      // Fallback: listen for PASSWORD_RECOVERY event (hash-based flow)
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+        if (event === "PASSWORD_RECOVERY") {
+          setReady(true);
+        }
+      });
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (session) setReady(true);
+      });
+      return () => subscription.unsubscribe();
+    }
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
