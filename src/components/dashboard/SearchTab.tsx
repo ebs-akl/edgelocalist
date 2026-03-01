@@ -32,7 +32,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
-const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN ?? "";
+
 const RADIUS_OPTIONS = [5, 10, 25, 50] as const;
 
 interface SearchTabProps {
@@ -70,38 +70,6 @@ export default function SearchTab({ repName, recentSearches, onSearch, contactCo
   const [viewMode, setViewMode] = useState<"list" | "map">("list");
   const watchIdRef = useRef<number | null>(null);
 
-  const geocodeAddress = async (addr: string): Promise<{ lat: number; lng: number } | null> => {
-    if (!MAPBOX_TOKEN) {
-      console.error("[SearchTab] MAPBOX_TOKEN is empty/missing");
-      toast({ title: "Mapbox token missing", variant: "destructive" });
-      return null;
-    }
-    const encoded = encodeURIComponent(addr);
-    // If input looks like a bare ZIP code, add postcode type hint
-    const isZip = /^\d{5}(-\d{4})?$/.test(addr.trim());
-    const typesParam = isZip ? "&types=postcode" : "";
-    const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encoded}.json?access_token=${MAPBOX_TOKEN}&country=US&limit=1${typesParam}`;
-    console.log("[SearchTab] Geocoding URL:", url.replace(MAPBOX_TOKEN, "***"));
-    try {
-      const res = await fetch(url);
-      console.log("[SearchTab] Mapbox response status:", res.status);
-      const data = await res.json();
-      console.log("[SearchTab] Mapbox features count:", data?.features?.length ?? 0);
-      if (data?.features?.length > 0) {
-        console.log("[SearchTab] First feature:", JSON.stringify(data.features[0].place_name));
-      }
-      const [lng, lat] = data?.features?.[0]?.center ?? [];
-      if (!lat || !lng) {
-        console.warn("[SearchTab] No coordinates found in Mapbox response");
-        return null;
-      }
-      console.log("[SearchTab] Geocoded to:", { lat, lng });
-      return { lat, lng };
-    } catch (err) {
-      console.error("[SearchTab] Geocoding fetch error:", err);
-      return null;
-    }
-  };
 
   const COORD_REGEX = /^(-?\d+(\.\d+)?)[,\s]+(-?\d+(\.\d+)?)$/;
 
@@ -282,30 +250,9 @@ const { data: fnData, error: fnError } = await supabase.functions.invoke("locali
       return;
     }
 
-    // 3. GHL mode: geocode server-side
-    if (isGhlMode) {
-      await runServerSearch(address.trim());
-      return;
-    }
-
-    // 4. Standalone: Mapbox fuzzy geocoding client-side
-    setLoading(true);
-    setSearched(false);
-    setSelectedIds(new Set());
-    try {
-      const center = await geocodeAddress(address.trim());
-      if (!center) {
-        toast({ title: "Could not find that exact address.", description: "Try adding the city or ZIP code.", variant: "destructive" });
-        setLoading(false);
-        return;
-      }
-      await runRadiusQuery(center, address.trim());
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Search failed.";
-      toast({ title: "Search error", description: message, variant: "destructive" });
-      setLoading(false);
-    }
-  }, [address, searchCenter, effectiveRepId, runRadiusQuery, isGhlMode, runServerSearch]);
+    // 3. Geocode server-side (both GHL and standalone)
+    await runServerSearch(address.trim());
+  }, [address, searchCenter, effectiveRepId, runRadiusQuery, runServerSearch]);
 
   const handleSort = (key: SortKey) => {
     if (sortKey === key) setSortAsc((a) => !a);
