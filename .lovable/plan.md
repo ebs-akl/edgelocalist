@@ -1,43 +1,36 @@
 
 
-## Problem
+## Plan: Make the App Installable as a PWA on Android
 
-Supabase Auth Hooks require a `SEND_EMAIL_HOOK_SECRET` to be configured in the Supabase Dashboard. This secret is used by Supabase to sign the hook payload, and the edge function should verify that signature. The current `auth-email-hook` implementation skips signature verification entirely, which is why Supabase is blocking activation.
+To allow Android users to install the web app to their home screen (like a native app), we need to set up a **Progressive Web App (PWA)** configuration. This adds an install prompt on Android devices and enables offline caching.
 
-## What Supabase Auth Hooks Expect
+### What this gives you
+- Android users get an "Add to Home Screen" / "Install App" prompt automatically
+- The app launches in full-screen mode (no browser chrome)
+- App icon on the home screen like a native app
+- Faster loading with caching
 
-When configuring a "Send Email" hook as an HTTP Request type, Supabase requires:
-- The endpoint URL
-- A **hook secret** (used to sign the payload with HMAC-SHA256)
+### Implementation Steps
 
-The edge function must then verify the HMAC signature from the `x-supabase-signature` header before processing.
+1. **Install `vite-plugin-pwa`** — the standard Vite plugin for PWA support
 
-## Plan
+2. **Configure PWA in `vite.config.ts`**
+   - Add the PWA plugin with app name, theme color, icons, and manifest settings
+   - Add `/~oauth` to the service worker's `navigateFallbackDenylist` to prevent caching OAuth redirects
 
-### Step 1: Generate and set the hook secret
+3. **Add PWA icons to `public/`**
+   - Create `pwa-192x192.png` and `pwa-512x512.png` icons (can reuse the existing logo assets)
 
-- A `SEND_EMAIL_HOOK_SECRET` needs to be created and added to the edge function secrets
-- The same secret value must be entered in the Supabase Dashboard when configuring the hook
-- Format: a random string, typically base64-encoded (e.g., 32+ characters)
+4. **Update `index.html`**
+   - Add `<meta name="theme-color">` and `<link rel="apple-touch-icon">` tags for mobile optimization
 
-### Step 2: Update `auth-email-hook/index.ts` to verify the signature
+5. **Optionally create an `/install` page**
+   - A dedicated page with instructions for users on how to install, with a button to trigger the browser's install prompt
 
-Add HMAC-SHA256 signature verification at the top of the request handler:
-- Read the `x-supabase-signature` header
-- Compute HMAC-SHA256 of the raw request body using `SEND_EMAIL_HOOK_SECRET`
-- Compare the computed signature with the provided one
-- Reject the request with 401 if they don't match
+### Technical Details
 
-### Step 3: Configure the hook in Supabase Dashboard
-
-The user will need to:
-1. Go to Authentication → Hooks
-2. Enable "Send Email" hook
-3. Select "HTTP Request"
-4. Enter the URL: `https://kimyzwmniidwnixezqdi.supabase.co/functions/v1/auth-email-hook`
-5. Paste the same secret value used in Step 1
-
-### Files changed
-
-- `supabase/functions/auth-email-hook/index.ts` — add HMAC signature verification logic
+- Plugin: `vite-plugin-pwa` with `registerType: 'autoUpdate'`
+- Manifest will include: `name`, `short_name`, `description`, `theme_color`, `background_color`, `display: 'standalone'`, `icons`
+- Service worker will use Workbox with `navigateFallbackDenylist: [/^\/~oauth/]`
+- Icons derived from existing `Localist_Logo.png` or `AKL_Logo.png`
 
