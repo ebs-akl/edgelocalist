@@ -22,33 +22,6 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
-const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN ?? "";
-
-async function geocodeAddress(street: string, city: string, state: string, zip: string): Promise<{ lat: number; lng: number } | null> {
-  if (!MAPBOX_TOKEN) {
-    console.warn("[Geocode] VITE_MAPBOX_ACCESS_TOKEN is not set — skipping geocoding");
-    return null;
-  }
-  if (!street && !city) return null;
-  try {
-    const parts = [street, city, state, zip].filter(Boolean).join(" ");
-    const query = encodeURIComponent(parts);
-    const res = await fetch(
-      `https://api.mapbox.com/geocoding/v5/mapbox.places/${query}.json?access_token=${MAPBOX_TOKEN}&country=US&limit=1`
-    );
-    if (!res.ok) {
-      console.warn(`[Geocode] Mapbox returned ${res.status} for "${parts}"`);
-      return null;
-    }
-    const data = await res.json();
-    const [lng, lat] = data?.features?.[0]?.center ?? [];
-    if (lat && lng) return { lat, lng };
-    return null;
-  } catch (err) {
-    console.warn("[Geocode] Error:", err);
-    return null;
-  }
-}
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -196,35 +169,11 @@ export default function CsvUploadTab({ onUploaded, contactCount, lastSync }: Pro
         let totalFailed = poBoxCount;
         const geocodeResults: Record<string, { lat: number | null; lng: number | null }> = {};
 
-        // Try client-side geocoding if Mapbox token is available
-        if (MAPBOX_TOKEN) {
-          const CONCURRENCY = 5;
-          const DELAY_MS = 250;
-
-          for (let i = 0; i < validContacts.length; i += CONCURRENCY) {
-            const chunk = validContacts.slice(i, i + CONCURRENCY);
-            setProgressLabel(`Geocoding ${i + 1}–${Math.min(i + CONCURRENCY, validContacts.length)} of ${validContacts.length}...`);
-            setProgress(Math.round((i / validContacts.length) * 70));
-
-            await Promise.all(chunk.map(async (c) => {
-              const result = await geocodeAddress(c.street_clean, c.city, c.state, c.zip);
-              geocodeResults[c.id] = { lat: result?.lat ?? null, lng: result?.lng ?? null };
-              if (result) totalGeocoded++;
-              else totalFailed++;
-            }));
-
-            if (i + CONCURRENCY < validContacts.length) {
-              await sleep(DELAY_MS);
-            }
-          }
-        } else {
-          // No client-side token — we'll use server-side geocoding after upsert
-          setProgressLabel("Preparing contacts for server-side geocoding...");
-          setProgress(50);
-          // Mark all valid contacts as not geocoded yet (they'll get null coords)
-          for (const c of validContacts) {
-            geocodeResults[c.id] = { lat: null, lng: null };
-          }
+        // Always use server-side geocoding after upsert
+        setProgressLabel("Preparing contacts for server-side geocoding...");
+        setProgress(50);
+        for (const c of validContacts) {
+          geocodeResults[c.id] = { lat: null, lng: null };
         }
 
         setProgressLabel("Saving contacts...");
@@ -264,7 +213,7 @@ export default function CsvUploadTab({ onUploaded, contactCount, lastSync }: Pro
           toast({ title: "Save failed", description: upsertError.message, variant: "destructive" });
         } else {
           // If client-side geocoding wasn't available, use server-side geocoding
-          if (!MAPBOX_TOKEN && validContacts.length > 0) {
+          if (validContacts.length > 0) {
             setProgressLabel("Geocoding addresses server-side...");
             setProgress(75);
             let remaining = 1;
