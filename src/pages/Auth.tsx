@@ -7,7 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "@/hooks/use-toast";
-import { Loader2, MapPin } from "lucide-react";
+import { Loader2 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { validatePasswordStrength } from "@/lib/password-validation";
 import Footer from "@/components/Footer";
 
@@ -20,6 +21,7 @@ export default function Auth() {
   const [fullName, setFullName] = useState("");
   const [repNumber, setRepNumber] = useState("");
   const [repError, setRepError] = useState("");
+  const [keepSignedIn, setKeepSignedIn] = useState(false);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
@@ -50,6 +52,7 @@ export default function Auth() {
       if (isLogin) {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
+        localStorage.setItem("localist_keep_signed_in", keepSignedIn ? "1" : "0");
         toast({ title: "Welcome back!" });
       } else {
         const { data, error } = await supabase.auth.signUp({
@@ -278,7 +281,14 @@ export default function Auth() {
                   />
                 </div>
                 {isLogin && (
-                  <div className="flex justify-end -mt-2">
+                  <div className="flex items-center justify-between -mt-2">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <Checkbox
+                        checked={keepSignedIn}
+                        onCheckedChange={(v) => setKeepSignedIn(!!v)}
+                      />
+                      <span className="text-xs text-muted-foreground select-none">Keep me signed in</span>
+                    </label>
                     <button
                       type="button"
                       onClick={() => setForgotPassword(true)}
