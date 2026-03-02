@@ -11,6 +11,7 @@ const ACTIVITY_EVENTS: (keyof DocumentEventMap)[] = [
 ];
 
 export function useInactivityTimeout(onTimeout: () => void, enabled: boolean) {
+  const keepSignedIn = typeof window !== "undefined" && localStorage.getItem("localist_keep_signed_in") === "1";
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const resetTimer = useCallback(() => {
@@ -19,7 +20,7 @@ export function useInactivityTimeout(onTimeout: () => void, enabled: boolean) {
   }, [onTimeout]);
 
   useEffect(() => {
-    if (!enabled) return;
+    if (!enabled || keepSignedIn) return;
 
     resetTimer();
 
