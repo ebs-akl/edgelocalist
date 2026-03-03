@@ -230,8 +230,8 @@ const { data: fnData, error: fnError } = await supabase.functions.invoke("locali
           watchIdRef.current = null;
         }
 
-        // Permission denied or blocked context (common in iframes/iOS): fallback to IP geolocation
-        if (err.code === 1) {
+        // In GHL mode, GPS is typically blocked by the iframe — fall back to IP geolocation
+        if (err.code === 1 && isGhlMode) {
           const usedFallback = await fallbackToApproximateLocation();
           setLocating(false);
           if (usedFallback) return;
