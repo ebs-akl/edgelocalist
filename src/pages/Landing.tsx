@@ -5,7 +5,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Sheet, SheetContent, SheetTrigger, SheetClose } from "@/components/ui/sheet";
 import { motion } from "framer-motion";
-import { MapPin, Upload, Search, Menu, CheckCircle2, ArrowRight, Zap, BarChart3, Loader2 } from "lucide-react";
+import { MapPin, Upload, Search, Menu, CheckCircle2, ArrowRight, Zap, BarChart3, Loader2, ChevronDown } from "lucide-react";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { supabase } from "@/integrations/supabase/client";
 import { TIERS, type TierKey } from "@/lib/stripe-tiers";
 import { toast } from "@/hooks/use-toast";

@@ -8,7 +8,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useGhlSso } from "@/hooks/useGhlSso";
 import { toast } from "@/hooks/use-toast";
-import { LogOut, Menu, Settings, Loader2 } from "lucide-react";
+import { LogOut, Menu, Settings, Loader2, BookOpen } from "lucide-react";
 import localistLogo from "@/assets/Localist-Final-Logo.png";
 import SearchTab from "@/components/dashboard/SearchTab";
 import CsvUploadTab from "@/components/dashboard/CsvUploadTab";
