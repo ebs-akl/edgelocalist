@@ -33,6 +33,9 @@ verify_jwt = false
 [functions.localist-oauth-callback]
 verify_jwt = false
 
+[functions.localist-list-phone-numbers]
+verify_jwt = false
+
 [functions.localist-group-sms]
 verify_jwt = false
 

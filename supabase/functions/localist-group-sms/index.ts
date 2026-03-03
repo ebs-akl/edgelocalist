@@ -98,6 +98,7 @@ async function dripSend(
   supabase: ReturnType<typeof createClient>,
   windowStart: string,
   today: string,
+  fromNumber: string | null,
 ) {
   let totalSent = 0;
   let totalFailed = 0;
@@ -127,6 +128,7 @@ async function dripSend(
               contactId: contact.contact_id,
               locationId: ghlLocationId,
               message: msgBody,
+              ...(fromNumber ? { fromNumber } : {}),
             }),
           }
         );
@@ -195,6 +197,7 @@ Deno.serve(async (req) => {
 
   const contacts = rawBody.contacts;
   const message_template = typeof rawBody.message_template === "string" ? rawBody.message_template : "";
+  const from_number = typeof rawBody.from_number === "string" && rawBody.from_number.trim() ? rawBody.from_number.trim() : null;
 
   if (!Array.isArray(contacts) || contacts.length === 0) {
     return new Response(JSON.stringify({ error: "Missing or empty contacts array" }), {
@@ -315,6 +318,7 @@ Deno.serve(async (req) => {
       supabase,
       windowStart,
       today,
+      from_number,
     ).catch((err) => console.error("Drip send background error:", err))
   );
 
