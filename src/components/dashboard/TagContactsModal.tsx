@@ -41,7 +41,7 @@ export default function TagContactsModal({ open, onClose, contacts }: TagContact
     try {
       let totalTagged = 0;
       let totalFailed = 0;
-      const BATCH_SIZE = 400;
+      const BATCH_SIZE = 2000;
 
       for (let i = 0; i < contactIds.length; i += BATCH_SIZE) {
         const batch = contactIds.slice(i, i + BATCH_SIZE);
