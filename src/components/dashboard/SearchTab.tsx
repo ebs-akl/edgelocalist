@@ -173,20 +173,53 @@ const { data: fnData, error: fnError } = await supabase.functions.invoke("locali
       toast({ title: "GPS not supported on this device", variant: "destructive" });
       return;
     }
+
+    const fallbackToApproximateLocation = async () => {
+      try {
+        const res = await fetch("https://ipapi.co/json/");
+        if (!res.ok) throw new Error("IP lookup failed");
+
+        const geo = await res.json();
+        const lat = Number(geo?.latitude);
+        const lng = Number(geo?.longitude);
+
+        if (Number.isFinite(lat) && Number.isFinite(lng)) {
+          const city = typeof geo?.city === "string" && geo.city.trim() ? geo.city.trim() : "your area";
+          setAddress(`Near ${city} (approx.)`);
+          toast({
+            title: "Using approximate location",
+            description: `GPS is unavailable here, so we used city-level accuracy near ${city}.`,
+          });
+          runRadiusQuery({ lat, lng }, `Near ${city}`);
+          return true;
+        }
+
+        throw new Error("No coordinates returned");
+      } catch {
+        toast({
+          title: "Could not determine location",
+          description: "Type an address or ZIP code instead.",
+          variant: "destructive",
+        });
+        return false;
+      }
+    };
+
     // Clear any previous watch
     if (watchIdRef.current !== null) {
       navigator.geolocation.clearWatch(watchIdRef.current);
       watchIdRef.current = null;
     }
+
     setLocating(true);
     watchIdRef.current = navigator.geolocation.watchPosition(
       (pos) => {
         const { latitude, longitude } = pos.coords;
-        // Stop watching once we have a fix
         if (watchIdRef.current !== null) {
           navigator.geolocation.clearWatch(watchIdRef.current);
           watchIdRef.current = null;
         }
+
         setLocating(false);
         setAddress("Current Location");
         runRadiusQuery({ lat: latitude, lng: longitude }, "Current Location");
@@ -197,33 +230,22 @@ const { data: fnData, error: fnError } = await supabase.functions.invoke("locali
           watchIdRef.current = null;
         }
 
-        // If permission denied and we're in an iframe (GHL), try IP-based fallback
-        if (err.code === 1 && isGhlMode) {
-          toast({ title: "GPS blocked inside HighLevel", description: "Falling back to approximate location…" });
-          try {
-            const res = await fetch("https://ipapi.co/json/");
-            if (!res.ok) throw new Error("IP lookup failed");
-            const geo = await res.json();
-            if (geo.latitude && geo.longitude) {
-              setLocating(false);
-              setAddress(`Near ${geo.city || "your location"} (approx.)`);
-              toast({ title: "Using approximate location", description: `City-level accuracy near ${geo.city || "your area"}. For precise GPS, open EdgeLocaList directly.` });
-              runRadiusQuery({ lat: geo.latitude, lng: geo.longitude }, `Near ${geo.city || "your location"}`);
-              return;
-            }
-            throw new Error("No coordinates returned");
-          } catch {
-            setLocating(false);
-            toast({ title: "Could not determine location", description: "Type an address or ZIP code instead.", variant: "destructive" });
-            return;
-          }
+        // Permission denied or blocked context (common in iframes/iOS): fallback to IP geolocation
+        if (err.code === 1) {
+          const usedFallback = await fallbackToApproximateLocation();
+          setLocating(false);
+          if (usedFallback) return;
+        } else {
+          setLocating(false);
         }
 
-        setLocating(false);
         const detail =
-          err.code === 1 ? "Location permission denied. Please allow location access in your browser settings." :
-          err.code === 2 ? "Location unavailable. Try again." :
-          "Location request timed out.";
+          err.code === 1
+            ? "Location permission denied. Please allow location access in your browser settings."
+            : err.code === 2
+              ? "Location unavailable. Try again."
+              : "Location request timed out.";
+
         toast({ title: "Could not get location", description: detail, variant: "destructive" });
       },
       { enableHighAccuracy: true, timeout: 15000, maximumAge: 30000 }
