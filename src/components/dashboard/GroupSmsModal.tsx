@@ -174,9 +174,10 @@ export default function GroupSmsModal({ open, onClose, contacts, repName }: Grou
                 <Info className="h-3.5 w-3.5" /> How it works
               </p>
               <ol className="text-xs text-muted-foreground space-y-1 list-decimal list-inside">
-                <li>Your message is saved as a <strong>Custom Value</strong> in GoHighLevel.</li>
+                <li>Your message is saved as a <strong>Custom Value</strong> in your CRM.</li>
                 <li>A tag is applied to all selected contacts instantly.</li>
-                <li>Your <strong>GHL Workflow</strong> triggers on this tag and sends the SMS using the saved message.</li>
+                <li>Your <strong>Workflow</strong> triggers on this tag, adds "Hi [Name]," automatically, and sends the SMS.</li>
+                <li>The tag is removed so contacts can be messaged again next time.</li>
               </ol>
             </div>
 
