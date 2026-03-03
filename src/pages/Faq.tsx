@@ -14,7 +14,7 @@ import Footer from "@/components/Footer";
 const standaloneFaq = [
   {
     q: "What is AKL LocaList?",
-    a: "AKL LocaList is a proximity-based contact search tool built for Cutco sales representatives. It lets you upload your customer list, geocode their addresses, and instantly find contacts near any location — so you can plan efficient routes and maximize your door-knocking time.",
+    a: "AKL LocaList is a proximity-based contact search tool built for Cutco sales representatives. It lets you upload your customer list and instantly find contacts near any location — so you can plan efficient routes and maximize your door-knocking time.",
   },
   {
     q: "How do I get started?",
