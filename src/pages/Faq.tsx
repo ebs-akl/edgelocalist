@@ -28,8 +28,6 @@ const standaloneFaq = [
     q: "How does the nearby search work?",
     a: "Enter any address or location in the search bar, choose a radius (5, 10, 25, or 50 miles), and AKL LocaList will return all your contacts within that area, sorted by distance. You can view results on a map or as a list.",
   },
-  {
-    q: "What does geocoding mean?",
     a: "Geocoding converts street addresses into latitude/longitude coordinates. This is what allows AKL LocaList to calculate distances and show contacts on the map. The system geocodes your contacts automatically when you upload them.",
   },
   {
