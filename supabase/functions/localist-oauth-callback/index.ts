@@ -26,7 +26,7 @@ serve(async (req) => {
 
   if (!GHL_CLIENT_SECRET) {
     console.error("GHL_CLIENT_SECRET is not defined in environment variables.");
-    return new Response(JSON.stringify({ error: "Missing server configuration", error_description: "GHL_CLIENT_SECRET is undefined" }), {
+    return new Response(JSON.stringify({ error: "Missing server configuration" }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
