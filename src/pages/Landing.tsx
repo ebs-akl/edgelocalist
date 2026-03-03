@@ -35,7 +35,7 @@ const features = [
   icon: Upload,
   title: "CSV Upload",
   description:
-  "Export contacts from VectorConnect, upload once, and we geocode every address automatically. Re-upload anytime to refresh."
+  "Export contacts from VectorConnect, upload once, and every address is processed automatically. Re-upload anytime to refresh."
 },
 {
   icon: MapPin,
@@ -96,11 +96,11 @@ const pricingPlans: { name: string; tierKey: TierKey | null; price: string; peri
 const landingFaq = [
   {
     q: "What is AKL LocaList?",
-    a: "AKL LocaList is a proximity-based contact search tool built for Cutco sales representatives. Upload your customer list, geocode addresses, and instantly find contacts near any location.",
+    a: "AKL LocaList is a proximity-based contact search tool built for Cutco sales representatives. Upload your customer list and instantly find contacts near any location.",
   },
   {
     q: "How do I get started?",
-    a: "Create an account, log in, and upload a CSV file containing your customer data. AKL LocaList will automatically geocode the addresses and make them searchable by location.",
+    a: "Create an account, log in, and upload a CSV file containing your customer data. AKL LocaList will automatically process the addresses and make them searchable by location.",
   },
   {
     q: "How does the nearby search work?",

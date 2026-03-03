@@ -45,7 +45,7 @@ function StandaloneGuide() {
         <p><strong>Required columns:</strong> First Name, Last Name, Address, City, State, Zip, Phone</p>
         <p><strong>Optional columns:</strong> Business Name, Category, Lifetime Value, Last Order Date, Gift Count, Order Count, Relationship</p>
         <p>
-          The system automatically detects common column name variations (e.g., "First" or "FirstName" both work). After upload, addresses are geocoded in batches — you'll see a progress indicator showing how many contacts have been processed.
+          The system automatically detects common column name variations (e.g., "First" or "FirstName" both work). After upload, addresses are processed in batches — you'll see a progress indicator showing how many contacts have been prepared.
         </p>
       </Section>
 
@@ -101,7 +101,7 @@ function EdgeDmsGuide() {
 
       <Section icon={RefreshCw} title="2. Contact Sync">
         <p>
-          When you first open EdgeLocalist, it automatically syncs all your CRM contacts. This includes fetching contact details, saving them securely, and geocoding addresses so they're searchable by location.
+          When you first open EdgeLocalist, it automatically syncs all your CRM contacts. This includes fetching contact details, saving them securely, and processing addresses so they're searchable by location.
         </p>
         <p>
           The <strong>sync progress dialog</strong> shows each step in real-time:
@@ -110,7 +110,7 @@ function EdgeDmsGuide() {
           <li>Connecting to Edge DMS</li>
           <li>Fetching your contacts</li>
           <li>Saving to your account</li>
-          <li>Geocoding addresses</li>
+          <li>Processing addresses</li>
           <li>Preparing search results</li>
         </ol>
         <p>

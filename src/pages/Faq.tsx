@@ -14,11 +14,11 @@ import Footer from "@/components/Footer";
 const standaloneFaq = [
   {
     q: "What is AKL LocaList?",
-    a: "AKL LocaList is a proximity-based contact search tool built for Cutco sales representatives. It lets you upload your customer list, geocode their addresses, and instantly find contacts near any location — so you can plan efficient routes and maximize your door-knocking time.",
+    a: "AKL LocaList is a proximity-based contact search tool built for Cutco sales representatives. It lets you upload your customer list and instantly find contacts near any location — so you can plan efficient routes and maximize your door-knocking time.",
   },
   {
     q: "How do I get started?",
-    a: "Create an account at the app, log in, and navigate to the Contacts tab on your dashboard. From there, upload a CSV file containing your customer data. AKL LocaList will automatically geocode the addresses and make them searchable.",
+    a: "Create an account at the app, log in, and navigate to the Contacts tab on your dashboard. From there, upload a CSV file containing your customer data. AKL LocaList will automatically process the addresses and make them searchable.",
   },
   {
     q: "What format does my CSV need to be in?",
@@ -27,10 +27,6 @@ const standaloneFaq = [
   {
     q: "How does the nearby search work?",
     a: "Enter any address or location in the search bar, choose a radius (5, 10, 25, or 50 miles), and AKL LocaList will return all your contacts within that area, sorted by distance. You can view results on a map or as a list.",
-  },
-  {
-    q: "What does geocoding mean?",
-    a: "Geocoding converts street addresses into latitude/longitude coordinates. This is what allows AKL LocaList to calculate distances and show contacts on the map. The system geocodes your contacts automatically when you upload them.",
   },
   {
     q: "Is my data secure?",
@@ -50,7 +46,7 @@ const standaloneFaq = [
   },
   {
     q: "Is there a limit to how many contacts I can upload?",
-    a: "There is no hard limit on contacts. However, very large lists (10,000+) may take a few minutes to fully geocode. The system processes addresses in batches to ensure reliability.",
+    a: "There is no hard limit on contacts. However, very large lists (10,000+) may take a few minutes to fully process. The system handles addresses in batches to ensure reliability.",
   },
   {
     q: "Can I use AKL LocaList on my phone?",
@@ -65,7 +61,7 @@ const standaloneFaq = [
 const edgeDmsFaq = [
   {
     q: "What is AKL LocaList?",
-    a: "AKL LocaList is a proximity-based contact search tool that integrates directly with your Edge DMS CRM. It syncs your CRM contacts, geocodes their addresses, and lets you instantly find customers near any location — perfect for planning routes and maximizing face-to-face time.",
+    a: "AKL LocaList is a proximity-based contact search tool that integrates directly with your Edge DMS CRM. It syncs your CRM contacts and lets you instantly find customers near any location — perfect for planning routes and maximizing face-to-face time.",
   },
   {
     q: "How does AKL LocaList connect to Edge DMS?",
@@ -77,11 +73,11 @@ const edgeDmsFaq = [
   },
   {
     q: "How does the contact sync work?",
-    a: "When you first open AKL LocaList (or every 24 hours), it automatically pulls your contacts from Edge DMS, geocodes any new addresses, and makes them available for nearby search. You can also trigger a manual sync using the Refresh button on your dashboard.",
+    a: "When you first open AKL LocaList (or every 24 hours), it automatically pulls your contacts from Edge DMS and makes them available for nearby search. You can also trigger a manual sync using the Refresh button on your dashboard.",
   },
   {
     q: "What does the sync progress dialog show?",
-    a: "During a sync, you'll see a step-by-step progress indicator: connecting to Edge DMS, fetching contacts, saving to your account, geocoding addresses, and preparing search results. Each step shows its status and any relevant counts.",
+    a: "During a sync, you'll see a step-by-step progress indicator: connecting to Edge DMS, fetching contacts, saving to your account, and preparing search results. Each step shows its status and any relevant counts.",
   },
   {
     q: "How does the nearby search work?",
@@ -109,7 +105,7 @@ const edgeDmsFaq = [
   },
   {
     q: "Why are some contacts missing from search results?",
-    a: "Contacts need a valid address to appear in nearby search results. If a contact has no address or an address that couldn't be geocoded, they won't appear on the map. Check the sync summary to see how many contacts are 'searchable' vs total.",
+    a: "Contacts need a valid address to appear in nearby search results. If a contact has no address or an address that couldn't be processed, they won't appear on the map. Check the sync summary to see how many contacts are 'searchable' vs total.",
   },
   {
     q: "Can I use AKL LocaList on my phone?",
