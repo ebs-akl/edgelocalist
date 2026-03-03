@@ -101,7 +101,7 @@ function EdgeDmsGuide() {
 
       <Section icon={RefreshCw} title="2. Contact Sync">
         <p>
-          When you first open EdgeLocalist, it automatically syncs all your CRM contacts. This includes fetching contact details, saving them securely, and geocoding addresses so they're searchable by location.
+          When you first open EdgeLocalist, it automatically syncs all your CRM contacts. This includes fetching contact details, saving them securely, and processing addresses so they're searchable by location.
         </p>
         <p>
           The <strong>sync progress dialog</strong> shows each step in real-time:
