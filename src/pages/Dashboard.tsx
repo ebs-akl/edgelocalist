@@ -338,6 +338,12 @@ const { data, error } = await supabase.functions.invoke("localist-sync-contacts"
           {!isGhlMode && (
             <>
               <div className="hidden sm:flex items-center gap-3">
+                <Link to="/guide">
+                  <Button variant="ghost" size="sm">
+                    <BookOpen className="h-4 w-4 mr-1" />
+                    User Guide
+                  </Button>
+                </Link>
                 <Link to="/settings">
                   <Button variant="ghost" size="sm">
                     <Settings className="h-4 w-4 mr-1" />
