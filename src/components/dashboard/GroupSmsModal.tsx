@@ -64,6 +64,8 @@ export default function GroupSmsModal({ open, onClose, contacts, repName }: Grou
       ? customMessage
       : TEMPLATES[selectedTemplate as number]?.body ?? "";
 
+  const [estimatedTime, setEstimatedTime] = useState("");
+
   const handleSend = async () => {
     if (!activeBody.trim()) {
       toast({ title: "Message is empty", variant: "destructive" });
@@ -85,7 +87,15 @@ export default function GroupSmsModal({ open, onClose, contacts, repName }: Grou
       });
 
       if (error) throw error;
-      setSentCount(data?.sent ?? contacts.length);
+      const queued = data?.queued ?? contacts.length;
+      const skipped = data?.skipped ?? 0;
+      const estSec = data?.estimatedSeconds ?? 0;
+      const mins = Math.ceil(estSec / 60);
+      setSentCount(queued);
+      setEstimatedTime(mins > 0 ? `~${mins} min` : "a few seconds");
+      if (skipped > 0) {
+        toast({ title: `${skipped} contacts skipped due to rate limits` });
+      }
       setDone(true);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Send failed";
@@ -98,6 +108,7 @@ export default function GroupSmsModal({ open, onClose, contacts, repName }: Grou
   const handleClose = () => {
     setDone(false);
     setSentCount(0);
+    setEstimatedTime("");
     setSelectedTemplate(0);
     setCustomMessage("");
     onClose();
@@ -117,10 +128,11 @@ export default function GroupSmsModal({ open, onClose, contacts, repName }: Grou
           <div className="flex flex-col items-center gap-4 py-6 text-center">
             <CheckCircle2 className="h-12 w-12 text-primary" />
             <p className="text-lg font-semibold" style={{ fontFamily: "'Oswald', sans-serif" }}>
-              {sentCount} message{sentCount !== 1 ? "s" : ""} sent!
+              {sentCount} message{sentCount !== 1 ? "s" : ""} queued!
             </p>
             <p className="text-sm text-muted-foreground">
-              Messages were throttled to protect your sender reputation.
+              Messages are being drip-sent (10 every 10s) to protect your sender reputation.
+              {estimatedTime && <> Estimated delivery: <strong>{estimatedTime}</strong>.</>}
             </p>
             <Button onClick={handleClose} className="w-full">Done</Button>
           </div>
