@@ -12,7 +12,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, MessageSquare, CheckCircle2, Tag, Info, FileText } from "lucide-react";
+import { Loader2, MessageSquare, Tag, Info, FileText } from "lucide-react";
+import successBot from "@/assets/SuccessBot.png";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import type { NearbyContact } from "@/lib/contacts";
@@ -150,7 +151,7 @@ export default function GroupSmsModal({ open, onClose, contacts, repName }: Grou
 
         {done ? (
           <div className="flex flex-col items-center gap-4 py-6 text-center">
-            <CheckCircle2 className="h-12 w-12 text-primary" />
+            <img src={successBot} alt="Success" className="h-28 w-auto" />
             <p className="text-lg font-semibold" style={{ fontFamily: "'Oswald', sans-serif" }}>
               {taggedCount} contact{taggedCount !== 1 ? "s" : ""} tagged!
             </p>
