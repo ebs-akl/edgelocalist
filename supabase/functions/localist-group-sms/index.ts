@@ -115,7 +115,7 @@ async function dripSend(
           .replace(/\{\{rep_name\}\}/g, toTitleCase(repName));
 
         const res = await fetch(
-          "https://services.leadconnectorhq.com/conversations/messages/outbound",
+          "https://services.leadconnectorhq.com/conversations/messages",
           {
             method: "POST",
             headers: {

@@ -103,12 +103,18 @@ export default function GroupSmsModal({ open, onClose, contacts, repName }: Grou
     }
     setSending(true);
     try {
-      const payload = contacts.map((c) => ({
-        contact_id: c.id as string,
-        first_name: toTitleCase(c.first_name),
-        city: toTitleCase(c.city),
-        phone: c.phone,
-      }));
+      const payload = contacts
+        .map((c) => ({
+          contact_id: (c.contact_id ?? "").trim(),
+          first_name: toTitleCase(c.first_name),
+          city: toTitleCase(c.city),
+          phone: c.phone,
+        }))
+        .filter((c) => Boolean(c.contact_id));
+
+      if (payload.length === 0) {
+        throw new Error("No valid CRM contact IDs found for selected contacts");
+      }
 
       const body: Record<string, unknown> = { contacts: payload, message_template: activeBody };
       if (ssoPayload) body.sso_payload = ssoPayload;
@@ -118,7 +124,7 @@ export default function GroupSmsModal({ open, onClose, contacts, repName }: Grou
       });
 
       if (error) throw error;
-      const queued = data?.queued ?? contacts.length;
+      const queued = data?.queued ?? payload.length;
       const skipped = data?.skipped ?? 0;
       const estSec = data?.estimatedSeconds ?? 0;
       const mins = Math.ceil(estSec / 60);
