@@ -27,19 +27,19 @@ interface GroupSmsModalProps {
 const SMS_TEMPLATES = [
   {
     label: "Appointment Follow-Up",
-    body: `Hi {{contact.first_name}}, it's {{user.first_name}} with Cutco! I was in your area and wanted to check in. Would you have a few minutes this week for a quick visit? Let me know what works!`,
+    body: `I was in your area and wanted to check in. Would you have a few minutes this week for a quick visit? Let me know what works!`,
   },
   {
     label: "Service Reminder",
-    body: `Hey {{contact.first_name}}! It's {{user.first_name}} from Cutco. It's been a while since your last sharpening — I'd love to stop by and take care of your knives. Want to set something up?`,
+    body: `It's been a while since your last sharpening — I'd love to stop by and take care of your knives. Want to set something up?`,
   },
   {
     label: "Holiday / Seasonal",
-    body: `Happy holidays, {{contact.first_name}}! 🎁 It's {{user.first_name}} with Cutco. If you're thinking about gifts this season, I have some great options. Let me know if you'd like to chat!`,
+    body: `If you're thinking about gifts this season, I have some great options. Let me know if you'd like to chat! 🎁`,
   },
   {
     label: "New Customer Intro",
-    body: `Hi {{contact.first_name}}, this is {{user.first_name}} with Cutco! I'm your local rep in the {{contact.city}} area. If you ever need anything — sharpening, replacements, or new pieces — don't hesitate to reach out!`,
+    body: `I'm your local Cutco rep in the area. If you ever need anything — sharpening, replacements, or new pieces — don't hesitate to reach out!`,
   },
 ];
 
@@ -155,14 +155,14 @@ export default function GroupSmsModal({ open, onClose, contacts, repName }: Grou
               {taggedCount} contact{taggedCount !== 1 ? "s" : ""} tagged!
             </p>
             <p className="text-sm text-muted-foreground">
-              Your message has been saved as a Custom Value and the tag <Badge variant="secondary" className="mx-1">{tag}</Badge> has been applied.
+              Your message has been saved and the tag <Badge variant="secondary" className="mx-1">{tag}</Badge> has been applied. Your Workflow will now send each contact a personalized SMS.
             </p>
             <div className="rounded-lg bg-muted/50 border p-3 w-full text-left">
-              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">Your Workflow will send:</p>
-              <p className="text-sm whitespace-pre-wrap">{message}</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">Each contact will receive:</p>
+              <p className="text-sm whitespace-pre-wrap">Hi [Contact's First Name],{"\n\n"}{message}</p>
             </div>
             <p className="text-xs text-muted-foreground">
-              Use <code className="bg-muted px-1 rounded text-xs">{"{{custom_values.localist_sms_message}}"}</code> in your GHL Workflow's SMS action.
+              The Workflow adds the greeting and removes the tag automatically so contacts can be messaged again.
             </p>
             <Button onClick={handleClose} className="w-full">Done</Button>
           </div>
@@ -174,9 +174,10 @@ export default function GroupSmsModal({ open, onClose, contacts, repName }: Grou
                 <Info className="h-3.5 w-3.5" /> How it works
               </p>
               <ol className="text-xs text-muted-foreground space-y-1 list-decimal list-inside">
-                <li>Your message is saved as a <strong>Custom Value</strong> in GoHighLevel.</li>
+                <li>Your message is saved as a <strong>Custom Value</strong> in your CRM.</li>
                 <li>A tag is applied to all selected contacts instantly.</li>
-                <li>Your <strong>GHL Workflow</strong> triggers on this tag and sends the SMS using the saved message.</li>
+                <li>Your <strong>Workflow</strong> triggers on this tag, adds "Hi [Name]," automatically, and sends the SMS.</li>
+                <li>The tag is removed so contacts can be messaged again next time.</li>
               </ol>
             </div>
 
@@ -212,7 +213,7 @@ export default function GroupSmsModal({ open, onClose, contacts, repName }: Grou
                 style={{ fontSize: "16px" }}
               />
               <p className="text-xs text-muted-foreground">
-                {message.length}/1000 chars · Use GHL merge fields like {"{{contact.first_name}}"} for personalization.
+                {message.length}/1000 chars · Don't add "Hi [Name]" — your Workflow handles that automatically!
               </p>
             </div>
 
