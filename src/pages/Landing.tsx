@@ -120,6 +120,37 @@ const landingFaq = [
   },
 ];
 
+      {/* FAQ */}
+      <section className="py-12 sm:py-20">
+        <div className="container mx-auto px-4 max-w-3xl">
+          <div className="text-center mb-10">
+            <h2 className="text-3xl font-bold tracking-tight" style={{ fontFamily: "'Oswald', sans-serif" }}>
+              Frequently Asked Questions
+            </h2>
+            <p className="mt-3 text-muted-foreground">
+              Quick answers to common questions about AKL LocaList.
+            </p>
+          </div>
+          <Accordion type="single" collapsible className="w-full">
+            {landingFaq.map((item, i) => (
+              <AccordionItem key={i} value={`faq-${i}`}>
+                <AccordionTrigger className="text-left text-sm sm:text-base font-medium">
+                  {item.q}
+                </AccordionTrigger>
+                <AccordionContent className="text-muted-foreground">
+                  {item.a}
+                </AccordionContent>
+              </AccordionItem>
+            ))}
+          </Accordion>
+          <div className="text-center mt-8">
+            <Link to="/faq">
+              <Button variant="outline" size="sm">View All FAQs</Button>
+            </Link>
+          </div>
+        </div>
+      </section>
+
 
 // Hexagon SVG pattern background component
 function HexBackground() {
