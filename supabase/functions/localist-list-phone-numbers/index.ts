@@ -97,14 +97,26 @@ Deno.serve(async (req) => {
   // Fetch phone numbers from GHL
   try {
     const url = `https://services.leadconnectorhq.com/phone-system/numbers/location/${creds.ghlLocationId}?limit=50`;
-    const res = await fetch(url, {
+
+    const fetchNumbers = (token: string) => fetch(url, {
       headers: {
-        Authorization: `Bearer ${activeToken}`,
+        Authorization: `Bearer ${token}`,
         Version: "2021-04-15",
         Accept: "application/json",
       },
       signal: AbortSignal.timeout(15_000),
     });
+
+    let res = await fetchNumbers(activeToken);
+
+    // Retry once after forced refresh if token is stale/invalid server-side
+    if (res.status === 401 && creds.refreshToken) {
+      const refreshed = await refreshGhlToken(supabase, creds.repId, creds.refreshToken);
+      if (refreshed) {
+        activeToken = refreshed;
+        res = await fetchNumbers(activeToken);
+      }
+    }
 
     if (!res.ok) {
       const errData = await res.json().catch(() => ({}));
