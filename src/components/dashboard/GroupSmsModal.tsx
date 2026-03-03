@@ -232,7 +232,7 @@ export default function GroupSmsModal({ open, onClose, contacts, repName }: Grou
             </div>
 
             {contacts.length !== validContacts.length && (
-              <p className="text-xs text-amber-600">
+              <p className="text-xs text-destructive">
                 {contacts.length - validContacts.length} contact{contacts.length - validContacts.length !== 1 ? "s" : ""} without valid CRM IDs will be skipped.
               </p>
             )}
