@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   Dialog,
@@ -10,7 +10,15 @@ import {
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, MessageSquare, CheckCircle2 } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Loader2, MessageSquare, CheckCircle2, Phone } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { toTitleCase } from "@/lib/contacts";
@@ -58,13 +66,35 @@ export default function GroupSmsModal({ open, onClose, contacts, repName }: Grou
   const [sending, setSending] = useState(false);
   const [done, setDone] = useState(false);
   const [sentCount, setSentCount] = useState(0);
+  const [estimatedTime, setEstimatedTime] = useState("");
+
+  // Phone number picker state
+  interface PhoneOption { id: string; phoneNumber: string; friendlyName: string; isDefault: boolean }
+  const [phoneNumbers, setPhoneNumbers] = useState<PhoneOption[]>([]);
+  const [selectedPhone, setSelectedPhone] = useState<string>("default");
+  const [phonesLoading, setPhonesLoading] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    setPhonesLoading(true);
+    const body: Record<string, unknown> = {};
+    if (ssoPayload) body.sso_payload = ssoPayload;
+    supabase.functions.invoke("localist-list-phone-numbers", { body })
+      .then(({ data, error }) => {
+        if (!error && data?.phoneNumbers?.length) {
+          setPhoneNumbers(data.phoneNumbers);
+        } else {
+          setPhoneNumbers([]);
+        }
+      })
+      .catch(() => setPhoneNumbers([]))
+      .finally(() => setPhonesLoading(false));
+  }, [open, ssoPayload]);
 
   const activeBody =
     selectedTemplate === "custom"
       ? customMessage
       : TEMPLATES[selectedTemplate as number]?.body ?? "";
-
-  const [estimatedTime, setEstimatedTime] = useState("");
 
   const handleSend = async () => {
     if (!activeBody.trim()) {
@@ -82,6 +112,7 @@ export default function GroupSmsModal({ open, onClose, contacts, repName }: Grou
 
       const body: Record<string, unknown> = { contacts: payload, message_template: activeBody };
       if (ssoPayload) body.sso_payload = ssoPayload;
+      if (selectedPhone !== "default") body.from_number = selectedPhone;
       const { data, error } = await supabase.functions.invoke("localist-group-sms", {
         body,
       });
@@ -110,6 +141,7 @@ export default function GroupSmsModal({ open, onClose, contacts, repName }: Grou
     setSentCount(0);
     setEstimatedTime("");
     setSelectedTemplate(0);
+    setSelectedPhone("default");
     setCustomMessage("");
     onClose();
   };
@@ -138,6 +170,33 @@ export default function GroupSmsModal({ open, onClose, contacts, repName }: Grou
           </div>
         ) : (
           <>
+            {/* Phone number picker */}
+            {phonesLoading ? (
+              <div className="space-y-1.5">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Send from</p>
+                <Skeleton className="h-10 w-full" />
+              </div>
+            ) : phoneNumbers.length > 0 ? (
+              <div className="space-y-1.5">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
+                  <Phone className="h-3.5 w-3.5" /> Send from
+                </p>
+                <Select value={selectedPhone} onValueChange={setSelectedPhone}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Default number" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="default">Default number</SelectItem>
+                    {phoneNumbers.map((pn) => (
+                      <SelectItem key={pn.id || pn.phoneNumber} value={pn.phoneNumber}>
+                        {pn.phoneNumber}{pn.friendlyName ? ` — ${pn.friendlyName}` : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            ) : null}
+
             {/* Template picker */}
             <div className="space-y-2">
               <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Choose a template</p>
