@@ -116,7 +116,7 @@ const landingFaq = [
   },
   {
     q: "What about Edge DMS integration?",
-    a: "AKL LocaList integrates directly with Edge DMS, automatically syncing your CRM contacts, enabling Group SMS, bulk tagging, and LC Call — all without a separate login.",
+    a: "AKL LocaList integrates directly with Edge DMS, automatically syncing your CRM contacts, enabling Group SMS with custom messages and templates, bulk tagging, and LC Call — all without a separate login. Your SMS message is saved as a GHL Custom Value so your Workflow sends exactly what you composed.",
   },
 ];
 
