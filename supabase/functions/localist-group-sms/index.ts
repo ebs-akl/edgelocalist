@@ -225,15 +225,20 @@ Deno.serve(async (req) => {
       typeof c.first_name !== "string" ||
       typeof c.phone !== "string" || !PHONE_RE.test(c.phone.replace(/[\s()-]/g, ""))
     ) {
-      return new Response(JSON.stringify({ error: "Invalid contact data" }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      console.warn("Skipping invalid contact:", JSON.stringify(c));
+      continue; // Skip invalid contacts instead of failing the entire request
     }
     validContacts.push({
       contact_id: c.contact_id.trim(),
       first_name: String(c.first_name).slice(0, 100),
       city: typeof c.city === "string" ? String(c.city).slice(0, 100) : "",
       phone: c.phone.trim(),
+    });
+  }
+
+  if (validContacts.length === 0) {
+    return new Response(JSON.stringify({ error: "No valid contacts with phone numbers found" }), {
+      status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 
