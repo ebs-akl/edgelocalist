@@ -366,6 +366,14 @@ const { data, error } = await supabase.functions.invoke("localist-sync-contacts"
                   </SheetTrigger>
                   <SheetContent side="right" className="w-64">
                     <div className="flex flex-col gap-4 mt-8">
+                      <Link to="/guide" className="w-full">
+                        <SheetClose asChild>
+                          <Button variant="ghost" className="w-full justify-start">
+                            <BookOpen className="h-4 w-4 mr-2" />
+                            User Guide
+                          </Button>
+                        </SheetClose>
+                      </Link>
                       <Link to="/settings" className="w-full">
                         <SheetClose asChild>
                           <Button variant="ghost" className="w-full justify-start">

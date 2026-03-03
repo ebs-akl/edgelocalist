@@ -93,6 +93,34 @@ const pricingPlans: { name: string; tierKey: TierKey | null; price: string; peri
 }];
 
 
+const landingFaq = [
+  {
+    q: "What is AKL LocaList?",
+    a: "AKL LocaList is a proximity-based contact search tool built for Cutco sales representatives. Upload your customer list, geocode addresses, and instantly find contacts near any location.",
+  },
+  {
+    q: "How do I get started?",
+    a: "Create an account, log in, and upload a CSV file containing your customer data. AKL LocaList will automatically geocode the addresses and make them searchable by location.",
+  },
+  {
+    q: "How does the nearby search work?",
+    a: "Enter any address or location, choose a radius (5, 10, 25, or 50 miles), and AKL LocaList returns all your contacts within that area — sorted by distance with map pins.",
+  },
+  {
+    q: "Is my data secure?",
+    a: "Yes. All data is stored securely with encryption at rest and in transit. Row-level security ensures only you can see your own contacts.",
+  },
+  {
+    q: "Can I use it on my phone?",
+    a: "Absolutely! AKL LocaList is fully responsive and works great on mobile browsers. Search, view the map, and call or text contacts right from your phone.",
+  },
+  {
+    q: "What about Edge DMS integration?",
+    a: "AKL LocaList integrates directly with Edge DMS, automatically syncing your CRM contacts, enabling Group SMS, bulk tagging, and LC Call — all without a separate login.",
+  },
+];
+
+
 // Hexagon SVG pattern background component
 function HexBackground() {
   return (
