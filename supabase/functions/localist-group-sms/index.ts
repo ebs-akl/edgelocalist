@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import CryptoJS from "npm:crypto-js";
+import { refreshGhlToken, isTokenExpired } from "../_shared/ghl-refresh-token.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -29,7 +30,7 @@ async function resolveCredentials(
   supabase: ReturnType<typeof createClient>,
   authHeader: string | null,
   body: Record<string, unknown>,
-): Promise<{ repName: string; accessToken: string; ghlLocationId: string } | { error: string; status: number }> {
+): Promise<{ repName: string; accessToken: string; ghlLocationId: string; repId: string; refreshToken: string; expiresAt: string | null } | { error: string; status: number }> {
   // 1. Bearer token auth (standalone mode)
   if (authHeader?.startsWith("Bearer ")) {
     const { data: { user }, error } = await supabase.auth.getUser(authHeader.replace("Bearer ", ""));
@@ -37,12 +38,12 @@ async function resolveCredentials(
 
     const { data: rep } = await supabase
       .from("localist_reps")
-      .select("ghl_access_token, ghl_location_id, full_name")
+      .select("ghl_access_token, ghl_location_id, ghl_refresh_token, ghl_expires_at, full_name")
       .eq("id", user.id)
       .maybeSingle();
 
     if (!rep?.ghl_access_token || !rep?.ghl_location_id) return { error: "GHL not connected", status: 400 };
-    return { repName: rep.full_name ?? "your rep", accessToken: rep.ghl_access_token, ghlLocationId: rep.ghl_location_id };
+    return { repName: rep.full_name ?? "your rep", accessToken: rep.ghl_access_token, ghlLocationId: rep.ghl_location_id, repId: user.id, refreshToken: rep.ghl_refresh_token ?? "", expiresAt: rep.ghl_expires_at };
   }
 
   // 2. SSO payload auth (GHL iframe mode)
@@ -53,12 +54,12 @@ async function resolveCredentials(
 
     const { data: rep } = await supabase
       .from("localist_reps")
-      .select("ghl_access_token, ghl_location_id, full_name")
+      .select("id, ghl_access_token, ghl_location_id, ghl_refresh_token, ghl_expires_at, full_name")
       .eq("ghl_location_id", locationId)
       .maybeSingle();
 
     if (!rep?.ghl_access_token) return { error: "No rep found for this location", status: 400 };
-    return { repName: rep.full_name ?? "your rep", accessToken: rep.ghl_access_token, ghlLocationId: rep.ghl_location_id! };
+    return { repName: rep.full_name ?? "your rep", accessToken: rep.ghl_access_token, ghlLocationId: rep.ghl_location_id!, repId: rep.id, refreshToken: rep.ghl_refresh_token ?? "", expiresAt: rep.ghl_expires_at };
   }
 
   return { error: "Missing authorization", status: 401 };
@@ -202,6 +203,19 @@ serve(async (req) => {
     });
   }
 
+  // ── Token refresh ──
+  let activeToken = creds.accessToken;
+  if (isTokenExpired(creds.expiresAt)) {
+    const refreshed = await refreshGhlToken(supabase, creds.repId, creds.refreshToken);
+    if (refreshed) {
+      activeToken = refreshed;
+    } else {
+      return new Response(JSON.stringify({ error: "GHL token expired. Please reconnect your CRM." }), {
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+  }
+
   const results: { contact_id: string; success: boolean; error?: string }[] = [];
 
   for (const contact of validContacts) {
@@ -216,7 +230,7 @@ serve(async (req) => {
         {
           method: "POST",
           headers: {
-            Authorization: `Bearer ${creds.accessToken}`,
+            Authorization: `Bearer ${activeToken}`,
             Version: "2021-04-15",
             "Content-Type": "application/json",
           },
