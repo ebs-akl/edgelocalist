@@ -90,8 +90,14 @@ async function setCustomValue(
   const listData = await listRes.json();
   const customValues: Array<{ id: string; name: string; value: string }> = listData.customValues ?? [];
 
+  // Match by name or fieldKey (GHL generates a fieldKey from the name)
+  const normalise = (s: string) => s.toLowerCase().replace(/[\s_-]+/g, "_");
   const existing = customValues.find(
-    (cv) => cv.name.toLowerCase().replace(/\s+/g, "_") === CUSTOM_VALUE_NAME || cv.name === CUSTOM_VALUE_NAME
+    (cv: any) =>
+      normalise(cv.name) === CUSTOM_VALUE_NAME ||
+      cv.name === CUSTOM_VALUE_NAME ||
+      cv.fieldKey === CUSTOM_VALUE_NAME ||
+      normalise(cv.fieldKey ?? "") === CUSTOM_VALUE_NAME
   );
 
   if (existing) {
@@ -118,15 +124,41 @@ async function setCustomValue(
       body: JSON.stringify({ name: CUSTOM_VALUE_NAME, value: message }),
     });
 
-    if (!createRes.ok) {
-      const errText = await createRes.text();
-      console.error(`Create custom value failed (${createRes.status}):`, errText);
-      return { success: false, error: `Failed to create custom value: ${createRes.status}` };
+    if (createRes.ok) {
+      const createData = await createRes.json();
+      console.log(`Created custom value "${CUSTOM_VALUE_NAME}" (${createData.customValue?.id ?? "unknown"})`);
+      return { success: true };
     }
 
-    const createData = await createRes.json();
-    console.log(`Created custom value "${CUSTOM_VALUE_NAME}" (${createData.customValue?.id ?? "unknown"})`);
-    return { success: true };
+    // 2c. Fallback: if create fails because key already exists, re-fetch and update
+    const errText = await createRes.text();
+    if (createRes.status === 400 && errText.includes("already exists")) {
+      console.log("Custom value exists but wasn't matched — re-fetching to update...");
+      const retryList = await fetch(`${baseUrl}/locations/${locationId}/customValues`, { method: "GET", headers });
+      if (retryList.ok) {
+        const retryData = await retryList.json();
+        const allCvs: any[] = retryData.customValues ?? [];
+        // Find by any field containing our name
+        const match = allCvs.find((cv: any) =>
+          JSON.stringify(cv).toLowerCase().includes("localist_sms_message") ||
+          JSON.stringify(cv).toLowerCase().includes("localist sms message")
+        );
+        if (match) {
+          const updateRes2 = await fetch(`${baseUrl}/locations/${locationId}/customValues/${match.id}`, {
+            method: "PUT",
+            headers,
+            body: JSON.stringify({ name: match.name, value: message }),
+          });
+          if (updateRes2.ok) {
+            console.log(`Fallback update succeeded for "${match.name}" (${match.id})`);
+            return { success: true };
+          }
+        }
+      }
+    }
+
+    console.error(`Create custom value failed (${createRes.status}):`, errText);
+    return { success: false, error: `Failed to create custom value: ${createRes.status}` };
   }
 }
 
