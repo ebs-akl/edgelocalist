@@ -61,7 +61,7 @@ const standaloneFaq = [
 const edgeDmsFaq = [
   {
     q: "What is AKL LocaList?",
-    a: "AKL LocaList is a proximity-based contact search tool that integrates directly with your Edge DMS CRM. It syncs your CRM contacts, geocodes their addresses, and lets you instantly find customers near any location — perfect for planning routes and maximizing face-to-face time.",
+    a: "AKL LocaList is a proximity-based contact search tool that integrates directly with your Edge DMS CRM. It syncs your CRM contacts and lets you instantly find customers near any location — perfect for planning routes and maximizing face-to-face time.",
   },
   {
     q: "How does AKL LocaList connect to Edge DMS?",

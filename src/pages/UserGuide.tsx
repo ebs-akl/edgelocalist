@@ -110,7 +110,7 @@ function EdgeDmsGuide() {
           <li>Connecting to Edge DMS</li>
           <li>Fetching your contacts</li>
           <li>Saving to your account</li>
-          <li>Geocoding addresses</li>
+          <li>Processing addresses</li>
           <li>Preparing search results</li>
         </ol>
         <p>

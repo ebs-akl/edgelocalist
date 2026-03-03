@@ -100,7 +100,7 @@ const landingFaq = [
   },
   {
     q: "How do I get started?",
-    a: "Create an account, log in, and upload a CSV file containing your customer data. AKL LocaList will automatically geocode the addresses and make them searchable by location.",
+    a: "Create an account, log in, and upload a CSV file containing your customer data. AKL LocaList will automatically process the addresses and make them searchable by location.",
   },
   {
     q: "How does the nearby search work?",
