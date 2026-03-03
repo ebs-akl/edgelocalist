@@ -1,4 +1,3 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import CryptoJS from "npm:crypto-js";
 import { refreshGhlToken, isTokenExpired } from "../_shared/ghl-refresh-token.ts";
@@ -13,6 +12,9 @@ const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const PHONE_RE = /^\+?[0-9]{7,15}$/;
 const LOCATION_ID_RE = /^[a-zA-Z0-9]{5,50}$/;
+
+const BATCH_SIZE = 10;
+const BATCH_INTERVAL_MS = 10_000; // 10 seconds between batches
 
 function decryptSsoPayload(ssoPayload: string): string | null {
   const ssoKey = Deno.env.get("GHL_SSO_KEY");
@@ -31,7 +33,6 @@ async function resolveCredentials(
   authHeader: string | null,
   body: Record<string, unknown>,
 ): Promise<{ repName: string; accessToken: string; ghlLocationId: string; repId: string; refreshToken: string; expiresAt: string | null } | { error: string; status: number }> {
-  // 1. Bearer token auth (standalone mode)
   if (authHeader?.startsWith("Bearer ")) {
     const { data: { user }, error } = await supabase.auth.getUser(authHeader.replace("Bearer ", ""));
     if (error || !user) return { error: "Could not verify user", status: 401 };
@@ -46,7 +47,6 @@ async function resolveCredentials(
     return { repName: rep.full_name ?? "your rep", accessToken: rep.ghl_access_token, ghlLocationId: rep.ghl_location_id, repId: user.id, refreshToken: rep.ghl_refresh_token ?? "", expiresAt: rep.ghl_expires_at };
   }
 
-  // 2. SSO payload auth (GHL iframe mode)
   if (typeof body.sso_payload === "string" && body.sso_payload) {
     const locationId = decryptSsoPayload(body.sso_payload);
     if (!locationId) return { error: "Cryptographic verification failed", status: 401 };
@@ -78,7 +78,96 @@ function sanitizeTemplate(template: string): string {
   });
 }
 
-serve(async (req) => {
+interface ContactPayload {
+  contact_id: string;
+  first_name: string;
+  city: string;
+  phone: string;
+}
+
+/**
+ * Drip-send messages in batches of BATCH_SIZE with BATCH_INTERVAL_MS between batches.
+ * Runs as a background task via EdgeRuntime.waitUntil.
+ */
+async function dripSend(
+  contacts: ContactPayload[],
+  safeTemplate: string,
+  activeToken: string,
+  ghlLocationId: string,
+  repName: string,
+  supabase: ReturnType<typeof createClient>,
+  windowStart: string,
+  today: string,
+) {
+  let totalSent = 0;
+  let totalFailed = 0;
+
+  for (let i = 0; i < contacts.length; i += BATCH_SIZE) {
+    const batch = contacts.slice(i, i + BATCH_SIZE);
+
+    // Send batch concurrently
+    const batchResults = await Promise.allSettled(
+      batch.map(async (contact) => {
+        const msgBody = safeTemplate
+          .replace(/\{\{first_name\}\}/g, toTitleCase(contact.first_name))
+          .replace(/\{\{city\}\}/g, toTitleCase(contact.city))
+          .replace(/\{\{rep_name\}\}/g, toTitleCase(repName));
+
+        const res = await fetch(
+          "https://services.leadconnectorhq.com/conversations/messages/outbound",
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${activeToken}`,
+              Version: "2021-04-15",
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              type: "SMS",
+              contactId: contact.contact_id,
+              locationId: ghlLocationId,
+              message: msgBody,
+            }),
+          }
+        );
+
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          console.error("GHL SMS error for contact", contact.contact_id, data);
+          throw new Error("Send failed");
+        }
+        // consume body to prevent leaks
+        await res.json().catch(() => {});
+      })
+    );
+
+    const batchSent = batchResults.filter((r) => r.status === "fulfilled").length;
+    const batchFailed = batchResults.filter((r) => r.status === "rejected").length;
+    totalSent += batchSent;
+    totalFailed += batchFailed;
+
+    console.log(`Drip batch ${Math.floor(i / BATCH_SIZE) + 1}: ${batchSent} sent, ${batchFailed} failed`);
+
+    // Update rate limit counters after each batch
+    if (batchSent > 0) {
+      await supabase.rpc("increment_sms_rate_limit", {
+        p_location_id: ghlLocationId,
+        p_window_start: windowStart,
+        p_count: batchSent,
+        p_today: today,
+      }).catch((err: unknown) => console.error("Rate limit increment failed:", err));
+    }
+
+    // Wait between batches (skip wait after last batch)
+    if (i + BATCH_SIZE < contacts.length) {
+      await sleep(BATCH_INTERVAL_MS);
+    }
+  }
+
+  console.log(`Drip send complete: ${totalSent} sent, ${totalFailed} failed out of ${contacts.length}`);
+}
+
+Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -125,13 +214,6 @@ serve(async (req) => {
     });
   }
 
-  interface ContactPayload {
-    contact_id: string;
-    first_name: string;
-    city: string;
-    phone: string;
-  }
-
   const validContacts: ContactPayload[] = [];
   for (const c of contacts) {
     if (
@@ -170,7 +252,6 @@ serve(async (req) => {
   const windowStart = nowHour.toISOString();
   const today = new Date().toISOString().slice(0, 10);
 
-  // Upsert hourly window
   const { data: rl, error: rlErr } = await supabase
     .from("sms_rate_limits")
     .upsert(
@@ -202,11 +283,7 @@ serve(async (req) => {
   }
 
   const contactsToSend = validContacts.slice(0, allowedToSend);
-  const skippedContacts = validContacts.slice(allowedToSend);
-
-  const limitReason = hourlyRemaining <= dailyRemaining
-    ? `Hourly SMS limit reached (${HOURLY_LIMIT}).`
-    : `Daily SMS limit reached (${DAILY_LIMIT}).`;
+  const skipped = validContacts.length - allowedToSend;
 
   // ── Token refresh ──
   let activeToken = creds.accessToken;
@@ -221,69 +298,35 @@ serve(async (req) => {
     }
   }
 
-  const results: { contact_id: string; success: boolean; error?: string }[] = skippedContacts.map((c) => ({
-    contact_id: c.contact_id,
-    success: false,
-    error: limitReason,
-  }));
+  // ── Kick off background drip send ──
+  const totalBatches = Math.ceil(contactsToSend.length / BATCH_SIZE);
+  const estimatedSeconds = (totalBatches - 1) * (BATCH_INTERVAL_MS / 1000);
 
-  for (const contact of contactsToSend) {
-    const msgBody = safeTemplate
-      .replace(/\{\{first_name\}\}/g, toTitleCase(contact.first_name))
-      .replace(/\{\{city\}\}/g, toTitleCase(contact.city))
-      .replace(/\{\{rep_name\}\}/g, toTitleCase(creds.repName));
+  console.log(`Queuing drip send: ${contactsToSend.length} contacts in ${totalBatches} batches (~${estimatedSeconds}s)`);
 
-    try {
-      const res = await fetch(
-        "https://services.leadconnectorhq.com/conversations/messages/outbound",
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${activeToken}`,
-            Version: "2021-04-15",
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            type: "SMS",
-            contactId: contact.contact_id,
-            locationId: creds.ghlLocationId,
-            message: msgBody,
-          }),
-        }
-      );
+  // deno-lint-ignore no-explicit-any
+  (globalThis as any).EdgeRuntime.waitUntil(
+    dripSend(
+      contactsToSend,
+      safeTemplate,
+      activeToken,
+      creds.ghlLocationId,
+      creds.repName,
+      supabase,
+      windowStart,
+      today,
+    ).catch((err) => console.error("Drip send background error:", err))
+  );
 
-      const data = await res.json();
-
-      if (!res.ok) {
-        console.error("GHL SMS error for contact", contact.contact_id, data);
-        results.push({ contact_id: contact.contact_id, success: false, error: "Send failed" });
-      } else {
-        results.push({ contact_id: contact.contact_id, success: true });
-      }
-    } catch (err) {
-      console.error("ghl-group-sms error:", err);
-      results.push({ contact_id: contact.contact_id, success: false, error: "Send failed" });
-    }
-
-    const delay = 250 + Math.random() * 200;
-    await sleep(delay);
-  }
-
-  const sent = results.filter((r) => r.success).length;
-  const failed = results.filter((r) => !r.success).length;
-
-  // Update rate limit counters with actual sent count
-  if (sent > 0) {
-    await supabase.rpc("increment_sms_rate_limit", {
-      p_location_id: creds.ghlLocationId,
-      p_window_start: windowStart,
-      p_count: sent,
-      p_today: today,
-    }).catch((err: unknown) => console.error("Rate limit increment failed:", err));
-  }
-
+  // Return immediately
   return new Response(
-    JSON.stringify({ sent, failed, results }),
+    JSON.stringify({
+      queued: contactsToSend.length,
+      skipped,
+      batches: totalBatches,
+      estimatedSeconds,
+      message: `${contactsToSend.length} messages queued for drip delivery (${BATCH_SIZE} every ${BATCH_INTERVAL_MS / 1000}s).${skipped > 0 ? ` ${skipped} skipped due to rate limits.` : ""}`,
+    }),
     { headers: { ...corsHeaders, "Content-Type": "application/json" } }
   );
 });
