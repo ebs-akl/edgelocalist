@@ -35,7 +35,7 @@ const features = [
   icon: Upload,
   title: "CSV Upload",
   description:
-  "Export contacts from VectorConnect, upload once, and we geocode every address automatically. Re-upload anytime to refresh."
+  "Export contacts from VectorConnect, upload once, and every address is processed automatically. Re-upload anytime to refresh."
 },
 {
   icon: MapPin,
