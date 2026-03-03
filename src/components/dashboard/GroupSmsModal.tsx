@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   Dialog,
   DialogContent,
@@ -51,6 +52,7 @@ function preview(template: string, repName: string): string {
 }
 
 export default function GroupSmsModal({ open, onClose, contacts, repName }: GroupSmsModalProps) {
+  const { ssoPayload } = useAuth();
   const [selectedTemplate, setSelectedTemplate] = useState<number | "custom">(0);
   const [customMessage, setCustomMessage] = useState("");
   const [sending, setSending] = useState(false);
@@ -77,7 +79,7 @@ export default function GroupSmsModal({ open, onClose, contacts, repName }: Grou
       }));
 
       const body: Record<string, unknown> = { contacts: payload, message_template: activeBody };
-
+      if (ssoPayload) body.sso_payload = ssoPayload;
       const { data, error } = await supabase.functions.invoke("localist-group-sms", {
         body,
       });
