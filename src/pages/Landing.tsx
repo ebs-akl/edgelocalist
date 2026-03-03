@@ -96,7 +96,7 @@ const pricingPlans: { name: string; tierKey: TierKey | null; price: string; peri
 const landingFaq = [
   {
     q: "What is AKL LocaList?",
-    a: "AKL LocaList is a proximity-based contact search tool built for Cutco sales representatives. Upload your customer list, geocode addresses, and instantly find contacts near any location.",
+    a: "AKL LocaList is a proximity-based contact search tool built for Cutco sales representatives. Upload your customer list and instantly find contacts near any location.",
   },
   {
     q: "How do I get started?",
