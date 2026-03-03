@@ -212,7 +212,7 @@ export default function GroupSmsModal({ open, onClose, contacts, repName }: Grou
                 style={{ fontSize: "16px" }}
               />
               <p className="text-xs text-muted-foreground">
-                {message.length}/1000 chars · Use GHL merge fields like {"{{contact.first_name}}"} for personalization.
+                {message.length}/1000 chars · Don't add "Hi [Name]" — your Workflow handles that automatically!
               </p>
             </div>
 
