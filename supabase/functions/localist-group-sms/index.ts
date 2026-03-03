@@ -119,8 +119,8 @@ serve(async (req) => {
     });
   }
 
-  if (contacts.length > 500) {
-    return new Response(JSON.stringify({ error: "Maximum 500 contacts per batch" }), {
+  if (contacts.length > 2000) {
+    return new Response(JSON.stringify({ error: "Maximum 2000 contacts per request" }), {
       status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
@@ -191,17 +191,22 @@ serve(async (req) => {
 
   const hourlyUsed = rl?.send_count ?? 0;
   const dailyUsed = rl?.daily_start === today ? (rl?.daily_count ?? 0) : 0;
+  const hourlyRemaining = Math.max(0, HOURLY_LIMIT - hourlyUsed);
+  const dailyRemaining = Math.max(0, DAILY_LIMIT - dailyUsed);
+  const allowedToSend = Math.min(contactCount, hourlyRemaining, dailyRemaining);
 
-  if (hourlyUsed + contactCount > HOURLY_LIMIT) {
-    return new Response(JSON.stringify({ error: `Hourly SMS limit reached (${HOURLY_LIMIT}). Try again later.` }), {
+  if (allowedToSend <= 0) {
+    return new Response(JSON.stringify({ error: "SMS rate limit reached. Try again later." }), {
       status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
-  if (dailyUsed + contactCount > DAILY_LIMIT) {
-    return new Response(JSON.stringify({ error: `Daily SMS limit reached (${DAILY_LIMIT}). Try again tomorrow.` }), {
-      status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
+
+  const contactsToSend = validContacts.slice(0, allowedToSend);
+  const skippedContacts = validContacts.slice(allowedToSend);
+
+  const limitReason = hourlyRemaining <= dailyRemaining
+    ? `Hourly SMS limit reached (${HOURLY_LIMIT}).`
+    : `Daily SMS limit reached (${DAILY_LIMIT}).`;
 
   // ── Token refresh ──
   let activeToken = creds.accessToken;
@@ -216,9 +221,13 @@ serve(async (req) => {
     }
   }
 
-  const results: { contact_id: string; success: boolean; error?: string }[] = [];
+  const results: { contact_id: string; success: boolean; error?: string }[] = skippedContacts.map((c) => ({
+    contact_id: c.contact_id,
+    success: false,
+    error: limitReason,
+  }));
 
-  for (const contact of validContacts) {
+  for (const contact of contactsToSend) {
     const msgBody = safeTemplate
       .replace(/\{\{first_name\}\}/g, toTitleCase(contact.first_name))
       .replace(/\{\{city\}\}/g, toTitleCase(contact.city))
@@ -256,7 +265,7 @@ serve(async (req) => {
       results.push({ contact_id: contact.contact_id, success: false, error: "Send failed" });
     }
 
-    const delay = 1000 + Math.random() * 1000;
+    const delay = 250 + Math.random() * 200;
     await sleep(delay);
   }
 
