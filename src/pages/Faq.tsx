@@ -18,7 +18,7 @@ const standaloneFaq = [
   },
   {
     q: "How do I get started?",
-    a: "Create an account at the app, log in, and navigate to the Contacts tab on your dashboard. From there, upload a CSV file containing your customer data. AKL LocaList will automatically geocode the addresses and make them searchable.",
+    a: "Create an account at the app, log in, and navigate to the Contacts tab on your dashboard. From there, upload a CSV file containing your customer data. AKL LocaList will automatically process the addresses and make them searchable.",
   },
   {
     q: "What format does my CSV need to be in?",
