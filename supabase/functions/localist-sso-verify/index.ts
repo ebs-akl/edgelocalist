@@ -106,8 +106,8 @@ Deno.serve(async (req) => {
     if (!decryptedString) {
       console.error("Decryption failed for all configured keys. Payload length:", normalizedPayload.length, "First 40 chars:", normalizedPayload.substring(0, 40));
       return new Response(
-        JSON.stringify({ error: "Decryption failed — payload may not be a valid AES-encrypted SSO token. Ensure GHL_SSO_KEY matches." }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ error: "SSO authentication failed" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
