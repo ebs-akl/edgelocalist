@@ -5,25 +5,16 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Loader2, MessageSquare, CheckCircle2, Phone } from "lucide-react";
+import { Loader2, MessageSquare, CheckCircle2, Tag, Info } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { toTitleCase } from "@/lib/contacts";
 import type { NearbyContact } from "@/lib/contacts";
-
 
 interface GroupSmsModalProps {
   open: boolean;
@@ -32,110 +23,61 @@ interface GroupSmsModalProps {
   repName: string;
 }
 
-interface Template {
-  label: string;
-  body: string;
-}
-
-const TEMPLATES: Template[] = [
-  {
-    label: "Sharpening Check-in",
-    body: "Hey {{first_name}}, it's {{rep_name}} here. I'm in your area and haven't seen you in a while. I have a little time in my schedule — could any of your Cutco use some sharpening?",
-  },
-  {
-    label: "Area Visit",
-    body: "Hey {{first_name}}, it's {{rep_name}} from Cutco. I'm in {{city}} and just wanted to reach out. How is everything?",
-  },
-  {
-    label: "Limited Time Nearby",
-    body: "Hey {{first_name}}, it's {{rep_name}} from Cutco! I don't make it to {{city}} very often — I'm in the area for a short time and didn't want to miss the chance to connect. Are you around?",
-  },
-];
-
-function preview(template: string, repName: string): string {
-  return template
-    .replace(/\{\{first_name\}\}/g, "Jane")
-    .replace(/\{\{city\}\}/g, "Springfield")
-    .replace(/\{\{rep_name\}\}/g, repName);
-}
-
 export default function GroupSmsModal({ open, onClose, contacts, repName }: GroupSmsModalProps) {
   const { ssoPayload } = useAuth();
-  const [selectedTemplate, setSelectedTemplate] = useState<number | "custom">(0);
-  const [customMessage, setCustomMessage] = useState("");
+  const [tag, setTag] = useState("localist-sms");
   const [sending, setSending] = useState(false);
   const [done, setDone] = useState(false);
-  const [sentCount, setSentCount] = useState(0);
-  const [estimatedTime, setEstimatedTime] = useState("");
-
-  // Phone number picker state
-  interface PhoneOption { id: string; phoneNumber: string; friendlyName: string; isDefault: boolean }
-  const [phoneNumbers, setPhoneNumbers] = useState<PhoneOption[]>([]);
-  const [selectedPhone, setSelectedPhone] = useState<string>("default");
-  const [phonesLoading, setPhonesLoading] = useState(false);
-
-  useEffect(() => {
-    if (!open) return;
-    setPhonesLoading(true);
-    const body: Record<string, unknown> = {};
-    if (ssoPayload) body.sso_payload = ssoPayload;
-    supabase.functions.invoke("localist-list-phone-numbers", { body })
-      .then(({ data, error }) => {
-        if (!error && data?.phoneNumbers?.length) {
-          setPhoneNumbers(data.phoneNumbers);
-        } else {
-          setPhoneNumbers([]);
-        }
-      })
-      .catch(() => setPhoneNumbers([]))
-      .finally(() => setPhonesLoading(false));
-  }, [open, ssoPayload]);
-
-  const activeBody =
-    selectedTemplate === "custom"
-      ? customMessage
-      : TEMPLATES[selectedTemplate as number]?.body ?? "";
+  const [taggedCount, setTaggedCount] = useState(0);
 
   const handleSend = async () => {
-    if (!activeBody.trim()) {
-      toast({ title: "Message is empty", variant: "destructive" });
+    const trimmed = tag.trim();
+    if (!trimmed) {
+      toast({ title: "Enter a tag name", variant: "destructive" });
       return;
     }
+
+    const contactIds = contacts
+      .filter((c) => c.contact_id)
+      .map((c) => c.contact_id!.trim())
+      .filter(Boolean);
+
+    if (contactIds.length === 0) {
+      toast({ title: "No valid CRM contact IDs found", variant: "destructive" });
+      return;
+    }
+
     setSending(true);
     try {
-      const payload = contacts
-        .map((c) => ({
-          contact_id: (c.contact_id ?? "").trim(),
-          first_name: toTitleCase(c.first_name),
-          city: toTitleCase(c.city),
-          phone: c.phone,
-        }))
-        .filter((c) => Boolean(c.contact_id));
+      const BATCH_SIZE = 500;
+      let totalTagged = 0;
+      let totalFailed = 0;
 
-      if (payload.length === 0) {
-        throw new Error("No valid CRM contact IDs found for selected contacts");
+      for (let i = 0; i < contactIds.length; i += BATCH_SIZE) {
+        const batch = contactIds.slice(i, i + BATCH_SIZE);
+        const payload: Record<string, unknown> = {
+          tag: trimmed,
+          contact_ids: batch,
+        };
+        if (ssoPayload) payload.sso_payload = ssoPayload;
+
+        const { data, error } = await supabase.functions.invoke("localist-group-sms", {
+          body: payload,
+        });
+
+        if (error) throw error;
+        totalTagged += data?.tagged ?? 0;
+        totalFailed += data?.failed ?? 0;
       }
 
-      const body: Record<string, unknown> = { contacts: payload, message_template: activeBody };
-      if (ssoPayload) body.sso_payload = ssoPayload;
-      if (selectedPhone !== "default") body.from_number = selectedPhone;
-      const { data, error } = await supabase.functions.invoke("localist-group-sms", {
-        body,
-      });
-
-      if (error) throw error;
-      const queued = data?.queued ?? payload.length;
-      const skipped = data?.skipped ?? 0;
-      const estSec = data?.estimatedSeconds ?? 0;
-      const mins = Math.ceil(estSec / 60);
-      setSentCount(queued);
-      setEstimatedTime(mins > 0 ? `~${mins} min` : "a few seconds");
-      if (skipped > 0) {
-        toast({ title: `${skipped} contacts skipped due to rate limits` });
-      }
+      setTaggedCount(totalTagged);
       setDone(true);
+
+      if (totalFailed > 0) {
+        toast({ title: `Tagged ${totalTagged} contacts`, description: `${totalFailed} failed.`, variant: "destructive" });
+      }
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Send failed";
+      const msg = err instanceof Error ? err.message : "Tag operation failed";
       toast({ title: "Group SMS failed", description: msg, variant: "destructive" });
     } finally {
       setSending(false);
@@ -144,11 +86,8 @@ export default function GroupSmsModal({ open, onClose, contacts, repName }: Grou
 
   const handleClose = () => {
     setDone(false);
-    setSentCount(0);
-    setEstimatedTime("");
-    setSelectedTemplate(0);
-    setSelectedPhone("default");
-    setCustomMessage("");
+    setTaggedCount(0);
+    setTag("localist-sms");
     onClose();
   };
 
@@ -160,114 +99,52 @@ export default function GroupSmsModal({ open, onClose, contacts, repName }: Grou
             <MessageSquare className="h-5 w-5 text-primary" />
             Group Text — {contacts.length} Contact{contacts.length !== 1 ? "s" : ""}
           </DialogTitle>
+          <DialogDescription>
+            Apply a tag to trigger your GoHighLevel SMS workflow.
+          </DialogDescription>
         </DialogHeader>
 
         {done ? (
           <div className="flex flex-col items-center gap-4 py-6 text-center">
             <CheckCircle2 className="h-12 w-12 text-primary" />
             <p className="text-lg font-semibold" style={{ fontFamily: "'Oswald', sans-serif" }}>
-              {sentCount} message{sentCount !== 1 ? "s" : ""} queued!
+              {taggedCount} contact{taggedCount !== 1 ? "s" : ""} tagged!
             </p>
             <p className="text-sm text-muted-foreground">
-              Messages are being drip-sent (10 every 10s) to protect your sender reputation.
-              {estimatedTime && <> Estimated delivery: <strong>{estimatedTime}</strong>.</>}
+              The tag <Badge variant="secondary" className="mx-1">{tag}</Badge> has been applied.
+              Your GHL Workflow will now send SMS messages automatically.
             </p>
             <Button onClick={handleClose} className="w-full">Done</Button>
           </div>
         ) : (
           <>
-            {/* Phone number picker */}
-            {phonesLoading ? (
-              <div className="space-y-1.5">
-                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Send from</p>
-                <Skeleton className="h-10 w-full" />
-              </div>
-            ) : phoneNumbers.length > 0 ? (
-              <div className="space-y-1.5">
-                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
-                  <Phone className="h-3.5 w-3.5" /> Send from
-                </p>
-                <Select value={selectedPhone} onValueChange={setSelectedPhone}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Default number" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="default">Default number</SelectItem>
-                    {phoneNumbers.map((pn) => (
-                      <SelectItem key={pn.id || pn.phoneNumber} value={pn.phoneNumber}>
-                        {pn.phoneNumber}{pn.friendlyName ? ` — ${pn.friendlyName}` : ""}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            ) : null}
-
-            {/* Template picker */}
-            <div className="space-y-2">
-              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Choose a template</p>
-              <div className="grid gap-2">
-                {TEMPLATES.map((t, i) => (
-                  <button
-                    key={i}
-                    onClick={() => setSelectedTemplate(i)}
-                    className={`text-left rounded-lg border p-3 transition-colors ${
-                      selectedTemplate === i
-                        ? "border-primary bg-primary/5"
-                        : "border-border hover:border-muted-foreground"
-                    }`}
-                  >
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-sm font-medium">{t.label}</span>
-                      {selectedTemplate === i && (
-                        <Badge variant="default" className="text-[10px] h-4 px-1.5">Selected</Badge>
-                      )}
-                    </div>
-                    <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2">{t.body}</p>
-                  </button>
-                ))}
-
-                {/* Write your own */}
-                <button
-                  onClick={() => setSelectedTemplate("custom")}
-                  className={`text-left rounded-lg border p-3 transition-colors ${
-                    selectedTemplate === "custom"
-                      ? "border-primary bg-primary/5"
-                      : "border-border hover:border-muted-foreground"
-                  }`}
-                >
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="text-sm font-medium">✏️ Write your own</span>
-                    {selectedTemplate === "custom" && (
-                      <Badge variant="default" className="text-[10px] h-4 px-1.5">Selected</Badge>
-                    )}
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Use <code className="bg-muted px-1 rounded">{"{{first_name}}"}</code>,{" "}
-                    <code className="bg-muted px-1 rounded">{"{{city}}"}</code>,{" "}
-                    <code className="bg-muted px-1 rounded">{"{{rep_name}}"}</code>
-                  </p>
-                </button>
-              </div>
+            {/* How it works */}
+            <div className="rounded-lg bg-muted/50 border p-3 space-y-1.5">
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
+                <Info className="h-3.5 w-3.5" /> How it works
+              </p>
+              <ol className="text-xs text-muted-foreground space-y-1 list-decimal list-inside">
+                <li>A tag is applied to all selected contacts instantly via GHL's bulk API.</li>
+                <li>Set up a <strong>GHL Workflow</strong> that triggers when this tag is added.</li>
+                <li>The Workflow sends your SMS using GHL's native "Send SMS" action.</li>
+              </ol>
             </div>
 
-            {/* Custom textarea */}
-            {selectedTemplate === "custom" && (
-              <Textarea
-                value={customMessage}
-                onChange={(e) => setCustomMessage(e.target.value)}
-                placeholder="Type your message... Use {{first_name}}, {{city}}, {{rep_name}}"
-                className="min-h-[100px] text-sm"
+            {/* Tag input */}
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Trigger Tag</label>
+              <Input
+                value={tag}
+                onChange={(e) => setTag(e.target.value)}
+                placeholder="e.g. localist-sms, spring-blast"
+                maxLength={100}
+                style={{ fontSize: "16px" }}
+                onKeyDown={(e) => e.key === "Enter" && !sending && handleSend()}
               />
-            )}
-
-            {/* Live preview */}
-            {activeBody && (
-              <div className="rounded-lg bg-muted/50 border p-3 space-y-1">
-                <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Preview (Jane · Springfield)</p>
-                <p className="text-sm leading-relaxed">{preview(activeBody, repName)}</p>
-              </div>
-            )}
+              <p className="text-xs text-muted-foreground">
+                This tag will be added to each contact. Use the same tag as your Workflow trigger.
+              </p>
+            </div>
 
             <DialogFooter className="gap-2 flex-col sm:flex-row">
               <Button variant="outline" onClick={handleClose} className="flex-1">
@@ -275,18 +152,18 @@ export default function GroupSmsModal({ open, onClose, contacts, repName }: Grou
               </Button>
               <Button
                 onClick={handleSend}
-                disabled={sending || !activeBody.trim()}
+                disabled={sending || !tag.trim()}
                 className="flex-1 font-semibold"
               >
                 {sending ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Sending ({contacts.length})...
+                    Tagging {contacts.length} contacts…
                   </>
                 ) : (
                   <>
-                    <MessageSquare className="mr-2 h-4 w-4" />
-                    Send to {contacts.length} Contact{contacts.length !== 1 ? "s" : ""}
+                    <Tag className="mr-2 h-4 w-4" />
+                    Apply Tag & Trigger SMS
                   </>
                 )}
               </Button>
