@@ -89,7 +89,7 @@ const edgeDmsFaq = [
   },
   {
     q: "What is the Group SMS feature?",
-    a: "Group SMS lets you send a personalized text message to multiple nearby contacts at once. Choose from pre-built templates or write a custom message. Each message is personalized with the contact's first name and city. Only contacts with valid CRM IDs are included — CSV-only contacts without a CRM record are automatically filtered out so your send count is always accurate.",
+    a: "Group SMS lets you compose a personalized text message and send it to multiple nearby contacts at once. Choose from pre-built templates (follow-ups, service reminders, holiday greetings) or write your own. Your message is saved as a GHL Custom Value, then a trigger tag is applied to your selected contacts. Set up a GHL Workflow that fires on that tag and uses {{custom_values.localist_sms_message}} as the SMS body — your message goes out automatically. Only contacts with valid CRM IDs are included; CSV-only contacts are filtered out so your count is always accurate.",
   },
   {
     q: "Can I tag contacts from search results?",

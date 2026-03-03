@@ -142,13 +142,16 @@ function EdgeDmsGuide() {
 
       <Section icon={MessageSquare} title="5. Group SMS">
         <p>
-          After running a nearby search, click <strong>Group SMS</strong> to send a personalized text message to multiple contacts at once.
+          After running a nearby search, click <strong>Group SMS</strong> to compose and send a personalized text message to multiple contacts at once.
         </p>
         <p>
-          Choose from <strong>pre-built templates</strong> (appointment scheduling, follow-ups, holiday greetings) or write your own custom message. Messages are personalized with each contact's first name and city using smart merge fields.
+          Choose from <strong>pre-built templates</strong> (appointment follow-ups, service reminders, holiday greetings, new customer intros) or write your own custom message. Use GHL merge fields like <code>{"{{contact.first_name}}"}</code> for personalization.
         </p>
         <p>
-          A live preview shows exactly what your contacts will receive before you send. Only contacts with valid CRM IDs are included — CSV-only contacts are automatically filtered out so your send count is always accurate.
+          When you send, your message is saved as a <strong>GHL Custom Value</strong> (<code>{"{{custom_values.localist_sms_message}}"}</code>), and a trigger tag is applied to all selected contacts. Set up a GHL Workflow that fires when this tag is added, using the Custom Value as the SMS body — your message is sent automatically.
+        </p>
+        <p>
+          Only contacts with valid CRM IDs are included — CSV-only contacts are automatically filtered out so your send count is always accurate.
         </p>
       </Section>
 
