@@ -77,7 +77,7 @@ const edgeDmsFaq = [
   },
   {
     q: "What does the sync progress dialog show?",
-    a: "During a sync, you'll see a step-by-step progress indicator: connecting to Edge DMS, fetching contacts, saving to your account, geocoding addresses, and preparing search results. Each step shows its status and any relevant counts.",
+    a: "During a sync, you'll see a step-by-step progress indicator: connecting to Edge DMS, fetching contacts, saving to your account, and preparing search results. Each step shows its status and any relevant counts.",
   },
   {
     q: "How does the nearby search work?",
