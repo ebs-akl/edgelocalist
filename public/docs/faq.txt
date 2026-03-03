@@ -65,7 +65,7 @@ Q: Can I call or text contacts from EdgeLocalist?
 A: Yes! Each contact card has quick-action buttons for calling, texting, and getting driving directions via Google Maps. In Edge DMS mode, you can also initiate LC calls directly from the contact detail view.
 
 Q: What is the Group SMS feature?
-A: Group SMS lets you send a personalized text message to multiple nearby contacts at once. Choose from pre-built templates or write a custom message. Each message is personalized with the contact's first name and city.
+A: Group SMS lets you send a personalized text message to multiple nearby contacts at once. Choose from pre-built templates or write your own — don't add "Hi [Name]" because your Edge DMS Workflow handles that automatically. When you click Send, your message is saved as a Custom Value and a trigger tag is applied to your selected contacts. Your Workflow fires for each contact, sending a personalized SMS ("Hi [First Name], [Your Message]") and then removes the tag so contacts can receive future messages. Only contacts with valid CRM IDs are included; CSV-only contacts are filtered out automatically.
 
 Q: Can I tag contacts from search results?
 A: Yes. After running a nearby search, you can select contacts and apply a tag that syncs back to your Edge DMS CRM. This is useful for organizing follow-up lists or campaign targeting.
