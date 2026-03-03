@@ -42,6 +42,9 @@ verify_jwt = false
 [functions.localist-lc-call]
 verify_jwt = false
 
+[functions.localist-set-custom-value]
+verify_jwt = false
+
 [functions.localist-check-subscription]
 verify_jwt = false
 
