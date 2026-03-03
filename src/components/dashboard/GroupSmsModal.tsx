@@ -27,19 +27,19 @@ interface GroupSmsModalProps {
 const SMS_TEMPLATES = [
   {
     label: "Appointment Follow-Up",
-    body: `Hi {{contact.first_name}}, it's {{user.first_name}} with Cutco! I was in your area and wanted to check in. Would you have a few minutes this week for a quick visit? Let me know what works!`,
+    body: `I was in your area and wanted to check in. Would you have a few minutes this week for a quick visit? Let me know what works!`,
   },
   {
     label: "Service Reminder",
-    body: `Hey {{contact.first_name}}! It's {{user.first_name}} from Cutco. It's been a while since your last sharpening — I'd love to stop by and take care of your knives. Want to set something up?`,
+    body: `It's been a while since your last sharpening — I'd love to stop by and take care of your knives. Want to set something up?`,
   },
   {
     label: "Holiday / Seasonal",
-    body: `Happy holidays, {{contact.first_name}}! 🎁 It's {{user.first_name}} with Cutco. If you're thinking about gifts this season, I have some great options. Let me know if you'd like to chat!`,
+    body: `If you're thinking about gifts this season, I have some great options. Let me know if you'd like to chat! 🎁`,
   },
   {
     label: "New Customer Intro",
-    body: `Hi {{contact.first_name}}, this is {{user.first_name}} with Cutco! I'm your local rep in the {{contact.city}} area. If you ever need anything — sharpening, replacements, or new pieces — don't hesitate to reach out!`,
+    body: `I'm your local Cutco rep in the area. If you ever need anything — sharpening, replacements, or new pieces — don't hesitate to reach out!`,
   },
 ];
 
