@@ -46,7 +46,7 @@ const standaloneFaq = [
   },
   {
     q: "Is there a limit to how many contacts I can upload?",
-    a: "There is no hard limit on contacts. However, very large lists (10,000+) may take a few minutes to fully geocode. The system processes addresses in batches to ensure reliability.",
+    a: "There is no hard limit on contacts. However, very large lists (10,000+) may take a few minutes to fully process. The system handles addresses in batches to ensure reliability.",
   },
   {
     q: "Can I use AKL LocaList on my phone?",
