@@ -1,36 +1,33 @@
 
 
-## Plan: Make the App Installable as a PWA on Android
+## Plan: Add Sending Phone Number Picker to Group SMS
 
-To allow Android users to install the web app to their home screen (like a native app), we need to set up a **Progressive Web App (PWA)** configuration. This adds an install prompt on Android devices and enables offline caching.
+### Problem
+EdgeDMS accounts often have multiple phone numbers configured in GoHighLevel. Currently the group SMS feature doesn't let users choose which number to send from — GHL just uses the location's default.
 
-### What this gives you
-- Android users get an "Add to Home Screen" / "Install App" prompt automatically
-- The app launches in full-screen mode (no browser chrome)
-- App icon on the home screen like a native app
-- Faster loading with caching
+### Approach
 
-### Implementation Steps
+**1. New edge function: `localist-list-phone-numbers`**
+- Calls GHL API: `GET /phone-system/numbers/location/{locationId}` with the rep's access token
+- Returns a list of active phone numbers (id, phone number, label/name)
+- Supports both JWT auth and SSO payload auth (same dual-auth pattern as other functions)
+- Handles token refresh if expired
 
-1. **Install `vite-plugin-pwa`** — the standard Vite plugin for PWA support
+**2. Update `localist-group-sms` edge function**
+- Accept an optional `from_number` field in the request body
+- Pass it to the GHL outbound message API (the `conversations/messages` endpoint supports specifying the sending number)
+- Validate the field format server-side
 
-2. **Configure PWA in `vite.config.ts`**
-   - Add the PWA plugin with app name, theme color, icons, and manifest settings
-   - Add `/~oauth` to the service worker's `navigateFallbackDenylist` to prevent caching OAuth redirects
+**3. Update `GroupSmsModal.tsx` frontend**
+- On modal open, fetch available phone numbers via `supabase.functions.invoke("localist-list-phone-numbers")`
+- Show a `<Select>` dropdown above the template picker labeled "Send from"
+- Default to the first number (or "Default" if only one)
+- Pass the selected number in the request body to `localist-group-sms`
+- Show a loading skeleton while numbers load; gracefully fall back to no picker if the fetch fails (GHL phone system not connected)
 
-3. **Add PWA icons to `public/`**
-   - Create `pwa-192x192.png` and `pwa-512x512.png` icons (can reuse the existing logo assets)
-
-4. **Update `index.html`**
-   - Add `<meta name="theme-color">` and `<link rel="apple-touch-icon">` tags for mobile optimization
-
-5. **Optionally create an `/install` page**
-   - A dedicated page with instructions for users on how to install, with a button to trigger the browser's install prompt
-
-### Technical Details
-
-- Plugin: `vite-plugin-pwa` with `registerType: 'autoUpdate'`
-- Manifest will include: `name`, `short_name`, `description`, `theme_color`, `background_color`, `display: 'standalone'`, `icons`
-- Service worker will use Workbox with `navigateFallbackDenylist: [/^\/~oauth/]`
-- Icons derived from existing `Localist_Logo.png` or `AKL_Logo.png`
+### Files to Create/Modify
+- **Create** `supabase/functions/localist-list-phone-numbers/index.ts`
+- **Edit** `supabase/functions/localist-group-sms/index.ts` — accept + forward `from_number`
+- **Edit** `src/components/dashboard/GroupSmsModal.tsx` — phone number selector UI + fetch logic
+- **Edit** `supabase/config.toml` — add `verify_jwt = false` for the new function
 
