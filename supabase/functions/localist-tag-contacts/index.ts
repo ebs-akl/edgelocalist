@@ -1,4 +1,3 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import CryptoJS from "npm:crypto-js";
 import { refreshGhlToken, isTokenExpired } from "../_shared/ghl-refresh-token.ts";
@@ -6,7 +5,7 @@ import { refreshGhlToken, isTokenExpired } from "../_shared/ghl-refresh-token.ts
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
+    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 const LOCATION_ID_RE = /^[a-zA-Z0-9]{5,50}$/;
@@ -25,11 +24,7 @@ function decryptSsoPayload(ssoPayload: string): string | null {
   }
 }
 
-function sleep(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-serve(async (req) => {
+Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -60,15 +55,26 @@ serve(async (req) => {
     });
   }
 
-  const contactIds = Array.isArray(body.contact_ids) ? body.contact_ids as string[] : [];
-  if (contactIds.length === 0 || contactIds.length > 500) {
-    return new Response(JSON.stringify({ error: "Provide 1-500 contact_ids" }), {
+  const rawIds = Array.isArray(body.contact_ids) ? body.contact_ids as string[] : [];
+  const contactIds = rawIds
+    .filter((id): id is string => typeof id === "string" && id.trim().length > 0)
+    .map((id) => id.trim());
+
+  if (contactIds.length === 0) {
+    return new Response(JSON.stringify({ error: "Provide at least 1 contact_id" }), {
+      status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
+  if (contactIds.length > 2000) {
+    return new Response(JSON.stringify({ error: "Maximum 2000 contacts per request" }), {
       status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 
   // ── Auth: SSO or Bearer ──
   let locationId: string | null = null;
+  let repId: string | null = null;
 
   if (typeof body.sso_payload === "string" && body.sso_payload) {
     locationId = decryptSsoPayload(body.sso_payload);
@@ -96,6 +102,7 @@ serve(async (req) => {
       .eq("id", user.id)
       .maybeSingle();
     locationId = authRep?.ghl_location_id ?? null;
+    repId = user.id;
   }
 
   if (!locationId || !LOCATION_ID_RE.test(locationId)) {
@@ -112,19 +119,9 @@ serve(async (req) => {
     .maybeSingle();
 
   if (!rep?.ghl_access_token) {
-    const { data: tokenRep } = await supabase
-      .from("localist_reps")
-      .select("id, ghl_access_token, ghl_refresh_token, ghl_expires_at, ghl_location_id")
-      .not("ghl_access_token", "is", null)
-      .limit(1)
-      .maybeSingle();
-    if (tokenRep?.ghl_access_token) {
-      rep = tokenRep;
-    } else {
-      return new Response(JSON.stringify({ error: "No CRM token found" }), {
-        status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    return new Response(JSON.stringify({ error: "No CRM token found" }), {
+      status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 
   let accessToken = rep.ghl_access_token!;
@@ -141,73 +138,54 @@ serve(async (req) => {
     }
   }
 
-  // ── Apply tag to each contact via GHL API ──
-  const results: { contactId: string; success: boolean; error?: string }[] = [];
-  let successCount = 0;
+  // ── Bulk tag via GHL API (batches of 500) ──
+  const BULK_BATCH = 500;
+  let totalSucceeded = 0;
+  let totalErrors = 0;
 
-  for (const contactId of contactIds) {
-    try {
-      // First fetch existing tags
-      const getRes = await fetch(`https://services.leadconnectorhq.com/contacts/${contactId}`, {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          Version: "2021-07-28",
-          Accept: "application/json",
-        },
-        signal: AbortSignal.timeout(10000),
-      });
+  for (let i = 0; i < contactIds.length; i += BULK_BATCH) {
+    const batch = contactIds.slice(i, i + BULK_BATCH);
 
-      if (!getRes.ok) {
-        results.push({ contactId, success: false, error: `GET ${getRes.status}` });
-        continue;
-      }
-
-      const contactData = await getRes.json();
-      const existingTags: string[] = contactData.contact?.tags ?? [];
-
-      // Add new tag if not already present
-      if (existingTags.includes(tag)) {
-        results.push({ contactId, success: true }); // already tagged
-        successCount++;
-        continue;
-      }
-
-      const updatedTags = [...existingTags, tag];
-
-      const putRes = await fetch(`https://services.leadconnectorhq.com/contacts/${contactId}`, {
-        method: "PUT",
+    const res = await fetch(
+      "https://services.leadconnectorhq.com/contacts/bulk/tags/update/add",
+      {
+        method: "POST",
         headers: {
           Authorization: `Bearer ${accessToken}`,
           Version: "2021-07-28",
           "Content-Type": "application/json",
-          Accept: "application/json",
         },
-        body: JSON.stringify({ tags: updatedTags }),
-        signal: AbortSignal.timeout(10000),
-      });
-
-      if (putRes.ok) {
-        results.push({ contactId, success: true });
-        successCount++;
-      } else {
-        const errText = await putRes.text();
-        console.error(`Tag PUT failed for ${contactId} (${putRes.status}):`, errText);
-        results.push({ contactId, success: false, error: "Failed to update contact tags" });
+        body: JSON.stringify({
+          contacts: batch,
+          tags: [tag],
+          locationId: locationId,
+        }),
       }
-    } catch (err) {
-      console.error(`Tag error for ${contactId}:`, err);
-      results.push({ contactId, success: false, error: "Request failed" });
+    );
+
+    if (!res.ok) {
+      const errBody = await res.text();
+      console.error(`Bulk tag batch ${Math.floor(i / BULK_BATCH) + 1} failed (${res.status}):`, errBody);
+      totalErrors += batch.length;
+      continue;
     }
 
-    // Rate limit: small delay between calls
-    if (contactIds.length > 1) await sleep(200);
+    const data = await res.json();
+    console.log(`Bulk tag batch ${Math.floor(i / BULK_BATCH) + 1}:`, JSON.stringify(data));
+
+    if (data.succeded === true || data.succeeded === true) {
+      totalSucceeded += batch.length - (data.errorCount ?? 0);
+      totalErrors += data.errorCount ?? 0;
+    } else {
+      totalErrors += batch.length;
+    }
   }
 
   return new Response(JSON.stringify({
-    tagged: successCount,
-    failed: contactIds.length - successCount,
+    tagged: totalSucceeded,
+    failed: totalErrors,
+    total: contactIds.length,
     tag,
-    results,
   }), {
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
