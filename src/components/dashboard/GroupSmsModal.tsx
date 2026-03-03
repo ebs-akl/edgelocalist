@@ -37,13 +37,14 @@ export default function GroupSmsModal({ open, onClose, contacts, repName }: Grou
       return;
     }
 
+    // GHL IDs are 20-char alphanumeric Firebase-style IDs
+    const GHL_ID_RE = /^[a-zA-Z0-9]{20}$/;
     const contactIds = contacts
-      .filter((c) => c.contact_id)
-      .map((c) => c.contact_id!.trim())
-      .filter(Boolean);
+      .filter((c) => c.contact_id && GHL_ID_RE.test(c.contact_id.trim()))
+      .map((c) => c.contact_id!.trim());
 
     if (contactIds.length === 0) {
-      toast({ title: "No valid CRM contact IDs found", variant: "destructive" });
+      toast({ title: "No valid CRM contact IDs found", description: "Selected contacts don't have valid GoHighLevel IDs.", variant: "destructive" });
       return;
     }
 
