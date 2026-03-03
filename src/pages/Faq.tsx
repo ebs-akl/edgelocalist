@@ -73,7 +73,7 @@ const edgeDmsFaq = [
   },
   {
     q: "How does the contact sync work?",
-    a: "When you first open AKL LocaList (or every 24 hours), it automatically pulls your contacts from Edge DMS, geocodes any new addresses, and makes them available for nearby search. You can also trigger a manual sync using the Refresh button on your dashboard.",
+    a: "When you first open AKL LocaList (or every 24 hours), it automatically pulls your contacts from Edge DMS and makes them available for nearby search. You can also trigger a manual sync using the Refresh button on your dashboard.",
   },
   {
     q: "What does the sync progress dialog show?",
