@@ -105,7 +105,7 @@ const edgeDmsFaq = [
   },
   {
     q: "Why are some contacts missing from search results?",
-    a: "Contacts need a valid address to appear in nearby search results. If a contact has no address or an address that couldn't be geocoded, they won't appear on the map. Check the sync summary to see how many contacts are 'searchable' vs total.",
+    a: "Contacts need a valid address to appear in nearby search results. If a contact has no address or an address that couldn't be processed, they won't appear on the map. Check the sync summary to see how many contacts are 'searchable' vs total.",
   },
   {
     q: "Can I use AKL LocaList on my phone?",
