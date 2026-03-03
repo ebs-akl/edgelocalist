@@ -191,10 +191,12 @@ serve(async (req) => {
         successCount++;
       } else {
         const errText = await putRes.text();
-        results.push({ contactId, success: false, error: `PUT ${putRes.status}: ${errText}` });
+        console.error(`Tag PUT failed for ${contactId} (${putRes.status}):`, errText);
+        results.push({ contactId, success: false, error: "Failed to update contact tags" });
       }
     } catch (err) {
-      results.push({ contactId, success: false, error: String(err) });
+      console.error(`Tag error for ${contactId}:`, err);
+      results.push({ contactId, success: false, error: "Request failed" });
     }
 
     // Rate limit: small delay between calls

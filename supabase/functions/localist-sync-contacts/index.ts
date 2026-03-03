@@ -339,8 +339,8 @@ serve(async (req) => {
       if (!ghlRes.ok) {
         const errText = await ghlRes.text();
         console.error(`GHL API error page ${pageNum} (status ${ghlRes.status}):`, errText);
-        return new Response(JSON.stringify({ error: `GHL API error: ${errText}` }), {
-          status: ghlRes.status, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        return new Response(JSON.stringify({ error: "Failed to fetch contacts from CRM" }), {
+          status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
 
