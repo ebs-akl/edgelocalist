@@ -155,14 +155,14 @@ export default function GroupSmsModal({ open, onClose, contacts, repName }: Grou
               {taggedCount} contact{taggedCount !== 1 ? "s" : ""} tagged!
             </p>
             <p className="text-sm text-muted-foreground">
-              Your message has been saved as a Custom Value and the tag <Badge variant="secondary" className="mx-1">{tag}</Badge> has been applied.
+              Your message has been saved and the tag <Badge variant="secondary" className="mx-1">{tag}</Badge> has been applied. Your Workflow will now send each contact a personalized SMS.
             </p>
             <div className="rounded-lg bg-muted/50 border p-3 w-full text-left">
-              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">Your Workflow will send:</p>
-              <p className="text-sm whitespace-pre-wrap">{message}</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">Each contact will receive:</p>
+              <p className="text-sm whitespace-pre-wrap">Hi [Contact's First Name],{"\n\n"}{message}</p>
             </div>
             <p className="text-xs text-muted-foreground">
-              Use <code className="bg-muted px-1 rounded text-xs">{"{{custom_values.localist_sms_message}}"}</code> in your GHL Workflow's SMS action.
+              The Workflow adds the greeting and removes the tag automatically so contacts can be messaged again.
             </p>
             <Button onClick={handleClose} className="w-full">Done</Button>
           </div>
