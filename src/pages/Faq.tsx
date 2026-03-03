@@ -93,11 +93,11 @@ const edgeDmsFaq = [
   },
   {
     q: "What is the Group SMS feature?",
-    a: "Group SMS lets you send a personalized text message to multiple nearby contacts at once. Choose from pre-built templates or write a custom message. Each message is personalized with the contact's first name and city.",
+    a: "Group SMS lets you send a personalized text message to multiple nearby contacts at once. Choose from pre-built templates or write a custom message. Each message is personalized with the contact's first name and city. Only contacts with valid CRM IDs are included — CSV-only contacts without a CRM record are automatically filtered out so your send count is always accurate.",
   },
   {
     q: "Can I tag contacts from search results?",
-    a: "Yes. After running a nearby search, you can select contacts and apply a tag that syncs back to your Edge DMS CRM. This is useful for organizing follow-up lists or campaign targeting.",
+    a: "Yes. After running a nearby search, you can select contacts and apply a tag that syncs back to your Edge DMS CRM using the bulk tagging API for fast processing. Contacts without valid CRM IDs (e.g., CSV-uploaded contacts) are automatically filtered out before tagging, so your success and failure counts are always accurate.",
   },
   {
     q: "Is my data secure?",

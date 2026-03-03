@@ -8,7 +8,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useGhlSso } from "@/hooks/useGhlSso";
 import { toast } from "@/hooks/use-toast";
-import { LogOut, Menu, Settings, Loader2 } from "lucide-react";
+import { LogOut, Menu, Settings, Loader2, BookOpen } from "lucide-react";
 import localistLogo from "@/assets/Localist-Final-Logo.png";
 import SearchTab from "@/components/dashboard/SearchTab";
 import CsvUploadTab from "@/components/dashboard/CsvUploadTab";
@@ -338,6 +338,12 @@ const { data, error } = await supabase.functions.invoke("localist-sync-contacts"
           {!isGhlMode && (
             <>
               <div className="hidden sm:flex items-center gap-3">
+                <Link to="/guide">
+                  <Button variant="ghost" size="sm">
+                    <BookOpen className="h-4 w-4 mr-1" />
+                    User Guide
+                  </Button>
+                </Link>
                 <Link to="/settings">
                   <Button variant="ghost" size="sm">
                     <Settings className="h-4 w-4 mr-1" />
@@ -360,6 +366,14 @@ const { data, error } = await supabase.functions.invoke("localist-sync-contacts"
                   </SheetTrigger>
                   <SheetContent side="right" className="w-64">
                     <div className="flex flex-col gap-4 mt-8">
+                      <Link to="/guide" className="w-full">
+                        <SheetClose asChild>
+                          <Button variant="ghost" className="w-full justify-start">
+                            <BookOpen className="h-4 w-4 mr-2" />
+                            User Guide
+                          </Button>
+                        </SheetClose>
+                      </Link>
                       <Link to="/settings" className="w-full">
                         <SheetClose asChild>
                           <Button variant="ghost" className="w-full justify-start">

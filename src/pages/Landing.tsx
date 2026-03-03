@@ -5,7 +5,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Sheet, SheetContent, SheetTrigger, SheetClose } from "@/components/ui/sheet";
 import { motion } from "framer-motion";
-import { MapPin, Upload, Search, Menu, CheckCircle2, ArrowRight, Zap, BarChart3, Loader2 } from "lucide-react";
+import { MapPin, Upload, Search, Menu, CheckCircle2, ArrowRight, Zap, BarChart3, Loader2, ChevronDown } from "lucide-react";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { supabase } from "@/integrations/supabase/client";
 import { TIERS, type TierKey } from "@/lib/stripe-tiers";
 import { toast } from "@/hooks/use-toast";
@@ -85,6 +91,34 @@ const pricingPlans: { name: string; tierKey: TierKey | null; price: string; peri
   cta: "Coming Soon",
   highlighted: false
 }];
+
+
+const landingFaq = [
+  {
+    q: "What is AKL LocaList?",
+    a: "AKL LocaList is a proximity-based contact search tool built for Cutco sales representatives. Upload your customer list, geocode addresses, and instantly find contacts near any location.",
+  },
+  {
+    q: "How do I get started?",
+    a: "Create an account, log in, and upload a CSV file containing your customer data. AKL LocaList will automatically geocode the addresses and make them searchable by location.",
+  },
+  {
+    q: "How does the nearby search work?",
+    a: "Enter any address or location, choose a radius (5, 10, 25, or 50 miles), and AKL LocaList returns all your contacts within that area — sorted by distance with map pins.",
+  },
+  {
+    q: "Is my data secure?",
+    a: "Yes. All data is stored securely with encryption at rest and in transit. Row-level security ensures only you can see your own contacts.",
+  },
+  {
+    q: "Can I use it on my phone?",
+    a: "Absolutely! AKL LocaList is fully responsive and works great on mobile browsers. Search, view the map, and call or text contacts right from your phone.",
+  },
+  {
+    q: "What about Edge DMS integration?",
+    a: "AKL LocaList integrates directly with Edge DMS, automatically syncing your CRM contacts, enabling Group SMS, bulk tagging, and LC Call — all without a separate login.",
+  },
+];
 
 
 // Hexagon SVG pattern background component
@@ -385,6 +419,37 @@ export default function Landing() {
                 </Card>
               </motion.div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* FAQ */}
+      <section className="py-12 sm:py-20">
+        <div className="container mx-auto px-4 max-w-3xl">
+          <div className="text-center mb-10">
+            <h2 className="text-3xl font-bold tracking-tight" style={{ fontFamily: "'Oswald', sans-serif" }}>
+              Frequently Asked Questions
+            </h2>
+            <p className="mt-3 text-muted-foreground">
+              Quick answers to common questions about AKL LocaList.
+            </p>
+          </div>
+          <Accordion type="single" collapsible className="w-full">
+            {landingFaq.map((item, i) => (
+              <AccordionItem key={i} value={`faq-${i}`}>
+                <AccordionTrigger className="text-left text-sm sm:text-base font-medium">
+                  {item.q}
+                </AccordionTrigger>
+                <AccordionContent className="text-muted-foreground">
+                  {item.a}
+                </AccordionContent>
+              </AccordionItem>
+            ))}
+          </Accordion>
+          <div className="text-center mt-8">
+            <Link to="/faq">
+              <Button variant="outline" size="sm">View All FAQs</Button>
+            </Link>
           </div>
         </div>
       </section>

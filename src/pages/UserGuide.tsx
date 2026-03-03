@@ -148,16 +148,16 @@ function EdgeDmsGuide() {
           Choose from <strong>pre-built templates</strong> (appointment scheduling, follow-ups, holiday greetings) or write your own custom message. Messages are personalized with each contact's first name and city using smart merge fields.
         </p>
         <p>
-          A live preview shows exactly what your contacts will receive before you send.
+          A live preview shows exactly what your contacts will receive before you send. Only contacts with valid CRM IDs are included — CSV-only contacts are automatically filtered out so your send count is always accurate.
         </p>
       </Section>
 
       <Section icon={Tag} title="6. Tag Contacts">
         <p>
-          Select contacts from your search results and click <strong>Tag Contacts</strong> to apply a custom tag. The tag syncs back to your Edge DMS CRM, making it easy to organize follow-up lists and build targeted campaign audiences.
+          Select contacts from your search results and click <strong>Tag Contacts</strong> to apply a custom tag. Tags are synced to your Edge DMS CRM using the bulk tagging API, making the process fast even for large selections (up to 2,000 contacts per batch).
         </p>
         <p>
-          Tags are applied in batches for reliability, and you'll see a confirmation showing how many contacts were successfully tagged.
+          Contacts without valid CRM IDs (e.g., CSV-uploaded contacts) are automatically filtered out before tagging. You'll see an accurate confirmation showing how many contacts were successfully tagged.
         </p>
       </Section>
 
