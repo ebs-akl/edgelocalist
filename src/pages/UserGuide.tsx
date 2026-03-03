@@ -45,7 +45,7 @@ function StandaloneGuide() {
         <p><strong>Required columns:</strong> First Name, Last Name, Address, City, State, Zip, Phone</p>
         <p><strong>Optional columns:</strong> Business Name, Category, Lifetime Value, Last Order Date, Gift Count, Order Count, Relationship</p>
         <p>
-          The system automatically detects common column name variations (e.g., "First" or "FirstName" both work). After upload, addresses are geocoded in batches — you'll see a progress indicator showing how many contacts have been processed.
+          The system automatically detects common column name variations (e.g., "First" or "FirstName" both work). After upload, addresses are processed in batches — you'll see a progress indicator showing how many contacts have been prepared.
         </p>
       </Section>
 
