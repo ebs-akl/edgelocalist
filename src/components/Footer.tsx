@@ -1,3 +1,5 @@
+import { Link } from "react-router-dom";
+
 export default function Footer() {
   return (
     <footer className="border-t py-6 bg-background">
@@ -5,6 +7,11 @@ export default function Footer() {
         <p className="text-sm text-muted-foreground">
           © {new Date().getFullYear()} Edge Branding Solutions · Part of the EdgeDMS Platform
         </p>
+        <div className="flex items-center justify-center gap-3 text-xs">
+          <Link to="/legal#privacy-policy" className="text-primary hover:underline">Privacy</Link>
+          <span className="text-muted-foreground">·</span>
+          <Link to="/legal#terms-of-service" className="text-primary hover:underline">Terms</Link>
+        </div>
         <p className="text-[11px] text-muted-foreground/70 max-w-xl mx-auto leading-relaxed">
           EdgeDMS is an independent digital services provider and is not affiliated with, associated,
           authorized, endorsed by, or in any way officially connected with Cutco Corporation, or any
