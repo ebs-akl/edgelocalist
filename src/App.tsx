@@ -108,6 +108,7 @@ const App = () => {
                   </ProtectedRoute>
                 }
               />
+              <Route path="/legal" element={<Legal />} />
               <Route path="/faq" element={<Faq />} />
               <Route path="/guide" element={<UserGuide />} />
               <Route path="/ghl-callback" element={<GhlCallback />} />
