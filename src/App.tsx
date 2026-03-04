@@ -11,6 +11,7 @@ import Settings from "./pages/Settings";
 import GhlCallback from "./pages/GhlCallback";
 import Faq from "./pages/Faq";
 import UserGuide from "./pages/UserGuide";
+import Legal from "./pages/Legal";
 import NotFound from "./pages/NotFound";
 import ResetPassword from "./pages/ResetPassword";
 import ProtectedRoute from "./components/ProtectedRoute";
