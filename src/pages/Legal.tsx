@@ -9,6 +9,19 @@ const COMPANY = "Edge Branding Solutions LLC";
 const CONTACT_EMAIL = "support@edgebrandingsolutions.com";
 
 export default function Legal() {
+  const { hash } = useLocation();
+
+  useEffect(() => {
+    if (hash) {
+      const el = document.querySelector(hash);
+      if (el) {
+        setTimeout(() => el.scrollIntoView({ behavior: "smooth" }), 100);
+      }
+    } else {
+      window.scrollTo(0, 0);
+    }
+  }, [hash]);
+
   return (
     <div className="min-h-screen bg-background">
       {/* Nav */}
