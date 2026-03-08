@@ -51,7 +51,29 @@ export default function Settings() {
 
   const cancelEdit = () => {
     setEditName(repProfile?.full_name ?? "");
+    setEditRepNumber("");
     setEditing(null);
+  };
+
+  const handleSaveRepNumber = async () => {
+    const value = editRepNumber.trim();
+    if (!/^\d{8}$/.test(value)) {
+      toast({ title: "Invalid Rep Number", description: "Must be exactly 8 digits.", variant: "destructive" });
+      return;
+    }
+    setSaving(true);
+    try {
+      const { error } = await supabase.from("localist_reps").update({ rep_number: value }).eq("id", user!.id);
+      if (error) throw error;
+      await refreshProfile();
+      setEditing(null);
+      toast({ title: "Rep Number saved" });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Failed to save";
+      toast({ title: "Update failed", description: message, variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleManageBilling = async () => {
