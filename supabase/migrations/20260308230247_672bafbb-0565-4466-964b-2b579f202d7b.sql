@@ -1,0 +1,1 @@
+UPDATE public.localist_reps SET subscription_tier = 'edgedms' WHERE id = '2d622e95-7621-4798-a23f-01fefd08a2a4';
