@@ -18,8 +18,9 @@ const UPGRADE_URL = "#";
 export default function Settings() {
   const { user, repProfile, signOut, isGhlMode, refreshProfile, subscription, loadingSubscription, refreshSubscription, session } = useAuth();
 
-  const [editing, setEditing] = useState<"name" | null>(null);
+  const [editing, setEditing] = useState<"name" | "rep_number" | null>(null);
   const [editName, setEditName] = useState(repProfile?.full_name ?? "");
+  const [editRepNumber, setEditRepNumber] = useState("");
   const [saving, setSaving] = useState(false);
   const [portalLoading, setPortalLoading] = useState(false);
 
