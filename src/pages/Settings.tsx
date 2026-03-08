@@ -157,7 +157,31 @@ export default function Settings() {
             {/* Rep Number */}
             <div className="flex items-center justify-between text-sm min-h-[36px]">
               <Label className="text-muted-foreground">Rep Number (8-digit ID)</Label>
-              <span className="font-medium font-mono tracking-wide">{repProfile?.rep_number ?? "—"}</span>
+              {repProfile?.rep_number ? (
+                <span className="font-medium font-mono tracking-wide">{repProfile.rep_number}</span>
+              ) : editing === "rep_number" ? (
+                <div className="flex items-center gap-2">
+                  <Input
+                    value={editRepNumber}
+                    onChange={(e) => setEditRepNumber(e.target.value.replace(/\D/g, "").slice(0, 8))}
+                    className="h-8 w-36 font-mono"
+                    maxLength={8}
+                    placeholder="12345678"
+                    autoFocus
+                  />
+                  <Button size="icon" variant="ghost" className="h-7 w-7" onClick={handleSaveRepNumber} disabled={saving}>
+                    {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
+                  </Button>
+                  <Button size="icon" variant="ghost" className="h-7 w-7" onClick={cancelEdit} disabled={saving}>
+                    <X className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              ) : (
+                <button onClick={() => setEditing("rep_number")} className="inline-flex items-center gap-1.5 font-medium text-primary hover:text-primary/80 transition-colors">
+                  Set Rep Number
+                  <Pencil className="h-3 w-3" />
+                </button>
+              )}
             </div>
 
             <div className="flex justify-between text-sm">
