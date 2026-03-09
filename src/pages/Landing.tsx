@@ -156,18 +156,14 @@ export default function Landing() {
   const navigate = useNavigate();
   const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
 
+  // Only redirect to dashboard if user has a valid subscription
   useEffect(() => {
-    if (!loading && isAuthenticated) {
+    if (!loading && isAuthenticated && subscription.subscribed) {
       navigate("/dashboard", { replace: true });
     }
-  }, [isAuthenticated, loading, navigate]);
+  }, [isAuthenticated, loading, navigate, subscription.subscribed]);
 
-  const handleCheckout = async (tierKey: TierKey) => {
-    if (!isAuthenticated) {
-      localStorage.setItem("pending_checkout_tier", tierKey);
-      navigate("/auth");
-      return;
-    }
+  const triggerCheckout = async (tierKey: TierKey) => {
     setCheckoutLoading(tierKey);
     try {
       const priceId = TIERS[tierKey].price_id;
@@ -185,6 +181,26 @@ export default function Landing() {
     } finally {
       setCheckoutLoading(null);
     }
+  };
+
+  // Auto-trigger checkout if returning from auth with a pending plan
+  useEffect(() => {
+    if (!loading && isAuthenticated && session?.access_token) {
+      const pendingTier = localStorage.getItem("pending_checkout_tier") as TierKey | null;
+      if (pendingTier && TIERS[pendingTier]) {
+        localStorage.removeItem("pending_checkout_tier");
+        triggerCheckout(pendingTier);
+      }
+    }
+  }, [loading, isAuthenticated, session?.access_token]);
+
+  const handleCheckout = async (tierKey: TierKey) => {
+    if (!isAuthenticated) {
+      localStorage.setItem("pending_checkout_tier", tierKey);
+      navigate("/auth");
+      return;
+    }
+    triggerCheckout(tierKey);
   };
 
   return (
