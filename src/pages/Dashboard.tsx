@@ -16,6 +16,7 @@ import LocalistControlPanel from "@/components/dashboard/LocalistControlPanel";
 import SyncProgressDialog, { SyncStep } from "@/components/dashboard/SyncProgressDialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import Footer from "@/components/Footer";
+import { TIERS, type TierKey } from "@/lib/stripe-tiers";
 
 interface StatCard {
   label: string;
