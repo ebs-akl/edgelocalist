@@ -281,6 +281,28 @@ const { data, error } = await supabase.functions.invoke("localist-sync-contacts"
     };
   }, [user?.id]);
 
+  // ── Auto-trigger pending checkout from pricing page ──
+  useEffect(() => {
+    const pendingTier = localStorage.getItem("pending_checkout_tier") as TierKey | null;
+    if (!pendingTier || !session?.access_token || !TIERS[pendingTier]) return;
+    localStorage.removeItem("pending_checkout_tier");
+
+    (async () => {
+      try {
+        const priceId = TIERS[pendingTier].price_id;
+        const { data, error } = await supabase.functions.invoke("localist-create-checkout", {
+          headers: { Authorization: `Bearer ${session.access_token}` },
+          body: { priceId },
+        });
+        if (error) throw error;
+        if (data?.url) window.open(data.url, "_blank");
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : "Checkout failed";
+        toast({ title: "Checkout error", description: msg, variant: "destructive" });
+      }
+    })();
+  }, [session?.access_token]);
+
   const handleSearch = (address: string) => {
     setSearchesToday((n) => n + 1);
     setRecentSearches((prev) => {
