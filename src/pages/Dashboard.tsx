@@ -16,6 +16,7 @@ import LocalistControlPanel from "@/components/dashboard/LocalistControlPanel";
 import SyncProgressDialog, { SyncStep } from "@/components/dashboard/SyncProgressDialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import Footer from "@/components/Footer";
+import { TIERS, type TierKey } from "@/lib/stripe-tiers";
 
 interface StatCard {
   label: string;
@@ -23,7 +24,7 @@ interface StatCard {
 }
 
 export default function Dashboard() {
-  const { user, repProfile, signOut, isGhlMode, ghlLocationId, ghlRepNum } = useAuth();
+  const { user, session, repProfile, signOut, isGhlMode, ghlLocationId, ghlRepNum } = useAuth();
   // Only run internal SSO hook when NOT already in GHL mode via IframeApp bridge
   const { ssoReady, ssoError, isInIframe, retry } = useGhlSso();
   const [contactCount, setContactCount] = useState(0);
@@ -279,6 +280,28 @@ const { data, error } = await supabase.functions.invoke("localist-sync-contacts"
       supabase.removeChannel(channel);
     };
   }, [user?.id]);
+
+  // ── Auto-trigger pending checkout from pricing page ──
+  useEffect(() => {
+    const pendingTier = localStorage.getItem("pending_checkout_tier") as TierKey | null;
+    if (!pendingTier || !session?.access_token || !TIERS[pendingTier]) return;
+    localStorage.removeItem("pending_checkout_tier");
+
+    (async () => {
+      try {
+        const priceId = TIERS[pendingTier].price_id;
+        const { data, error } = await supabase.functions.invoke("localist-create-checkout", {
+          headers: { Authorization: `Bearer ${session.access_token}` },
+          body: { priceId },
+        });
+        if (error) throw error;
+        if (data?.url) window.open(data.url, "_blank");
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : "Checkout failed";
+        toast({ title: "Checkout error", description: msg, variant: "destructive" });
+      }
+    })();
+  }, [session?.access_token]);
 
   const handleSearch = (address: string) => {
     setSearchesToday((n) => n + 1);

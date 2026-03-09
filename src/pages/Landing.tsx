@@ -164,6 +164,7 @@ export default function Landing() {
 
   const handleCheckout = async (tierKey: TierKey) => {
     if (!isAuthenticated) {
+      localStorage.setItem("pending_checkout_tier", tierKey);
       navigate("/auth");
       return;
     }
