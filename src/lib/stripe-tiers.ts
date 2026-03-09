@@ -12,6 +12,12 @@ export const TIERS = {
     product_id: "prod_U3ovoEBZGIHGd6",
     price: 16,
   },
+  edgedms: {
+    name: "EdgeDMS",
+    price_id: "price_1SW5i4AecJc70Cb5GBytGbCf",
+    product_id: "prod_TT1lDpEK83RxB1",
+    price: 97,
+  },
 } as const;
 
 export type TierKey = keyof typeof TIERS;
