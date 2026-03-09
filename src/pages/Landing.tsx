@@ -88,7 +88,7 @@ const pricingPlans: { name: string; tierKey: TierKey | null; price: string; peri
     "Auto-sync from GoHighLevel",
     "LC Call integration",
     "Full EdgeDMS suite"],
-  cta: "Start Free Trial",
+  cta: "Get Started",
   highlighted: false
 }];
 
