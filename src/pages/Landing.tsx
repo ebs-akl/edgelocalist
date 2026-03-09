@@ -80,7 +80,7 @@ const pricingPlans: { name: string; tierKey: TierKey | null; price: string; peri
 },
 {
   name: "EdgeDMS",
-  tierKey: null,
+  tierKey: "edgedms" as TierKey,
   price: "$97",
   period: "/mo",
   features: [
@@ -88,7 +88,7 @@ const pricingPlans: { name: string; tierKey: TierKey | null; price: string; peri
     "Auto-sync from GoHighLevel",
     "LC Call integration",
     "Full EdgeDMS suite"],
-  cta: "Coming Soon",
+  cta: "Start Free Trial",
   highlighted: false
 }];
 
