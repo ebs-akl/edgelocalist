@@ -4,7 +4,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Loader2 } from "lucide-react";
 import type { ReactNode } from "react";
 
-const VALID_TIERS = new Set(["standalone", "snack_pack", "edgedms"]);
+const VALID_TIERS = new Set(["LOCALIST", "SNACK PACK", "EDGE BASIC"]);
 
 interface ProtectedRouteProps {
   children: ReactNode;

@@ -54,7 +54,7 @@ const features = [
 const pricingPlans: { name: string; tierKey: TierKey | null; price: string; period: string; features: string[]; cta: string; highlighted: boolean }[] = [
 {
   name: "AKL LocaList",
-  tierKey: "standalone",
+  tierKey: "LOCALIST",
   price: "$9",
   period: "/mo",
   features: [
@@ -67,7 +67,7 @@ const pricingPlans: { name: string; tierKey: TierKey | null; price: string; peri
 },
 {
   name: "AKL Snack Pack",
-  tierKey: "snack_pack",
+  tierKey: "SNACK PACK",
   price: "$16",
   period: "/mo",
   features: [
@@ -80,7 +80,7 @@ const pricingPlans: { name: string; tierKey: TierKey | null; price: string; peri
 },
 {
   name: "EdgeDMS",
-  tierKey: "edgedms" as TierKey,
+  tierKey: "EDGE BASIC",
   price: "$97",
   period: "/mo",
   features: [
