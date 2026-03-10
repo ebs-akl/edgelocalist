@@ -67,7 +67,7 @@ const pricingPlans: { name: string; tierKey: TierKey | null; price: string; peri
 },
 {
   name: "AKL Snack Pack",
-  tierKey: "snack_pack",
+  tierKey: "SNACK PACK",
   price: "$16",
   period: "/mo",
   features: [
