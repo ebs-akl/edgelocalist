@@ -1,4 +1,5 @@
 import Stripe from "https://esm.sh/stripe@18.5.0";
+import { createClient } from "npm:@supabase/supabase-js@2.57.2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -22,6 +23,46 @@ const TIER_NAMES: Record<string, string> = {
   prod_U3ovoEBZGIHGd6: "Snack Pack",
   prod_TT1lDpEK83RxB1: "EdgeDMS",
 };
+
+const logStep = (step: string, details?: unknown) => {
+  const d = details ? ` - ${JSON.stringify(details)}` : "";
+  console.log(`[STRIPE-WEBHOOK] ${step}${d}`);
+};
+
+/** Update subscription_tier in localist_reps by email */
+async function updateSubscriptionTier(email: string, tier: string): Promise<void> {
+  const supabase = createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+    { auth: { persistSession: false } }
+  );
+
+  const { data, error } = await supabase
+    .from("localist_reps")
+    .update({ subscription_tier: tier })
+    .eq("email", email)
+    .select("id, email");
+
+  if (error) {
+    logStep("ERROR updating subscription_tier", { email, tier, error: error.message });
+  } else if (!data || data.length === 0) {
+    logStep("WARNING: No rep found for email", { email, tier });
+  } else {
+    logStep("✅ Updated subscription_tier", { email, tier, repId: data[0].id });
+  }
+}
+
+/** Resolve customer email from a Stripe customer ID */
+async function getCustomerEmail(stripe: Stripe, customerId: string): Promise<string | null> {
+  try {
+    const customer = await stripe.customers.retrieve(customerId);
+    if (customer.deleted) return null;
+    return (customer as Stripe.Customer).email || null;
+  } catch (e) {
+    logStep("ERROR retrieving customer email", { customerId, error: String(e) });
+    return null;
+  }
+}
 
 function buildConfirmationEmail(customerEmail: string, tierName: string): string {
   return `<!DOCTYPE html>
@@ -127,12 +168,15 @@ Deno.serve(async (req) => {
       });
     }
 
+    logStep("Event received", { type: event.type, id: event.id });
+
+    // ── checkout.session.completed ──────────────────────────────────
     if (event.type === "checkout.session.completed") {
       const session = event.data.object as Stripe.Checkout.Session;
       const customerEmail = session.customer_details?.email || session.customer_email;
 
       if (!customerEmail) {
-        console.warn("No customer email in checkout session, skipping confirmation email");
+        logStep("No customer email in checkout session, skipping");
         return new Response(JSON.stringify({ received: true }), {
           status: 200,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -140,7 +184,7 @@ Deno.serve(async (req) => {
       }
 
       // Determine tier name from the subscription's product
-      let tierName = "LocaList";
+      let tierName = "Standalone";
       if (session.subscription) {
         try {
           const subscription = await stripe.subscriptions.retrieve(session.subscription as string);
@@ -149,12 +193,15 @@ Deno.serve(async (req) => {
             tierName = TIER_NAMES[productId];
           }
         } catch (e) {
-          console.warn("Could not retrieve subscription for tier name:", e);
+          logStep("Could not retrieve subscription for tier name", { error: String(e) });
         }
       }
 
-      const html = buildConfirmationEmail(customerEmail, tierName);
+      // Update subscription_tier in database
+      await updateSubscriptionTier(customerEmail, tierName);
 
+      // Send confirmation email
+      const html = buildConfirmationEmail(customerEmail, tierName);
       const resendResponse = await fetch("https://api.resend.com/emails", {
         method: "POST",
         headers: {
@@ -171,9 +218,37 @@ Deno.serve(async (req) => {
 
       const resendResult = await resendResponse.json();
       if (!resendResponse.ok) {
-        console.error("Resend API error:", JSON.stringify(resendResult));
+        logStep("Resend API error", resendResult);
       } else {
-        console.log(`✅ Sent confirmation email to ${customerEmail}. Resend ID: ${resendResult.id}`);
+        logStep(`✅ Sent confirmation email to ${customerEmail}`, { resendId: resendResult.id });
+      }
+    }
+
+    // ── customer.subscription.deleted ───────────────────────────────
+    if (event.type === "customer.subscription.deleted") {
+      const subscription = event.data.object as Stripe.Subscription;
+      const customerId = subscription.customer as string;
+      const email = await getCustomerEmail(stripe, customerId);
+
+      if (email) {
+        await updateSubscriptionTier(email, "expired");
+        logStep("Subscription deleted — set to expired", { email });
+      } else {
+        logStep("WARNING: Could not resolve email for deleted subscription", { customerId });
+      }
+    }
+
+    // ── invoice.payment_failed ──────────────────────────────────────
+    if (event.type === "invoice.payment_failed") {
+      const invoice = event.data.object as Stripe.Invoice;
+      const customerId = invoice.customer as string;
+      const email = await getCustomerEmail(stripe, customerId);
+
+      if (email) {
+        await updateSubscriptionTier(email, "expired");
+        logStep("Payment failed — set to expired", { email });
+      } else {
+        logStep("WARNING: Could not resolve email for failed invoice", { customerId });
       }
     }
 
