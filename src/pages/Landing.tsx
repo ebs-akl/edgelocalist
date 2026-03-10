@@ -80,7 +80,7 @@ const pricingPlans: { name: string; tierKey: TierKey | null; price: string; peri
 },
 {
   name: "EdgeDMS",
-  tierKey: "edgedms" as TierKey,
+  tierKey: "EDGE BASIC",
   price: "$97",
   period: "/mo",
   features: [
