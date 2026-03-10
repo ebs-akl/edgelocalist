@@ -54,7 +54,7 @@ const features = [
 const pricingPlans: { name: string; tierKey: TierKey | null; price: string; period: string; features: string[]; cta: string; highlighted: boolean }[] = [
 {
   name: "AKL LocaList",
-  tierKey: "standalone",
+  tierKey: "LOCALIST",
   price: "$9",
   period: "/mo",
   features: [
