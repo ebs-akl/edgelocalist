@@ -19,9 +19,9 @@ const SUPPORT_EMAIL = "support@edgedms.com";
 const DASHBOARD_URL = "https://edgelocalist.lovable.app/dashboard";
 
 const TIER_NAMES: Record<string, string> = {
-  prod_U3ouP5GYR2UtCT: "Standalone",
-  prod_U3ovoEBZGIHGd6: "Snack Pack",
-  prod_TT1lDpEK83RxB1: "EdgeDMS",
+  prod_U3ouP5GYR2UtCT: "LOCALIST",
+  prod_U3ovoEBZGIHGd6: "SNACK PACK",
+  prod_TT1lDpEK83RxB1: "EDGE BASIC",
 };
 
 const logStep = (step: string, details?: unknown) => {

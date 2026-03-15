@@ -66,7 +66,7 @@ export default function Auth() {
             id: data.user.id,
             email,
             full_name: fullName.trim() || email,
-            subscription_tier: 'standalone',
+            
             rep_number: repNumber.trim(),
           }, { onConflict: 'id' });
         }
