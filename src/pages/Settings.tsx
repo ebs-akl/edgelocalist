@@ -13,7 +13,7 @@ import { TIERS } from "@/lib/stripe-tiers";
 import localistLogo from "@/assets/Localist-Final-Logo.png";
 import Footer from "@/components/Footer";
 
-const UPGRADE_URL = "#";
+const UPGRADE_URL = "/#pricing";
 
 export default function Settings() {
   const { user, repProfile, signOut, isGhlMode, refreshProfile, subscription, loadingSubscription, refreshSubscription, session } = useAuth();

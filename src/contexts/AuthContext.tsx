@@ -9,7 +9,7 @@ export interface RepProfile {
   id: string;
   email: string;
   full_name: string;
-  subscription_tier: 'standalone' | 'edgedms' | null;
+  subscription_tier: string | null;
   ghl_location_id: string | null;
   rep_number: string | null;
 }
