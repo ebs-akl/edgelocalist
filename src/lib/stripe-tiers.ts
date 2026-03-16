@@ -23,11 +23,22 @@ export const TIERS: Record<TierKey, { name: string; price_id: string; product_id
   },
 };
 
+/**
+ * Legacy / sibling product IDs that grant LocaList access.
+ * Maps legacy Stripe product IDs → the TierKey they should resolve to.
+ */
+const LEGACY_PRODUCT_MAP: Record<string, TierKey> = {
+  "prod_TwBX6C6vQeILKX": "SNACK PACK",   // Alomar Standalone → treat as Snack Pack level
+  "prod_U1kerkyaichRMD": "LOCALIST",       // Legacy Edge LocaList product
+};
+
 /** Resolve a Stripe product ID to a tier key */
 export function tierFromProductId(productId: string | null): TierKey | null {
   if (!productId) return null;
+  // Check current tiers first
   for (const [key, tier] of Object.entries(TIERS)) {
     if (tier.product_id === productId) return key as TierKey;
   }
-  return null;
+  // Check legacy/sibling products
+  return LEGACY_PRODUCT_MAP[productId] ?? null;
 }
