@@ -21,7 +21,7 @@ function isInIframe(): boolean {
 export default function ProtectedRoute({ children }: ProtectedRouteProps) {
   const { isAuthenticated, loading, subscription, loadingSubscription } = useAuth();
 
-  if (loading) {
+  if (loading || (isAuthenticated && loadingSubscription)) {
     if (isInIframe()) {
       return (
         <div className="min-h-screen bg-background flex items-center justify-center">

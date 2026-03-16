@@ -161,16 +161,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // ── Auth listener ──
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setState((s) => ({ ...s, session, user: session?.user ?? null, loading: false }));
+    const syncSessionState = (session: Session | null) => {
+      setState((s) => ({
+        ...s,
+        session,
+        user: session?.user ?? null,
+        loading: false,
+        subscription: session ? s.subscription : DEFAULT_SUBSCRIPTION,
+        loadingSubscription: !!session,
+      }));
       setTimeout(() => fetchRepProfile(session?.user?.id), 0);
       setTimeout(() => checkSubscription(session), 0);
+    };
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      syncSessionState(session);
     });
 
     supabase.auth.getSession().then(({ data: { session } }) => {
-      setState((s) => ({ ...s, session, user: session?.user ?? null, loading: false }));
-      setTimeout(() => fetchRepProfile(session?.user?.id), 0);
-      setTimeout(() => checkSubscription(session), 0);
+      syncSessionState(session);
     });
 
     return () => subscription.unsubscribe();
