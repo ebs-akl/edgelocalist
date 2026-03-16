@@ -152,16 +152,16 @@ function HexBackground() {
 
 export default function Landing() {
   const [contactCount] = useState(500000);
-  const { isAuthenticated, loading, session, subscription } = useAuth();
+  const { isAuthenticated, loading, loadingSubscription, session, subscription } = useAuth();
   const navigate = useNavigate();
   const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
 
-  // Only redirect to dashboard if user has a valid subscription
+  // Only redirect to dashboard after subscription hydration confirms a valid tier
   useEffect(() => {
-    if (!loading && isAuthenticated && subscription.subscribed) {
+    if (!loading && !loadingSubscription && isAuthenticated && subscription.subscribed && subscription.tier) {
       navigate("/dashboard", { replace: true });
     }
-  }, [isAuthenticated, loading, navigate, subscription.subscribed]);
+  }, [isAuthenticated, loading, loadingSubscription, navigate, subscription.subscribed, subscription.tier]);
 
   const triggerCheckout = async (tierKey: TierKey) => {
     setCheckoutLoading(tierKey);
