@@ -83,7 +83,7 @@ const DEFAULT_STATE: AuthState = {
   repProfile: null,
   loadingProfile: false,
   subscription: DEFAULT_SUBSCRIPTION,
-  loadingSubscription: false,
+  loadingSubscription: true,
   ghlLocationId: initialGhlLocationId,
   ghlRepNum: initialGhlRepNum,
   ssoPayload: null,
