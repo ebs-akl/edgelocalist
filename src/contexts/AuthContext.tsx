@@ -89,6 +89,18 @@ const DEFAULT_STATE: AuthState = {
   ssoPayload: null,
 };
 
+const FALLBACK_AUTH_CONTEXT: AuthContextType = {
+  ...DEFAULT_STATE,
+  signOut: async () => {},
+  refreshProfile: async () => {},
+  refreshSubscription: async () => {},
+  setSsoPayload: () => {},
+  setGhlLocationId: () => {},
+  isGhlMode: false,
+  isStandaloneMode: false,
+  isAuthenticated: false,
+};
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AuthState>(DEFAULT_STATE);
   const navigate = useNavigate();
