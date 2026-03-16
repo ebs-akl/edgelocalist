@@ -24,11 +24,13 @@ export default function Auth() {
   const [keepSignedIn, setKeepSignedIn] = useState(false);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, loading: authLoading, loadingSubscription, subscription } = useAuth();
 
   useEffect(() => {
-    if (isAuthenticated) navigate("/dashboard", { replace: true });
-  }, [isAuthenticated, navigate]);
+    if (!authLoading && !loadingSubscription && isAuthenticated && subscription.subscribed && subscription.tier) {
+      navigate("/dashboard", { replace: true });
+    }
+  }, [authLoading, isAuthenticated, loadingSubscription, navigate, subscription.subscribed, subscription.tier]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
