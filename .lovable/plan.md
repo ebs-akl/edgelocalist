@@ -1,33 +1,47 @@
 
 
-## Plan: Add Sending Phone Number Picker to Group SMS
+## Problem
 
-### Problem
-EdgeDMS accounts often have multiple phone numbers configured in GoHighLevel. Currently the group SMS feature doesn't let users choose which number to send from — GHL just uses the location's default.
+Josh Sicchitano (`jsicchitano@vectormarketing.com`) is authenticated but stuck on the landing page. The `localist-check-subscription` edge function logs confirm:
 
-### Approach
+```
+[CHECK-SUBSCRIPTION] No Stripe customer found
+```
 
-**1. New edge function: `localist-list-phone-numbers`**
-- Calls GHL API: `GET /phone-system/numbers/location/{locationId}` with the rep's access token
-- Returns a list of active phone numbers (id, phone number, label/name)
-- Supports both JWT auth and SSO payload auth (same dual-auth pattern as other functions)
-- Handles token refresh if expired
+He has no Stripe customer record, so the function returns `{ subscribed: false }`. The `ProtectedRoute` subscription gate then redirects him to `/#pricing` because `subscription.tier` is `null`.
 
-**2. Update `localist-group-sms` edge function**
-- Accept an optional `from_number` field in the request body
-- Pass it to the GHL outbound message API (the `conversations/messages` endpoint supports specifying the sending number)
-- Validate the field format server-side
+Additionally, his `localist_reps` row doesn't exist on the kimyzwmniidwnixezqdi instance (this project queries that DB), but may exist on the shared ALOMAR instance (dhbhbyspjicomowgluyb) that edge functions use.
 
-**3. Update `GroupSmsModal.tsx` frontend**
-- On modal open, fetch available phone numbers via `supabase.functions.invoke("localist-list-phone-numbers")`
-- Show a `<Select>` dropdown above the template picker labeled "Send from"
-- Default to the first number (or "Default" if only one)
-- Pass the selected number in the request body to `localist-group-sms`
-- Show a loading skeleton while numbers load; gracefully fall back to no picker if the fetch fails (GHL phone system not connected)
+## Root Cause
 
-### Files to Create/Modify
-- **Create** `supabase/functions/localist-list-phone-numbers/index.ts`
-- **Edit** `supabase/functions/localist-group-sms/index.ts` — accept + forward `from_number`
-- **Edit** `src/components/dashboard/GroupSmsModal.tsx` — phone number selector UI + fetch logic
-- **Edit** `supabase/config.toml` — add `verify_jwt = false` for the new function
+The subscription check **only** queries Stripe. If a user has no Stripe customer record (e.g., manually provisioned, legacy user, or different billing email), they are permanently locked out.
+
+## Fix: Add DB Fallback in `localist-check-subscription`
+
+When Stripe returns no customer **or** no active subscription, check `localist_reps.subscription_tier` as a fallback. If the DB has a valid tier (matching one of `LOCALIST`, `SNACK PACK`, `EDGE BASIC`, or legacy values like `edgedms`, `standalone`), return `subscribed: true` with that tier mapped to a product-like identifier.
+
+### Changes
+
+**1. `supabase/functions/localist-check-subscription/index.ts`**
+
+After the "No Stripe customer found" block (line 45-51), add a DB fallback:
+- Query `localist_reps` by `user.id` for `subscription_tier`
+- If a recognized tier exists (`edgedms`, `standalone`, `LOCALIST`, `SNACK PACK`, `EDGE BASIC`), return `subscribed: true` with a synthetic product ID mapped from the tier
+- Define a `DB_TIER_TO_PRODUCT` map that converts DB tier values to product IDs that `tierFromProductId` already recognizes
+- This ensures legacy users and manually provisioned users pass the gate
+
+**2. Redeploy the edge function** (automatic)
+
+### Tier Mapping (DB → Product ID)
+
+```text
+DB Value        → Product ID           → Frontend Tier
+"edgedms"       → prod_TT1lDpEK83RxB1  → EDGE BASIC
+"standalone"    → prod_U3ouP5GYR2UtCT  → LOCALIST
+"LOCALIST"      → prod_U3ouP5GYR2UtCT  → LOCALIST
+"SNACK PACK"    → prod_U3ovoEBZGIHGd6  → SNACK PACK
+"EDGE BASIC"    → prod_TT1lDpEK83RxB1  → EDGE BASIC
+```
+
+This is backward-compatible — users with active Stripe subscriptions still use the Stripe path. The DB fallback only activates when Stripe has no record.
 
