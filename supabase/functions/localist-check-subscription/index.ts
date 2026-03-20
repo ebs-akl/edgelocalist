@@ -121,7 +121,9 @@ serve(async (req) => {
       productId = subscription.items.data[0].price.product as string;
       logStep("Active subscription found", { productId, subscriptionEnd });
     } else {
-      logStep("No active subscription found");
+      logStep("No active Stripe subscription, trying DB fallback");
+      const fallback = await dbFallback(user.id);
+      if (fallback) return fallback;
     }
 
     return new Response(JSON.stringify({
