@@ -23,6 +23,36 @@ serve(async (req) => {
     { auth: { persistSession: false } }
   );
 
+  // Map DB subscription_tier values → Stripe product IDs the frontend already recognizes
+  const DB_TIER_TO_PRODUCT: Record<string, string> = {
+    edgedms: "prod_TT1lDpEK83RxB1",
+    "EDGE BASIC": "prod_TT1lDpEK83RxB1",
+    standalone: "prod_U3ouP5GYR2UtCT",
+    LOCALIST: "prod_U3ouP5GYR2UtCT",
+    "SNACK PACK": "prod_U3ovoEBZGIHGd6",
+  };
+
+  async function dbFallback(userId: string): Promise<Response | null> {
+    const { data: rep } = await supabaseClient
+      .from("localist_reps")
+      .select("subscription_tier")
+      .eq("id", userId)
+      .maybeSingle();
+
+    const tier = rep?.subscription_tier?.trim() ?? "";
+    const productId = DB_TIER_TO_PRODUCT[tier] ?? null;
+
+    if (productId) {
+      logStep("DB fallback matched", { tier, productId });
+      return new Response(JSON.stringify({ subscribed: true, product_id: productId, subscription_end: null }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      });
+    }
+    logStep("DB fallback: no recognized tier", { tier });
+    return null;
+  }
+
   try {
     logStep("Function started");
 
@@ -43,7 +73,9 @@ serve(async (req) => {
     const customers = await stripe.customers.list({ email: user.email, limit: 1 });
 
     if (customers.data.length === 0) {
-      logStep("No Stripe customer found");
+      logStep("No Stripe customer found, trying DB fallback");
+      const fallback = await dbFallback(user.id);
+      if (fallback) return fallback;
       return new Response(JSON.stringify({ subscribed: false }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,
