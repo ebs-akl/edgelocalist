@@ -103,6 +103,7 @@ export default function SearchTab({ repName, recentSearches, onSearch, contactCo
     setLoading(true);
     setSearched(false);
     setSelectedIds(new Set());
+    setCategoryFilters(new Set());
     try {
       setSearchCenter(center);
       onSearch(label);
@@ -317,6 +318,15 @@ const { data: fnData, error: fnError } = await supabase.functions.invoke("locali
       const q = filter.toLowerCase();
       return !q || `${c.first_name} ${c.last_name} ${c.city}`.toLowerCase().includes(q);
     })
+    .filter((c) => {
+      if (categoryFilters.size === 0) return true;
+      const isRlt = c.rlt?.toUpperCase() === "Y";
+      const isBiz = c.biz?.toUpperCase() === "Y";
+      const isReg = !isRlt && !isBiz;
+      return (categoryFilters.has("RLT") && isRlt) ||
+             (categoryFilters.has("BIZ") && isBiz) ||
+             (categoryFilters.has("REG") && isReg);
+    })
     .sort((a, b) => {
       let av: number;
       let bv: number;
@@ -458,12 +468,30 @@ const { data: fnData, error: fnError } = await supabase.functions.invoke("locali
       {searched && (
         <div className="space-y-3">
           <div className="flex items-center justify-between gap-3 flex-wrap">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 flex-wrap">
               <p className="text-sm text-muted-foreground">
                 {results.length === 0
                   ? "No contacts found in that area — try a wider radius."
-                  : `${results.length} contact${results.length !== 1 ? "s" : ""} within ${radius} miles`}
+                  : `${filtered.length} of ${results.length} contact${results.length !== 1 ? "s" : ""} within ${radius} miles`}
               </p>
+              {/* Category filters */}
+              {results.length > 0 && (
+                <div className="flex rounded-lg border overflow-hidden">
+                  {(["RLT", "BIZ", "REG"] as const).map((cat) => (
+                    <button
+                      key={cat}
+                      onClick={() => toggleCategory(cat)}
+                      className={`px-3 py-1.5 text-xs font-medium transition-colors ${
+                        categoryFilters.has(cat)
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-background hover:bg-muted text-foreground"
+                      }`}
+                    >
+                      {cat}
+                    </button>
+                  ))}
+                </div>
+              )
               {/* List / Map toggle */}
               {results.length > 0 && (
                 <div className="flex rounded-lg border overflow-hidden">
