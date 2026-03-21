@@ -72,6 +72,15 @@ export default function SearchTab({ repName, recentSearches, onSearch, contactCo
   const watchIdRef = useRef<number | null>(null);
 
 
+  const toggleCategory = (cat: "RLT" | "BIZ" | "REG") => {
+    setCategoryFilters(prev => {
+      const next = new Set(prev);
+      next.has(cat) ? next.delete(cat) : next.add(cat);
+      return next;
+    });
+    setSelectedIds(new Set());
+  };
+
   const COORD_REGEX = /^(-?\d+(\.\d+)?)[,\s]+(-?\d+(\.\d+)?)$/;
 
   const parseCoords = (input: string): { lat: number; lng: number } | null => {
