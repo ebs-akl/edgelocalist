@@ -110,7 +110,12 @@ export function useGhlSso() {
 
   const isInIframe = useCallback(() => {
     try {
-      return window.self !== window.top;
+      if (window.self === window.top) return false;
+      const host = window.location.hostname;
+      if (host.includes("lovable.app") || host.includes("lovableproject.com") || host.includes("localhost")) {
+        return false;
+      }
+      return true;
     } catch {
       return true;
     }
