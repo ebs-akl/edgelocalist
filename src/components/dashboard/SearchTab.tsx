@@ -68,6 +68,7 @@ export default function SearchTab({ repName, recentSearches, onSearch, contactCo
   const [tagModalOpen, setTagModalOpen] = useState(false);
   const [locating, setLocating] = useState(false);
   const [viewMode, setViewMode] = useState<"list" | "map">("list");
+  const [categoryFilters, setCategoryFilters] = useState<Set<"RLT" | "BIZ" | "REG">>(new Set());
   const watchIdRef = useRef<number | null>(null);
 
 
