@@ -491,7 +491,7 @@ const { data: fnData, error: fnError } = await supabase.functions.invoke("locali
                     </button>
                   ))}
                 </div>
-              )
+              )}
               {/* List / Map toggle */}
               {results.length > 0 && (
                 <div className="flex rounded-lg border overflow-hidden">
