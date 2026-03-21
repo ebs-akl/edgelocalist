@@ -1,47 +1,45 @@
 
 
-## Problem
+## Contact Category Filters: RLT, BIZ, REG
 
-Josh Sicchitano (`jsicchitano@vectormarketing.com`) is authenticated but stuck on the landing page. The `localist-check-subscription` edge function logs confirm:
+### What we're building
+Add a set of toggle filter buttons (RLT, BIZ, REG) to the search results area so users can quickly filter contacts by category:
+- **RLT** — contacts where `rlt` equals "Y" (case-insensitive)
+- **BIZ** — contacts where `biz` equals "Y" (case-insensitive)  
+- **REG** — contacts where both `biz` and `rlt` are null, empty, or "N" (i.e. regular/residential contacts)
 
-```
-[CHECK-SUBSCRIPTION] No Stripe customer found
-```
-
-He has no Stripe customer record, so the function returns `{ subscribed: false }`. The `ProtectedRoute` subscription gate then redirects him to `/#pricing` because `subscription.tier` is `null`.
-
-Additionally, his `localist_reps` row doesn't exist on the kimyzwmniidwnixezqdi instance (this project queries that DB), but may exist on the shared ALOMAR instance (dhbhbyspjicomowgluyb) that edge functions use.
-
-## Root Cause
-
-The subscription check **only** queries Stripe. If a user has no Stripe customer record (e.g., manually provisioned, legacy user, or different billing email), they are permanently locked out.
-
-## Fix: Add DB Fallback in `localist-check-subscription`
-
-When Stripe returns no customer **or** no active subscription, check `localist_reps.subscription_tier` as a fallback. If the DB has a valid tier (matching one of `LOCALIST`, `SNACK PACK`, `EDGE BASIC`, or legacy values like `edgedms`, `standalone`), return `subscribed: true` with that tier mapped to a product-like identifier.
+Filters are client-side (applied to already-fetched results), multi-selectable (e.g. RLT + BIZ shows both), and default to "all" when none are active.
 
 ### Changes
 
-**1. `supabase/functions/localist-check-subscription/index.ts`**
+**`src/components/dashboard/SearchTab.tsx`**
 
-After the "No Stripe customer found" block (line 45-51), add a DB fallback:
-- Query `localist_reps` by `user.id` for `subscription_tier`
-- If a recognized tier exists (`edgedms`, `standalone`, `LOCALIST`, `SNACK PACK`, `EDGE BASIC`), return `subscribed: true` with a synthetic product ID mapped from the tier
-- Define a `DB_TIER_TO_PRODUCT` map that converts DB tier values to product IDs that `tierFromProductId` already recognizes
-- This ensures legacy users and manually provisioned users pass the gate
+1. Add a new state variable:
+   ```ts
+   const [categoryFilters, setCategoryFilters] = useState<Set<"RLT" | "BIZ" | "REG">>(new Set());
+   ```
 
-**2. Redeploy the edge function** (automatic)
+2. Add a toggle helper:
+   ```ts
+   const toggleCategory = (cat: "RLT" | "BIZ" | "REG") => {
+     setCategoryFilters(prev => {
+       const next = new Set(prev);
+       next.has(cat) ? next.delete(cat) : next.add(cat);
+       return next;
+     });
+   };
+   ```
 
-### Tier Mapping (DB → Product ID)
+3. Update the `filtered` pipeline (around line 305) to apply category filters between the text filter and the sort:
+   - If `categoryFilters` is empty, no filtering (show all)
+   - Otherwise, include a contact if it matches **any** active filter:
+     - RLT: `c.rlt?.toUpperCase() === "Y"`
+     - BIZ: `c.biz?.toUpperCase() === "Y"`
+     - REG: `rlt` is not "Y" AND `biz` is not "Y"
 
-```text
-DB Value        → Product ID           → Frontend Tier
-"edgedms"       → prod_TT1lDpEK83RxB1  → EDGE BASIC
-"standalone"    → prod_U3ouP5GYR2UtCT  → LOCALIST
-"LOCALIST"      → prod_U3ouP5GYR2UtCT  → LOCALIST
-"SNACK PACK"    → prod_U3ovoEBZGIHGd6  → SNACK PACK
-"EDGE BASIC"    → prod_TT1lDpEK83RxB1  → EDGE BASIC
-```
+4. Render filter buttons in the results header area (near line 450, alongside the sort dropdown), as a row of small toggle buttons styled like the existing radius selector — highlighted when active. Reset `selectedIds` when filters change.
 
-This is backward-compatible — users with active Stripe subscriptions still use the Stripe path. The DB fallback only activates when Stripe has no record.
+5. Clear `categoryFilters` when a new search is performed (in `runRadiusQuery`).
+
+No backend or database changes required — `rlt` and `biz` fields are already returned by both the RPC and edge function queries.
 
