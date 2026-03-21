@@ -1,45 +1,27 @@
 
 
-## Contact Category Filters: RLT, BIZ, REG
+## Fix: SSO Handshake Triggering in Lovable Preview
 
-### What we're building
-Add a set of toggle filter buttons (RLT, BIZ, REG) to the search results area so users can quickly filter contacts by category:
-- **RLT** — contacts where `rlt` equals "Y" (case-insensitive)
-- **BIZ** — contacts where `biz` equals "Y" (case-insensitive)  
-- **REG** — contacts where both `biz` and `rlt` are null, empty, or "N" (i.e. regular/residential contacts)
+### Problem
+The `useGhlSso` hook detects `window.self !== window.top` to determine iframe status, but unlike `App.tsx` (which excludes `lovable.app`, `lovableproject.com`, `localhost`), the hook has no domain exclusion. The Lovable preview runs inside an iframe, so the hook fires, times out after 10s, and Dashboard renders the "Connection Failed" error screen.
 
-Filters are client-side (applied to already-fetched results), multi-selectable (e.g. RLT + BIZ shows both), and default to "all" when none are active.
+### Fix
+**File: `src/hooks/useGhlSso.ts`** — Update the `isInIframe` callback to exclude Lovable/localhost domains, matching the logic in `App.tsx`:
 
-### Changes
+```ts
+const isInIframe = useCallback(() => {
+  try {
+    if (window.self === window.top) return false;
+    const host = window.location.hostname;
+    if (host.includes("lovable.app") || host.includes("lovableproject.com") || host.includes("localhost")) {
+      return false;
+    }
+    return true;
+  } catch {
+    return true;
+  }
+}, []);
+```
 
-**`src/components/dashboard/SearchTab.tsx`**
-
-1. Add a new state variable:
-   ```ts
-   const [categoryFilters, setCategoryFilters] = useState<Set<"RLT" | "BIZ" | "REG">>(new Set());
-   ```
-
-2. Add a toggle helper:
-   ```ts
-   const toggleCategory = (cat: "RLT" | "BIZ" | "REG") => {
-     setCategoryFilters(prev => {
-       const next = new Set(prev);
-       next.has(cat) ? next.delete(cat) : next.add(cat);
-       return next;
-     });
-   };
-   ```
-
-3. Update the `filtered` pipeline (around line 305) to apply category filters between the text filter and the sort:
-   - If `categoryFilters` is empty, no filtering (show all)
-   - Otherwise, include a contact if it matches **any** active filter:
-     - RLT: `c.rlt?.toUpperCase() === "Y"`
-     - BIZ: `c.biz?.toUpperCase() === "Y"`
-     - REG: `rlt` is not "Y" AND `biz` is not "Y"
-
-4. Render filter buttons in the results header area (near line 450, alongside the sort dropdown), as a row of small toggle buttons styled like the existing radius selector — highlighted when active. Reset `selectedIds` when filters change.
-
-5. Clear `categoryFilters` when a new search is performed (in `runRadiusQuery`).
-
-No backend or database changes required — `rlt` and `biz` fields are already returned by both the RPC and edge function queries.
+Single file change, ~5 lines modified. The Dashboard SSO gate at line 323 (`if (isInIframe && !ghlLocationId && !ssoReady)`) will then correctly skip in Lovable preview, and the normal standalone dashboard will render.
 
