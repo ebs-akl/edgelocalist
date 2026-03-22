@@ -42,7 +42,7 @@ async function geocodeAddress(
   state: string,
   zip: string,
   token: string
-): Promise<{ lat: number; lng: number } | null> {
+): Promise<{ lat: number; lng: number; county: string | null } | null> {
   const cleaned = stripApt(street);
   if (!cleaned || isPOBox(cleaned)) return null;
 
@@ -53,9 +53,20 @@ async function geocodeAddress(
     const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
     if (!res.ok) return null;
     const data = await res.json();
-    const coords = data.features?.[0]?.center;
+    const feature = data.features?.[0];
+    const coords = feature?.center;
     if (!coords || coords.length < 2) return null;
-    return { lng: coords[0], lat: coords[1] };
+
+    // Extract county from context array (Mapbox calls it "district")
+    let county: string | null = null;
+    if (Array.isArray(feature.context)) {
+      const district = feature.context.find((ctx: { id?: string }) =>
+        typeof ctx.id === "string" && ctx.id.startsWith("district.")
+      );
+      if (district?.text) county = district.text;
+    }
+
+    return { lng: coords[0], lat: coords[1], county };
   } catch {
     return null;
   }
@@ -192,6 +203,7 @@ serve(async (req) => {
           .update({
             latitude: r.coords.lat,
             longitude: r.coords.lng,
+            county: r.coords.county,
           })
           .eq("id", r.id);
 

@@ -21,6 +21,7 @@ export interface LocalistContact {
   gift_count: number | null;
   source: 'csv' | 'ghl';
   updated_at: string;
+  county?: string | null;
   // Added by nearby_contacts RPC
   distance_miles?: number;
 }
@@ -46,6 +47,7 @@ export interface NearbyContact {
   contact_id?: string;
   latitude?: number | null;
   longitude?: number | null;
+  county?: string | null;
 }
 
 export interface MapMarker {
