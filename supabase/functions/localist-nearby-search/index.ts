@@ -125,11 +125,9 @@ serve(async (req) => {
   let centerLng: number;
 
   if (typeof body.center_lat === "number" && typeof body.center_lng === "number") {
-    // Coordinates provided directly (GPS or pre-geocoded)
     centerLat = body.center_lat;
     centerLng = body.center_lng;
   } else if (typeof body.address === "string" && body.address.trim()) {
-    // Address string: geocode server-side
     if (!MAPBOX_TOKEN) {
       return new Response(JSON.stringify({ error: "Geocoding not configured" }), {
         status: 500,
@@ -169,23 +167,53 @@ serve(async (req) => {
     });
   }
 
-  // ── Run the spatial query ──
-  const { data, error } = await supabase.rpc("nearby_contacts_service", {
-    rep: repId,
-    center_lat: centerLat,
-    center_lng: centerLng,
-    radius_miles: radiusMiles,
-  });
+  // ── Pagination params ──
+  const page = Math.max(1, Number(body.page) || 1);
+  const limit = Math.min(100, Math.max(1, Number(body.limit) || 50));
+  const offset = (page - 1) * limit;
 
-  if (error) {
-    console.error("nearby_contacts_service error:", error);
+  // ── Run both queries in parallel ──
+  const [pageResult, markersResult] = await Promise.all([
+    supabase.rpc("nearby_contacts_page", {
+      rep: repId,
+      center_lat: centerLat,
+      center_lng: centerLng,
+      radius_miles: radiusMiles,
+      p_limit: limit,
+      p_offset: offset,
+    }),
+    supabase.rpc("nearby_map_markers", {
+      rep: repId,
+      center_lat: centerLat,
+      center_lng: centerLng,
+      radius_miles: radiusMiles,
+    }),
+  ]);
+
+  if (pageResult.error) {
+    console.error("nearby_contacts_page error:", pageResult.error);
     return new Response(JSON.stringify({ error: "Search failed" }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 
-  return new Response(JSON.stringify({ contacts: data ?? [], center_lat: centerLat, center_lng: centerLng }), {
+  if (markersResult.error) {
+    console.error("nearby_map_markers error:", markersResult.error);
+    // Non-fatal: return paginated contacts without markers
+  }
+
+  const paginatedContacts = pageResult.data ?? [];
+  const totalCount = paginatedContacts.length > 0 ? Number(paginatedContacts[0].total_count) : 0;
+  const mapMarkers = markersResult.data ?? [];
+
+  return new Response(JSON.stringify({
+    paginatedContacts,
+    totalCount,
+    mapMarkers,
+    center_lat: centerLat,
+    center_lng: centerLng,
+  }), {
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 });
