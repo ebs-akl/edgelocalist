@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
-import type { NearbyContact } from "@/lib/contacts";
+import type { NearbyContact, MapMarker } from "@/lib/contacts";
 import { formatCurrency, toTitleCase } from "@/lib/contacts";
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN ?? "";
@@ -15,6 +15,7 @@ function ltvColor(ltv: number | null): string {
 
 interface ContactMapViewProps {
   contacts: NearbyContact[];
+  mapMarkers?: MapMarker[];
   center: { lat: number; lng: number } | null;
   repName: string;
   isGhlMode: boolean;
@@ -24,12 +25,16 @@ interface ContactMapViewProps {
 
 export default function ContactMapView({
   contacts,
+  mapMarkers,
   center,
   repName,
 }: ContactMapViewProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
   const [mapReady, setMapReady] = useState(false);
+
+  // Use mapMarkers for GeoJSON if available, otherwise fall back to contacts
+  const useMarkers = mapMarkers && mapMarkers.length > 0;
 
   useEffect(() => {
     if (!mapContainer.current || !MAPBOX_TOKEN || !center) return;
@@ -56,27 +61,49 @@ export default function ContactMapView({
 
   useEffect(() => {
     const m = map.current;
-    if (!m || !mapReady || contacts.length === 0) return;
+    if (!m || !mapReady) return;
 
-    const features = contacts
-      .filter((c: any) => c.latitude != null && c.longitude != null)
-      .map((c: any) => ({
-        type: "Feature" as const,
-        geometry: {
-          type: "Point" as const,
-          coordinates: [c.longitude, c.latitude] as [number, number],
-        },
-        properties: {
-          id: c.id,
-          name: `${toTitleCase(c.first_name)} ${toTitleCase(c.last_name)}`,
-          city: `${toTitleCase(c.city)}, ${c.state?.toUpperCase() ?? ""}`,
-          phone: c.phone,
-          ltv: c.lifetime_value,
-          ltvColor: ltvColor(c.lifetime_value),
-          distance: c.distance_miles.toFixed(1),
-          address: c.address ?? "",
-        },
-      }));
+    // Build features from either lightweight markers or full contacts
+    const features = useMarkers
+      ? mapMarkers!
+          .filter((mk) => mk.latitude != null && mk.longitude != null)
+          .map((mk) => ({
+            type: "Feature" as const,
+            geometry: {
+              type: "Point" as const,
+              coordinates: [mk.longitude, mk.latitude] as [number, number],
+            },
+            properties: {
+              id: mk.id,
+              ltvColor: ltvColor(mk.lifetime_value),
+              ltv: mk.lifetime_value,
+              distance: mk.distance_miles.toFixed(1),
+              // Lightweight markers don't have name/city/phone
+              name: "",
+              city: "",
+              phone: "",
+              address: "",
+            },
+          }))
+      : contacts
+          .filter((c: any) => c.latitude != null && c.longitude != null)
+          .map((c: any) => ({
+            type: "Feature" as const,
+            geometry: {
+              type: "Point" as const,
+              coordinates: [c.longitude, c.latitude] as [number, number],
+            },
+            properties: {
+              id: c.id,
+              name: `${toTitleCase(c.first_name)} ${toTitleCase(c.last_name)}`,
+              city: `${toTitleCase(c.city)}, ${c.state?.toUpperCase() ?? ""}`,
+              phone: c.phone,
+              ltv: c.lifetime_value,
+              ltvColor: ltvColor(c.lifetime_value),
+              distance: c.distance_miles.toFixed(1),
+              address: c.address ?? "",
+            },
+          }));
 
     const geojson: GeoJSON.FeatureCollection = {
       type: "FeatureCollection",
@@ -170,6 +197,22 @@ export default function ContactMapView({
       const coords = f[0].geometry.coordinates as [number, number];
       const ltvDisplay = props.ltv != null && props.ltv !== 0 ? formatCurrency(Number(props.ltv)) : "—";
 
+      // If lightweight marker (no name), show minimal popup
+      if (!props.name) {
+        new mapboxgl.Popup({ offset: 15, maxWidth: "200px" })
+          .setLngLat(coords)
+          .setHTML(`
+            <div style="font-family:'Poppins',sans-serif;min-width:120px;">
+              <div style="display:flex;gap:12px;font-size:12px;">
+                <span>📍 ${props.distance} mi</span>
+                <span>💰 ${ltvDisplay}</span>
+              </div>
+            </div>
+          `)
+          .addTo(m);
+        return;
+      }
+
       new mapboxgl.Popup({ offset: 15, maxWidth: "280px" })
         .setLngLat(coords)
         .setHTML(`
@@ -204,7 +247,7 @@ export default function ContactMapView({
       });
       m.fitBounds(bounds, { padding: 60, maxZoom: 14 });
     }
-  }, [contacts, mapReady, center, repName]);
+  }, [contacts, mapMarkers, mapReady, center, repName, useMarkers]);
 
   if (!MAPBOX_TOKEN) {
     return (

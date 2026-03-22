@@ -48,6 +48,14 @@ export interface NearbyContact {
   longitude?: number | null;
 }
 
+export interface MapMarker {
+  id: string;
+  latitude: number;
+  longitude: number;
+  lifetime_value: number | null;
+  distance_miles: number;
+}
+
 export function formatPhone(raw: string): string {
   const digits = raw.replace(/\D/g, "");
   return digits;
