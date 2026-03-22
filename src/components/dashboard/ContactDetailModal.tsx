@@ -64,6 +64,9 @@ export default function ContactDetailModal({ contact, repName, isGhlMode, onClos
             <p className="text-sm text-muted-foreground">
               {contact.city}, {contact.state} {contact.zip}
             </p>
+            {contact.county && (
+              <p className="text-xs text-muted-foreground">{contact.county}</p>
+            )}
           </div>
 
           {/* Primary stats */}

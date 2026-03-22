@@ -716,7 +716,10 @@ export default function SearchTab({ repName, recentSearches, onSearch, contactCo
                         <p className="font-medium text-sm truncate">
                           {toTitleCase(contact.first_name)} {toTitleCase(contact.last_name)}
                         </p>
-                        <p className="text-xs text-muted-foreground truncate">{toTitleCase(contact.city)}, {contact.state?.toUpperCase()}</p>
+                        <p className="text-xs text-muted-foreground truncate">
+                          {toTitleCase(contact.city)}, {contact.state?.toUpperCase()}
+                          {contact.county ? ` · ${contact.county}` : ""}
+                        </p>
                       </div>
 
                       <div className="hidden sm:block">
