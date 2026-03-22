@@ -13,9 +13,9 @@ serve(async (req) => {
   }
 
   try {
-    // Verify shared secret
-    const url = new URL(req.url);
-    const secret = url.searchParams.get("secret");
+    // Verify shared secret — check header first, fall back to query param for backward compatibility
+    const secret = req.headers.get("X-GHL-Webhook-Secret")
+      ?? new URL(req.url).searchParams.get("secret");
     if (secret !== Deno.env.get("GHL_WEBHOOK_SECRET")) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
