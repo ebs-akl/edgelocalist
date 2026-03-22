@@ -12,11 +12,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, MessageSquare, Tag, Info, FileText } from "lucide-react";
+import { Loader2, MessageSquare, Tag, Info } from "lucide-react";
 import successBot from "@/assets/SuccessBot.png";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import type { NearbyContact } from "@/lib/contacts";
+import { SMS_SNIPPETS, type SnippetTiming } from "./sms-snippets";
 
 interface GroupSmsModalProps {
   open: boolean;
@@ -24,25 +25,6 @@ interface GroupSmsModalProps {
   contacts: NearbyContact[];
   repName: string;
 }
-
-const SMS_TEMPLATES = [
-  {
-    label: "Appointment Follow-Up",
-    body: `I was in your area and wanted to check in. Would you have a few minutes this week for a quick visit? Let me know what works!`,
-  },
-  {
-    label: "Service Reminder",
-    body: `It's been a while since your last sharpening — I'd love to stop by and take care of your knives. Want to set something up?`,
-  },
-  {
-    label: "Holiday / Seasonal",
-    body: `If you're thinking about gifts this season, I have some great options. Let me know if you'd like to chat! 🎁`,
-  },
-  {
-    label: "New Customer Intro",
-    body: `I'm your local Cutco rep in the area. If you ever need anything — sharpening, replacements, or new pieces — don't hesitate to reach out!`,
-  },
-];
 
 export default function GroupSmsModal({ open, onClose, contacts, repName }: GroupSmsModalProps) {
   const { ssoPayload } = useAuth();
@@ -53,8 +35,22 @@ export default function GroupSmsModal({ open, onClose, contacts, repName }: Grou
   const [taggedCount, setTaggedCount] = useState(0);
   const [step, setStep] = useState<"compose" | "tagging">("compose");
 
+  // Snippet selector state
+  const [snippetCat, setSnippetCat] = useState<string | null>(null);
+  const [snippetIdx, setSnippetIdx] = useState<number | null>(null);
+  const [snippetTiming, setSnippetTiming] = useState<SnippetTiming | null>(null);
+
   const GHL_ID_RE = /^[a-zA-Z0-9]{20}$/;
   const validContacts = contacts.filter((c) => c.contact_id && GHL_ID_RE.test(c.contact_id.trim()));
+
+  const selectedCategory = SMS_SNIPPETS.find((c) => c.category === snippetCat);
+  const selectedSnippet = selectedCategory && snippetIdx !== null ? selectedCategory.snippets[snippetIdx] : null;
+
+  const handlePickTiming = (timing: SnippetTiming) => {
+    setSnippetTiming(timing);
+    const variant = selectedSnippet?.variants.find((v) => v.timing === timing);
+    if (variant) setMessage(variant.body);
+  };
 
   const handleSend = async () => {
     const trimmedTag = tag.trim();
@@ -79,7 +75,6 @@ export default function GroupSmsModal({ open, onClose, contacts, repName }: Grou
     setSending(true);
 
     try {
-      // Step 1: Save message as GHL Custom Value
       setStep("compose");
       const cvPayload: Record<string, unknown> = { message: trimmedMessage };
       if (ssoPayload) cvPayload.sso_payload = ssoPayload;
@@ -90,7 +85,6 @@ export default function GroupSmsModal({ open, onClose, contacts, repName }: Grou
 
       if (cvError) throw new Error(cvError.message || "Failed to save SMS message");
 
-      // Step 2: Apply tags in batches
       setStep("tagging");
       const BATCH_SIZE = 500;
       let totalTagged = 0;
@@ -133,6 +127,9 @@ export default function GroupSmsModal({ open, onClose, contacts, repName }: Grou
     setTag("localist-sms");
     setMessage("");
     setStep("compose");
+    setSnippetCat(null);
+    setSnippetIdx(null);
+    setSnippetTiming(null);
     onClose();
   };
 
@@ -145,7 +142,7 @@ export default function GroupSmsModal({ open, onClose, contacts, repName }: Grou
             Group Text — {validContacts.length} Contact{validContacts.length !== 1 ? "s" : ""}
           </DialogTitle>
           <DialogDescription>
-            Compose your message, then apply a tag to trigger your GHL Workflow.
+            Pick a snippet or write your own, then apply a tag to trigger your GHL Workflow.
           </DialogDescription>
         </DialogHeader>
 
@@ -156,14 +153,14 @@ export default function GroupSmsModal({ open, onClose, contacts, repName }: Grou
               {taggedCount} contact{taggedCount !== 1 ? "s" : ""} tagged!
             </p>
             <p className="text-sm text-muted-foreground">
-              Your message has been saved and the tag <Badge variant="secondary" className="mx-1">{tag}</Badge> has been applied. Your Workflow will now send each contact a personalized SMS.
+              Your message has been saved and the tag <Badge variant="secondary" className="mx-1">{tag}</Badge> has been applied. Your Workflow will now send each contact the SMS.
             </p>
             <div className="rounded-lg bg-muted/50 border p-3 w-full text-left">
               <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">Each contact will receive:</p>
-              <p className="text-sm whitespace-pre-wrap">Hi [Contact's First Name],{"\n\n"}{message}</p>
+              <p className="text-sm whitespace-pre-wrap">{message}</p>
             </div>
             <p className="text-xs text-muted-foreground">
-              The Workflow adds the greeting and removes the tag automatically so contacts can be messaged again.
+              The Workflow sends the message and removes the tag automatically so contacts can be messaged again.
             </p>
             <Button onClick={handleClose} className="w-full">Done</Button>
           </div>
@@ -177,29 +174,70 @@ export default function GroupSmsModal({ open, onClose, contacts, repName }: Grou
               <ol className="text-xs text-muted-foreground space-y-1 list-decimal list-inside">
                 <li>Your message is saved as a <strong>Custom Value</strong> in your CRM.</li>
                 <li>A tag is applied to all selected contacts instantly.</li>
-                <li>Your <strong>Workflow</strong> triggers on this tag, adds "Hi [Name]," automatically, and sends the SMS.</li>
+                <li>Your <strong>Workflow</strong> triggers on this tag and sends the SMS.</li>
                 <li>The tag is removed so contacts can be messaged again next time.</li>
               </ol>
             </div>
 
-            {/* Templates */}
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium flex items-center gap-1.5">
-                <FileText className="h-3.5 w-3.5" /> Templates
-              </label>
+            {/* Snippet Selector */}
+            <div className="space-y-2.5">
+              <label className="text-sm font-medium">Snippet Library</label>
+
+              {/* Step 1: Category */}
               <div className="flex flex-wrap gap-1.5">
-                {SMS_TEMPLATES.map((tpl) => (
+                {SMS_SNIPPETS.map((cat) => (
                   <Button
-                    key={tpl.label}
-                    variant={message === tpl.body ? "default" : "outline"}
+                    key={cat.category}
+                    variant={snippetCat === cat.category ? "default" : "outline"}
                     size="sm"
                     className="text-xs h-7"
-                    onClick={() => setMessage(tpl.body)}
+                    onClick={() => {
+                      setSnippetCat(cat.category);
+                      setSnippetIdx(null);
+                      setSnippetTiming(null);
+                    }}
                   >
-                    {tpl.label}
+                    {cat.icon} {cat.categoryLabel}
                   </Button>
                 ))}
               </div>
+
+              {/* Step 2: Snippet */}
+              {selectedCategory && (
+                <div className="flex flex-wrap gap-1.5">
+                  {selectedCategory.snippets.map((snippet, idx) => (
+                    <Button
+                      key={snippet.name}
+                      variant={snippetIdx === idx ? "default" : "outline"}
+                      size="sm"
+                      className="text-xs h-7"
+                      onClick={() => {
+                        setSnippetIdx(idx);
+                        setSnippetTiming(null);
+                      }}
+                    >
+                      {snippet.name}
+                    </Button>
+                  ))}
+                </div>
+              )}
+
+              {/* Step 3: Timing */}
+              {selectedSnippet && (
+                <div className="flex flex-wrap gap-1.5">
+                  {(["Immediate", "Morning Gap", "In Advance"] as SnippetTiming[]).map((t) => (
+                    <Button
+                      key={t}
+                      variant={snippetTiming === t ? "default" : "outline"}
+                      size="sm"
+                      className="text-xs h-7"
+                      onClick={() => handlePickTiming(t)}
+                    >
+                      {t === "Immediate" ? "⚡" : t === "Morning Gap" ? "☀️" : "📅"} {t}
+                    </Button>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Message textarea */}
@@ -208,13 +246,13 @@ export default function GroupSmsModal({ open, onClose, contacts, repName }: Grou
               <Textarea
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
-                placeholder="Type your message here or pick a template above…"
-                maxLength={1000}
+                placeholder="Pick a snippet above or type your own message…"
+                maxLength={1600}
                 rows={4}
                 style={{ fontSize: "16px" }}
               />
               <p className="text-xs text-muted-foreground">
-                {message.length}/1000 chars · Don't add "Hi [Name]" — your Workflow handles that automatically!
+                {message.length}/1600 chars · Snippets include greetings — your Workflow sends as-is.
               </p>
             </div>
 
