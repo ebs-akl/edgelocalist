@@ -105,7 +105,17 @@ serve(async (req) => {
       ? new Date(Date.now() + tokenData.expires_in * 1000).toISOString()
       : null;
 
-    // 1. Check if this location already exists
+    // Resolve the authenticated user (if any)
+    let authUserId: string | null = null;
+    const authHeader = req.headers.get("Authorization");
+    if (authHeader) {
+      const { data: { user } } = await supabaseAdmin.auth.getUser(
+        authHeader.replace("Bearer ", "")
+      );
+      if (user) authUserId = user.id;
+    }
+
+    // Check if this location already exists
     const { data: existingRow } = await supabaseAdmin
       .from("localist_reps")
       .select("id")
@@ -122,46 +132,32 @@ serve(async (req) => {
 
     let saveError;
     if (existingRow) {
-      // 2a. UPDATE existing row
+      // Location already claimed — only the owner or the same auth user can re-authorize
+      if (authUserId && existingRow.id !== authUserId) {
+        // Different authenticated user trying to claim an already-owned location
+        return new Response(JSON.stringify({ error: "This location is already connected to another account" }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      // Update existing row (same owner or unauthenticated re-install)
       const { error } = await supabaseAdmin
         .from("localist_reps")
         .update(tokenPayload)
         .eq("id", existingRow.id);
       saveError = error;
+
+      // If authenticated user matches, also ensure their row is updated
+      if (authUserId && existingRow.id === authUserId) {
+        // Already updated above via existingRow.id
+      }
     } else {
-      // 2b. INSERT new row with generated UUID
+      // New location — use authenticated user's ID if available, otherwise generate UUID
+      const repId = authUserId ?? crypto.randomUUID();
       const { error } = await supabaseAdmin
         .from("localist_reps")
-        .insert({ ...tokenPayload, id: crypto.randomUUID() });
+        .upsert({ ...tokenPayload, id: repId }, { onConflict: "id" });
       saveError = error;
-    }
-
-    if (saveError) {
-      console.error("DB save error:", saveError);
-      return new Response(JSON.stringify({ error: "Failed to save credentials" }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    // If authenticated user, also link their row by user id
-    const authHeader = req.headers.get("Authorization");
-    if (authHeader) {
-      const { data: { user } } = await supabaseAdmin.auth.getUser(
-        authHeader.replace("Bearer ", "")
-      );
-      if (user) {
-        await supabaseAdmin
-          .from("localist_reps")
-          .update({
-            ghl_access_token: access_token,
-            ghl_refresh_token: refresh_token ?? null,
-            ghl_location_id: locationId,
-            ghl_expires_at: expiresAt,
-            subscription_tier: "edgedms",
-          })
-          .eq("id", user.id);
-      }
     }
 
     return new Response(JSON.stringify({ success: true, locationId }), {
