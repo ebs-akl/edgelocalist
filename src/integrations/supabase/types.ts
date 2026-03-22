@@ -21,6 +21,7 @@ export type Database = {
           cat: string | null
           city: string | null
           contact_id: string
+          county: string | null
           first_name: string | null
           ghl_contact_id: string | null
           gift_count: number | null
@@ -49,6 +50,7 @@ export type Database = {
           cat?: string | null
           city?: string | null
           contact_id: string
+          county?: string | null
           first_name?: string | null
           ghl_contact_id?: string | null
           gift_count?: number | null
@@ -77,6 +79,7 @@ export type Database = {
           cat?: string | null
           city?: string | null
           contact_id?: string
+          county?: string | null
           first_name?: string | null
           ghl_contact_id?: string | null
           gift_count?: number | null
@@ -219,6 +222,7 @@ export type Database = {
           biz: string
           cat: string
           city: string
+          county: string
           distance_miles: number
           first_name: string
           gift_count: number
@@ -251,6 +255,7 @@ export type Database = {
           cat: string
           city: string
           contact_id: string
+          county: string
           distance_miles: number
           first_name: string
           gift_count: number
@@ -283,6 +288,7 @@ export type Database = {
           biz: string
           cat: string
           city: string
+          county: string
           distance_miles: number
           first_name: string
           gift_count: number
@@ -314,6 +320,7 @@ export type Database = {
           cat: string
           city: string
           contact_id: string
+          county: string
           distance_miles: number
           first_name: string
           gift_count: number
