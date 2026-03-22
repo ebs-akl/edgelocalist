@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "@/hooks/use-toast";
-import { MapPin, Loader2, Phone, MessageSquare, Map, ExternalLink, ChevronUp, ChevronDown, Filter, Trash2, Send, ArrowUpDown, Tag, List } from "lucide-react";
+import { MapPin, Loader2, Phone, MessageSquare, Map, ExternalLink, ChevronUp, ChevronDown, Filter, Trash2, Send, ArrowUpDown, Tag, List, ChevronLeft, ChevronRight } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -15,7 +15,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { formatPhoneDisplay, formatCurrency, toTitleCase } from "@/lib/contacts";
-import type { NearbyContact } from "@/lib/contacts";
+import type { NearbyContact, MapMarker } from "@/lib/contacts";
 import ContactDetailModal from "./ContactDetailModal";
 import GroupSmsModal from "./GroupSmsModal";
 import TagContactsModal from "./TagContactsModal";
@@ -32,8 +32,8 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
-
 const RADIUS_OPTIONS = [5, 10, 25, 50] as const;
+const PAGE_SIZE = 50;
 
 interface SearchTabProps {
   repName: string;
@@ -62,7 +62,6 @@ export default function SearchTab({ repName, recentSearches, onSearch, contactCo
   const [searchCenter, setSearchCenter] = useState<{ lat: number; lng: number } | null>(null);
   const [contactToDelete, setContactToDelete] = useState<NearbyContact | null>(null);
   const [deleting, setDeleting] = useState(false);
-  // Group SMS state
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [groupSmsOpen, setGroupSmsOpen] = useState(false);
   const [tagModalOpen, setTagModalOpen] = useState(false);
@@ -71,6 +70,15 @@ export default function SearchTab({ repName, recentSearches, onSearch, contactCo
   const [categoryFilters, setCategoryFilters] = useState<Set<"RLT" | "BIZ" | "REG">>(new Set());
   const watchIdRef = useRef<number | null>(null);
 
+  // Pagination state
+  const [page, setPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const [mapMarkers, setMapMarkers] = useState<MapMarker[]>([]);
+
+  // Store the last search params for re-fetching on page change
+  const lastSearchRef = useRef<{ center: { lat: number; lng: number }; label: string; address?: string } | null>(null);
+
+  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
 
   const toggleCategory = (cat: "RLT" | "BIZ" | "REG") => {
     setCategoryFilters(prev => {
@@ -94,43 +102,63 @@ export default function SearchTab({ repName, recentSearches, onSearch, contactCo
 
   const effectiveRepId = user?.id ?? ghlRepId ?? null;
 
-  const runRadiusQuery = useCallback(async (center: { lat: number; lng: number }, label: string) => {
+  const runRadiusQuery = useCallback(async (center: { lat: number; lng: number }, label: string, pageNum: number = 1) => {
     if (!effectiveRepId) return;
     if (contactCount === 0) {
       toast({ title: "No contacts loaded yet — let's fix that.", description: "Upload a CSV in the Contacts tab first.", variant: "destructive" });
       return;
     }
     setLoading(true);
-    setSearched(false);
-    setSelectedIds(new Set());
-    setCategoryFilters(new Set());
+    if (pageNum === 1) {
+      setSearched(false);
+      setSelectedIds(new Set());
+      setCategoryFilters(new Set());
+    }
     try {
       setSearchCenter(center);
-      onSearch(label);
+      if (pageNum === 1) onSearch(label);
+      lastSearchRef.current = { center, label };
 
       if (isGhlMode) {
-        // GHL mode: use edge function (Bearer auth auto-included by Supabase client)
-const { data: fnData, error: fnError } = await supabase.functions.invoke("localist-nearby-search", {
+        const { data: fnData, error: fnError } = await supabase.functions.invoke("localist-nearby-search", {
           body: {
             center_lat: center.lat,
             center_lng: center.lng,
             radius_miles: radius,
+            page: pageNum,
+            limit: PAGE_SIZE,
           },
         });
         if (fnError) throw fnError;
-        setResults((fnData?.contacts as NearbyContact[]) ?? []);
+        setResults((fnData?.paginatedContacts as NearbyContact[]) ?? []);
+        setTotalCount(fnData?.totalCount ?? 0);
+        setMapMarkers((fnData?.mapMarkers as MapMarker[]) ?? []);
       } else {
-        // Standalone mode: direct RPC call
-        const { data, error } = await supabase.rpc("nearby_contacts", {
-          rep: effectiveRepId,
-          center_lat: center.lat,
-          center_lng: center.lng,
-          radius_miles: radius,
-        });
-        if (error) throw error;
-        setResults((data as NearbyContact[]) ?? []);
+        // Standalone mode: call both RPCs in parallel
+        const [pageResult, markersResult] = await Promise.all([
+          supabase.rpc("nearby_contacts_page_auth" as any, {
+            rep: effectiveRepId,
+            center_lat: center.lat,
+            center_lng: center.lng,
+            radius_miles: radius,
+            p_limit: PAGE_SIZE,
+            p_offset: (pageNum - 1) * PAGE_SIZE,
+          }),
+          supabase.rpc("nearby_map_markers_auth" as any, {
+            rep: effectiveRepId,
+            center_lat: center.lat,
+            center_lng: center.lng,
+            radius_miles: radius,
+          }),
+        ]);
+        if (pageResult.error) throw pageResult.error;
+        const contacts = (pageResult.data as any[]) ?? [];
+        setResults(contacts as NearbyContact[]);
+        setTotalCount(contacts.length > 0 ? Number(contacts[0].total_count) : 0);
+        setMapMarkers((markersResult.data as MapMarker[]) ?? []);
       }
 
+      setPage(pageNum);
       setSearched(true);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Search failed.";
@@ -140,22 +168,25 @@ const { data: fnData, error: fnError } = await supabase.functions.invoke("locali
     }
   }, [effectiveRepId, contactCount, radius, onSearch, isGhlMode]);
 
-  // GHL mode: server-side geocoding + search in one call
-  const runServerSearch = useCallback(async (addr: string) => {
+  const runServerSearch = useCallback(async (addr: string, pageNum: number = 1) => {
     if (!effectiveRepId) return;
     if (contactCount === 0) {
       toast({ title: "No contacts loaded yet — let's fix that.", description: "Upload a CSV in the Contacts tab first.", variant: "destructive" });
       return;
     }
     setLoading(true);
-    setSearched(false);
-    setSelectedIds(new Set());
+    if (pageNum === 1) {
+      setSearched(false);
+      setSelectedIds(new Set());
+    }
     try {
-      onSearch(addr);
-const { data: fnData, error: fnError } = await supabase.functions.invoke("localist-nearby-search", {
+      if (pageNum === 1) onSearch(addr);
+      const { data: fnData, error: fnError } = await supabase.functions.invoke("localist-nearby-search", {
         body: {
           address: addr,
           radius_miles: radius,
+          page: pageNum,
+          limit: PAGE_SIZE,
         },
       });
       if (fnError) throw fnError;
@@ -165,11 +196,14 @@ const { data: fnData, error: fnError } = await supabase.functions.invoke("locali
         return;
       }
       if (fnData?.error) throw new Error(fnData.error);
-      // Set search center from server-geocoded coordinates for map view
       if (typeof fnData?.center_lat === "number" && typeof fnData?.center_lng === "number") {
         setSearchCenter({ lat: fnData.center_lat, lng: fnData.center_lng });
+        lastSearchRef.current = { center: { lat: fnData.center_lat, lng: fnData.center_lng }, label: addr, address: addr };
       }
-      setResults((fnData?.contacts as NearbyContact[]) ?? []);
+      setResults((fnData?.paginatedContacts as NearbyContact[]) ?? []);
+      setTotalCount(fnData?.totalCount ?? 0);
+      setMapMarkers((fnData?.mapMarkers as MapMarker[]) ?? []);
+      setPage(pageNum);
       setSearched(true);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Search failed.";
@@ -178,6 +212,16 @@ const { data: fnData, error: fnError } = await supabase.functions.invoke("locali
       setLoading(false);
     }
   }, [effectiveRepId, contactCount, radius, onSearch]);
+
+  const handlePageChange = useCallback((newPage: number) => {
+    if (newPage < 1 || newPage > totalPages || newPage === page || !lastSearchRef.current) return;
+    const { center, label, address: lastAddr } = lastSearchRef.current as any;
+    if (lastAddr && !center) {
+      runServerSearch(lastAddr, newPage);
+    } else {
+      runRadiusQuery(center, label, newPage);
+    }
+  }, [totalPages, page, runRadiusQuery, runServerSearch]);
 
   const fallbackToApproximateLocation = async () => {
     try {
@@ -211,7 +255,6 @@ const { data: fnData, error: fnError } = await supabase.functions.invoke("locali
   };
 
   const handleGPS = async () => {
-    // In GHL iframe mode, GPS is never available — go straight to IP-based location
     if (isGhlMode) {
       setLocating(true);
       await fallbackToApproximateLocation();
@@ -224,7 +267,6 @@ const { data: fnData, error: fnError } = await supabase.functions.invoke("locali
       return;
     }
 
-    // Clear any previous watch
     if (watchIdRef.current !== null) {
       navigator.geolocation.clearWatch(watchIdRef.current);
       watchIdRef.current = null;
@@ -271,20 +313,17 @@ const { data: fnData, error: fnError } = await supabase.functions.invoke("locali
     }
     if (!effectiveRepId) return;
 
-    // 1. If searchCenter already set (e.g. from GPS), use it directly
     if (searchCenter) {
       await runRadiusQuery(searchCenter, address.trim() || "Current Location");
       return;
     }
 
-    // 2. Strict coordinate regex bypass
     const parsed = parseCoords(address.trim());
     if (parsed) {
       await runRadiusQuery(parsed, address.trim());
       return;
     }
 
-    // 3. Geocode server-side (both GHL and standalone)
     await runServerSearch(address.trim());
   }, [address, searchCenter, effectiveRepId, runRadiusQuery, runServerSearch]);
 
@@ -304,6 +343,7 @@ const { data: fnData, error: fnError } = await supabase.functions.invoke("locali
         .eq("id", contactToDelete.id);
       if (error) throw error;
       setResults((prev) => prev.filter((c) => c.id !== contactToDelete.id));
+      setTotalCount((prev) => Math.max(0, prev - 1));
       toast({ title: `${contactToDelete.first_name} ${contactToDelete.last_name} deleted.` });
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Delete failed.";
@@ -377,6 +417,21 @@ const { data: fnData, error: fnError } = await supabase.functions.invoke("locali
   };
 
   const selectedContacts = filtered.filter((c) => c.id && selectedIds.has(c.id as string));
+
+  // Pagination helpers
+  const renderPageNumbers = () => {
+    const pages: (number | "...")[] = [];
+    if (totalPages <= 7) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else {
+      pages.push(1);
+      if (page > 3) pages.push("...");
+      for (let i = Math.max(2, page - 1); i <= Math.min(totalPages - 1, page + 1); i++) pages.push(i);
+      if (page < totalPages - 2) pages.push("...");
+      pages.push(totalPages);
+    }
+    return pages;
+  };
 
   return (
     <div className="space-y-4">
@@ -471,12 +526,14 @@ const { data: fnData, error: fnError } = await supabase.functions.invoke("locali
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <div className="flex items-center gap-3 flex-wrap">
               <p className="text-sm text-muted-foreground">
-                {results.length === 0
+                {totalCount === 0
                   ? "No contacts found in that area — try a wider radius."
-                  : `${filtered.length} of ${results.length} contact${results.length !== 1 ? "s" : ""} within ${radius} miles`}
+                  : totalCount <= PAGE_SIZE
+                    ? `${filtered.length} of ${totalCount} contact${totalCount !== 1 ? "s" : ""} within ${radius} miles`
+                    : `Showing ${(page - 1) * PAGE_SIZE + 1}–${Math.min(page * PAGE_SIZE, totalCount)} of ${totalCount} contacts within ${radius} miles`}
               </p>
               {/* Category filters */}
-              {results.length > 0 && (
+              {totalCount > 0 && (
                 <div className="flex rounded-lg border overflow-hidden">
                   {(["RLT", "BIZ", "REG"] as const).map((cat) => (
                     <button
@@ -494,7 +551,7 @@ const { data: fnData, error: fnError } = await supabase.functions.invoke("locali
                 </div>
               )}
               {/* List / Map toggle */}
-              {results.length > 0 && (
+              {totalCount > 0 && (
                 <div className="flex rounded-lg border overflow-hidden">
                   <button
                     onClick={() => setViewMode("list")}
@@ -522,7 +579,6 @@ const { data: fnData, error: fnError } = await supabase.functions.invoke("locali
               )}
             </div>
             <div className="flex items-center gap-2 flex-wrap">
-              {/* Group SMS button — GHL mode only, shown when contacts are selected */}
               {isGhlMode && selectedContacts.length > 0 && (
                 <>
                   <Button
@@ -544,7 +600,7 @@ const { data: fnData, error: fnError } = await supabase.functions.invoke("locali
                   </Button>
                 </>
               )}
-              {results.length > 0 && viewMode === "list" && (
+              {totalCount > 0 && viewMode === "list" && (
                 <>
                   <Select
                     value={`${sortKey}_${sortAsc ? "asc" : "desc"}`}
@@ -587,9 +643,10 @@ const { data: fnData, error: fnError } = await supabase.functions.invoke("locali
           </div>
 
           {/* Map View */}
-          {viewMode === "map" && results.length > 0 && (
+          {viewMode === "map" && totalCount > 0 && (
             <ContactMapView
               contacts={filtered}
+              mapMarkers={mapMarkers}
               center={searchCenter}
               repName={repName}
               isGhlMode={isGhlMode}
@@ -642,7 +699,6 @@ const { data: fnData, error: fnError } = await supabase.functions.invoke("locali
                       key={contact.id}
                       className={`grid gap-2 px-4 py-3 hover:bg-muted/30 transition-colors items-center ${isGhlMode ? "sm:grid-cols-[24px_1fr_80px_80px_80px_85px_160px]" : "sm:grid-cols-[1fr_80px_80px_80px_85px_160px]"} ${isChecked ? "bg-primary/5" : ""}`}
                     >
-                      {/* Checkbox (GHL only) */}
                       {isGhlMode && (
                         <div onClick={(e) => e.stopPropagation()}>
                           <Checkbox
@@ -653,7 +709,6 @@ const { data: fnData, error: fnError } = await supabase.functions.invoke("locali
                         </div>
                       )}
 
-                      {/* Name + city — click to open modal */}
                       <div
                         className="min-w-0 cursor-pointer"
                         onClick={() => setSelectedContact(contact)}
@@ -664,34 +719,28 @@ const { data: fnData, error: fnError } = await supabase.functions.invoke("locali
                         <p className="text-xs text-muted-foreground truncate">{toTitleCase(contact.city)}, {contact.state?.toUpperCase()}</p>
                       </div>
 
-                      {/* Distance */}
                       <div className="hidden sm:block">
                         <Badge variant="secondary" className="text-xs font-mono">
                           {contact.distance_miles.toFixed(1)} mi
                         </Badge>
                       </div>
 
-                      {/* Lifetime value */}
                       <div className="hidden sm:block text-sm">{formatCurrency(contact.lifetime_value)}</div>
 
-                      {/* Last order */}
                       <div className="hidden sm:block text-xs text-muted-foreground">
                         {contact.last_order_date ? new Date(contact.last_order_date).toLocaleDateString() : "—"}
                       </div>
 
-                      {/* Last service */}
                       <div className="hidden sm:block text-xs text-muted-foreground">
                         {contact.last_service_date ? new Date(contact.last_service_date).toLocaleDateString() : "—"}
                       </div>
 
-                      {/* Mobile distance badge */}
                       <div className="sm:hidden">
                         <Badge variant="secondary" className="text-xs font-mono">
                           {contact.distance_miles.toFixed(1)} mi
                         </Badge>
                       </div>
 
-                      {/* Action buttons */}
                       <div className="flex gap-1.5 items-center" onClick={(e) => e.stopPropagation()}>
                         <a
                           href={`tel:${contact.phone}`}
@@ -756,6 +805,46 @@ const { data: fnData, error: fnError } = await supabase.functions.invoke("locali
                   );
                 })}
               </div>
+
+              {/* Pagination controls */}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-center gap-1 px-4 py-3 border-t bg-muted/20">
+                  <button
+                    onClick={() => handlePageChange(page - 1)}
+                    disabled={page === 1 || loading}
+                    className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-md hover:bg-muted transition-colors disabled:opacity-50 disabled:pointer-events-none"
+                  >
+                    <ChevronLeft className="h-3.5 w-3.5" />
+                    Previous
+                  </button>
+                  {renderPageNumbers().map((p, i) =>
+                    p === "..." ? (
+                      <span key={`ellipsis-${i}`} className="px-2 text-xs text-muted-foreground">…</span>
+                    ) : (
+                      <button
+                        key={p}
+                        onClick={() => handlePageChange(p as number)}
+                        disabled={loading}
+                        className={`min-w-[32px] px-2 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                          page === p
+                            ? "bg-primary text-primary-foreground"
+                            : "hover:bg-muted text-foreground"
+                        }`}
+                      >
+                        {p}
+                      </button>
+                    )
+                  )}
+                  <button
+                    onClick={() => handlePageChange(page + 1)}
+                    disabled={page === totalPages || loading}
+                    className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-md hover:bg-muted transition-colors disabled:opacity-50 disabled:pointer-events-none"
+                  >
+                    Next
+                    <ChevronRight className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              )}
             </div>
           )}
 
