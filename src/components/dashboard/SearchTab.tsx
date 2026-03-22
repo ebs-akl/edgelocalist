@@ -179,42 +179,50 @@ const { data: fnData, error: fnError } = await supabase.functions.invoke("locali
     }
   }, [effectiveRepId, contactCount, radius, onSearch]);
 
-  const handleGPS = () => {
+  const fallbackToApproximateLocation = async () => {
+    try {
+      const res = await fetch("https://ipapi.co/json/");
+      if (!res.ok) throw new Error("IP lookup failed");
+
+      const geo = await res.json();
+      const lat = Number(geo?.latitude);
+      const lng = Number(geo?.longitude);
+
+      if (Number.isFinite(lat) && Number.isFinite(lng)) {
+        const city = typeof geo?.city === "string" && geo.city.trim() ? geo.city.trim() : "your area";
+        setAddress(`Near ${city} (approx.)`);
+        toast({
+          title: "Using approximate location",
+          description: `GPS is unavailable here, so we used city-level accuracy near ${city}.`,
+        });
+        runRadiusQuery({ lat, lng }, `Near ${city}`);
+        return true;
+      }
+
+      throw new Error("No coordinates returned");
+    } catch {
+      toast({
+        title: "Could not determine location",
+        description: "Type an address or ZIP code instead.",
+        variant: "destructive",
+      });
+      return false;
+    }
+  };
+
+  const handleGPS = async () => {
+    // In GHL iframe mode, GPS is never available — go straight to IP-based location
+    if (isGhlMode) {
+      setLocating(true);
+      await fallbackToApproximateLocation();
+      setLocating(false);
+      return;
+    }
+
     if (!navigator.geolocation) {
       toast({ title: "GPS not supported on this device", variant: "destructive" });
       return;
     }
-
-    const fallbackToApproximateLocation = async () => {
-      try {
-        const res = await fetch("https://ipapi.co/json/");
-        if (!res.ok) throw new Error("IP lookup failed");
-
-        const geo = await res.json();
-        const lat = Number(geo?.latitude);
-        const lng = Number(geo?.longitude);
-
-        if (Number.isFinite(lat) && Number.isFinite(lng)) {
-          const city = typeof geo?.city === "string" && geo.city.trim() ? geo.city.trim() : "your area";
-          setAddress(`Near ${city} (approx.)`);
-          toast({
-            title: "Using approximate location",
-            description: `GPS is unavailable here, so we used city-level accuracy near ${city}.`,
-          });
-          runRadiusQuery({ lat, lng }, `Near ${city}`);
-          return true;
-        }
-
-        throw new Error("No coordinates returned");
-      } catch {
-        toast({
-          title: "Could not determine location",
-          description: "Type an address or ZIP code instead.",
-          variant: "destructive",
-        });
-        return false;
-      }
-    };
 
     // Clear any previous watch
     if (watchIdRef.current !== null) {
@@ -241,14 +249,7 @@ const { data: fnData, error: fnError } = await supabase.functions.invoke("locali
           watchIdRef.current = null;
         }
 
-        // In GHL mode, GPS is typically blocked by the iframe — fall back to IP geolocation
-        if (err.code === 1 && isGhlMode) {
-          const usedFallback = await fallbackToApproximateLocation();
-          setLocating(false);
-          if (usedFallback) return;
-        } else {
-          setLocating(false);
-        }
+        setLocating(false);
 
         const detail =
           err.code === 1
