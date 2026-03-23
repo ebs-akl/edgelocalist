@@ -207,13 +207,13 @@ serve(async (req) => {
     // Update contacts with coordinates
     for (const r of results) {
       if (r.coords) {
+        const updateData = backfillCounty
+          ? { county: r.coords.county }
+          : { latitude: r.coords.lat, longitude: r.coords.lng, county: r.coords.county };
+
         const { error: updateErr } = await supabase
           .from("localist_contacts")
-          .update({
-            latitude: r.coords.lat,
-            longitude: r.coords.lng,
-            county: r.coords.county,
-          })
+          .update(updateData)
           .eq("id", r.id);
 
         if (!updateErr) geocoded++;
@@ -227,13 +227,20 @@ serve(async (req) => {
   }
 
   // Count remaining
-  const { count: remaining } = await supabase
+  let remainingQuery = supabase
     .from("localist_contacts")
     .select("id", { count: "exact", head: true })
     .eq("rep_id", repId)
-    .is("latitude", null)
     .not("address", "is", null)
     .not("address", "eq", "");
+
+  if (backfillCounty) {
+    remainingQuery = remainingQuery.not("latitude", "is", null).is("county", null);
+  } else {
+    remainingQuery = remainingQuery.is("latitude", null);
+  }
+
+  const { count: remaining } = await remainingQuery;
 
   return new Response(
     JSON.stringify({ geocoded, remaining: remaining ?? 0 }),
