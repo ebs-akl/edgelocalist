@@ -9,8 +9,8 @@ const corsHeaders = {
 };
 
 const LOCATION_ID_RE = /^[a-zA-Z0-9]{5,50}$/;
-const BATCH_SIZE = 50; // Mapbox batch limit
-const DELAY_MS = 250; // Rate-limit delay between batches
+const BATCH_SIZE = 10; // Reduced to avoid Mapbox rate limits
+const DELAY_MS = 500; // Rate-limit delay between batches
 
 function decryptSsoPayload(ssoPayload: string): string | null {
   const ssoKey = Deno.env.get("GHL_SSO_KEY");
@@ -179,6 +179,8 @@ serve(async (req) => {
     });
   }
 
+  console.log(`[geocode] mode=${backfillCounty ? "backfill_county" : "normal"}, contacts_found=${contacts?.length ?? 0}`);
+
   if (!contacts || contacts.length === 0) {
     return new Response(JSON.stringify({ geocoded: 0, remaining: 0 }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -211,12 +213,20 @@ serve(async (req) => {
           ? { county: r.coords.county }
           : { latitude: r.coords.lat, longitude: r.coords.lng, county: r.coords.county };
 
+        console.log(`[geocode] updating id=${r.id}, county=${r.coords.county}, backfill=${backfillCounty}`);
+
         const { error: updateErr } = await supabase
           .from("localist_contacts")
           .update(updateData)
           .eq("id", r.id);
 
-        if (!updateErr) geocoded++;
+        if (updateErr) {
+          console.error(`[geocode] update error for id=${r.id}:`, updateErr.message);
+        } else {
+          geocoded++;
+        }
+      } else {
+        console.log(`[geocode] no coords for id=${r.id}`);
       }
     }
 
