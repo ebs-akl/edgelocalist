@@ -165,6 +165,39 @@ const { data, error } = await supabase.functions.invoke("localist-sync-contacts"
           : "No new addresses to geocode",
       });
 
+      // Step 4b: Backfill county for contacts that have coords but no county
+      let countyBackfilled = 0;
+      let countyRemaining = 1;
+      let countyRounds = 0;
+
+      while (countyRemaining > 0 && countyRounds < MAX_ROUNDS) {
+        const { data: countyData, error: countyErr } = await supabase.functions.invoke("localist-geocode-contacts", {
+          body: { backfill_county: true, limit: 500 },
+        });
+
+        if (countyErr || !countyData) break;
+
+        countyBackfilled += countyData.geocoded ?? 0;
+        countyRemaining = countyData.remaining ?? 0;
+        countyRounds++;
+
+        if (countyBackfilled > 0) {
+          updateStep("geocode", {
+            status: "active",
+            detail: `Populating county data... ${countyBackfilled.toLocaleString()} updated${countyRemaining > 0 ? `, ${countyRemaining.toLocaleString()} remaining` : ""}`,
+          });
+        }
+
+        if (countyData.geocoded === 0) break;
+      }
+
+      if (countyBackfilled > 0) {
+        updateStep("geocode", {
+          status: "done",
+          detail: `${totalGeocoded.toLocaleString()} geocoded, ${countyBackfilled.toLocaleString()} counties populated`,
+        });
+      }
+
       // Step 5: get final stats
       updateStep("done", { status: "active" });
 
