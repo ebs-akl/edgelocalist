@@ -150,18 +150,27 @@ serve(async (req) => {
   }
 
   // ── Fetch contacts needing geocoding ──
+  const backfillCounty = body.backfill_county === true;
   const maxContacts = (typeof body.limit === "number" && body.limit > 0)
     ? Math.min(body.limit as number, 500)
     : 500;
 
-  const { data: contacts, error: fetchErr } = await supabase
+  let query = supabase
     .from("localist_contacts")
     .select("id, address, city, state, zip")
     .eq("rep_id", repId)
-    .is("latitude", null)
     .not("address", "is", null)
-    .not("address", "eq", "")
-    .limit(maxContacts);
+    .not("address", "eq", "");
+
+  if (backfillCounty) {
+    // Target contacts that have coordinates but no county
+    query = query.not("latitude", "is", null).is("county", null);
+  } else {
+    // Normal mode: contacts without coordinates
+    query = query.is("latitude", null);
+  }
+
+  const { data: contacts, error: fetchErr } = await query.limit(maxContacts);
 
   if (fetchErr) {
     return new Response(JSON.stringify({ error: "Failed to fetch contacts" }), {
@@ -198,13 +207,13 @@ serve(async (req) => {
     // Update contacts with coordinates
     for (const r of results) {
       if (r.coords) {
+        const updateData = backfillCounty
+          ? { county: r.coords.county }
+          : { latitude: r.coords.lat, longitude: r.coords.lng, county: r.coords.county };
+
         const { error: updateErr } = await supabase
           .from("localist_contacts")
-          .update({
-            latitude: r.coords.lat,
-            longitude: r.coords.lng,
-            county: r.coords.county,
-          })
+          .update(updateData)
           .eq("id", r.id);
 
         if (!updateErr) geocoded++;
@@ -218,13 +227,20 @@ serve(async (req) => {
   }
 
   // Count remaining
-  const { count: remaining } = await supabase
+  let remainingQuery = supabase
     .from("localist_contacts")
     .select("id", { count: "exact", head: true })
     .eq("rep_id", repId)
-    .is("latitude", null)
     .not("address", "is", null)
     .not("address", "eq", "");
+
+  if (backfillCounty) {
+    remainingQuery = remainingQuery.not("latitude", "is", null).is("county", null);
+  } else {
+    remainingQuery = remainingQuery.is("latitude", null);
+  }
+
+  const { count: remaining } = await remainingQuery;
 
   return new Response(
     JSON.stringify({ geocoded, remaining: remaining ?? 0 }),
