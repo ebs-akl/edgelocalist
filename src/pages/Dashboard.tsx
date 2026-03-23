@@ -198,6 +198,39 @@ const { data, error } = await supabase.functions.invoke("localist-sync-contacts"
         });
       }
 
+      // Step 4c: Push county data to EdgeDMS/GHL
+      let countyPushed = 0;
+      let pushRemaining = 1;
+      let pushRounds = 0;
+
+      while (pushRemaining > 0 && pushRounds < MAX_ROUNDS) {
+        const { data: pushData, error: pushErr } = await supabase.functions.invoke("localist-push-counties", {
+          body: { limit: 100 },
+        });
+
+        if (pushErr || !pushData) break;
+
+        countyPushed += pushData.pushed ?? 0;
+        pushRemaining = pushData.remaining ?? 0;
+        pushRounds++;
+
+        if (countyPushed > 0) {
+          updateStep("geocode", {
+            status: "active",
+            detail: `Syncing county data to EdgeDMS... ${countyPushed.toLocaleString()} pushed${pushRemaining > 0 ? `, ${pushRemaining.toLocaleString()} remaining` : ""}`,
+          });
+        }
+
+        if (pushData.pushed === 0) break;
+      }
+
+      if (countyPushed > 0) {
+        updateStep("geocode", {
+          status: "done",
+          detail: `${totalGeocoded.toLocaleString()} geocoded, ${countyBackfilled.toLocaleString()} counties populated, ${countyPushed.toLocaleString()} synced to EdgeDMS`,
+        });
+      }
+
       // Step 5: get final stats
       updateStep("done", { status: "active" });
 

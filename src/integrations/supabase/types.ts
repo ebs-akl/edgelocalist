@@ -22,6 +22,7 @@ export type Database = {
           city: string | null
           contact_id: string
           county: string | null
+          county_pushed: boolean
           first_name: string | null
           ghl_contact_id: string | null
           gift_count: number | null
@@ -51,6 +52,7 @@ export type Database = {
           city?: string | null
           contact_id: string
           county?: string | null
+          county_pushed?: boolean
           first_name?: string | null
           ghl_contact_id?: string | null
           gift_count?: number | null
@@ -80,6 +82,7 @@ export type Database = {
           city?: string | null
           contact_id?: string
           county?: string | null
+          county_pushed?: boolean
           first_name?: string | null
           ghl_contact_id?: string | null
           gift_count?: number | null
