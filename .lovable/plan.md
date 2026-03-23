@@ -1,42 +1,28 @@
 
 
-## Add County Field from Mapbox Geocoding
+## Auto-Backfill Counties During "Refresh GHL Contacts"
 
-### Goal
-Capture the county name during geocoding so it can later be used in EDGEDMS for county-by-county marketing filters.
+### Problem
+The geocoding step in "Refresh GHL Contacts" only targets contacts where `latitude IS NULL`. Contacts already geocoded before the county feature was added get skipped — they have coordinates but `county = NULL`.
 
-### What changes
+### Solution
+After the existing geocoding loop finishes (which handles contacts without coordinates), add a second loop in `Dashboard.tsx` that calls the same `localist-geocode-contacts` function with a `backfill_county: true` flag. The edge function will handle this flag by querying contacts that have coordinates but no county, re-geocoding them, and writing only the county.
 
-**1. Database Migration**
-- Add `county text` column to `localist_contacts`
-- Update the 4 paginated/authenticated nearby RPCs to include `county` in their SELECT lists:
-  - `nearby_contacts_page` — add `c.county`
-  - `nearby_contacts_page_auth` — add `c.county`
-  - `nearby_contacts_service` — add `c.county`
-  - `nearby_contacts` — add `c.county`
+### Changes
 
-**2. Edge Function — `localist-geocode-contacts/index.ts`**
-- Change `geocodeAddress` return type from `{ lat, lng }` to `{ lat, lng, county }`
-- After getting the Mapbox response, parse `data.features[0].context` for the entry whose `id` starts with `"district."` and extract its `text` value (e.g. "Los Angeles County")
-- Write `county` to the database alongside `latitude`/`longitude` in the `.update()` call
+**1. Edge Function — `localist-geocode-contacts/index.ts`**
+- Add a check for `body.backfill_county === true`
+- When true, change the query to select contacts where `latitude IS NOT NULL` AND `county IS NULL` (instead of `latitude IS NULL`)
+- In the update step for backfill mode, write only `county` (preserving existing lat/lng)
+- The `remaining` count query also switches to the same filter
 
-**3. Frontend Types — `src/lib/contacts.ts`**
-- Add `county?: string | null` to `LocalistContact` and `NearbyContact` interfaces
-
-**4. Frontend Display — `SearchTab.tsx`**
-- Show county in the contact list rows (below city/state line)
-
-**5. Frontend Display — `ContactDetailModal.tsx`**
-- Show county in the address block when present
+**2. Frontend — `Dashboard.tsx` (sync flow, ~lines 132-166)**
+- After the existing geocoding loop completes, add a second loop that calls `localist-geocode-contacts` with `{ backfill_county: true, limit: 500 }`
+- Update the progress step detail text to indicate county backfill progress (e.g., "Populating county data for 42 contacts...")
+- Loop until `remaining === 0` or `geocoded === 0`, same pattern as the existing loop
 
 ### What does NOT change
-- `localist-nearby-search` edge function — no changes needed; it calls the RPCs which will now include `county`
-- `ContactMapView.tsx` — map markers are lightweight (no county)
-- `nearby_map_markers` / `nearby_map_markers_auth` RPCs — lightweight, no county needed
-- `CsvUploadTab.tsx` — CSV upload doesn't set county; it gets populated during geocoding
-- `smart_upsert_ghl_contacts` RPC — GHL sync doesn't provide county; geocoding fills it in afterward
-- Dashboard stats, Group SMS, Tag Contacts — all unchanged
-
-### Note on existing data
-Contacts already geocoded will have `county = NULL`. A CSV re-upload or GHL re-sync that triggers geocoding will populate the field for those contacts. Alternatively, a one-time backfill could re-geocode contacts that have coordinates but no county.
+- The edge function's normal geocoding flow (contacts without coordinates) is untouched
+- No database migration needed — `county` column already exists
+- No changes to the nearby-search RPCs, map markers, or other edge functions
 
