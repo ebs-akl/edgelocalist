@@ -139,7 +139,7 @@ const { data, error } = await supabase.functions.invoke("localist-sync-contacts"
 
       while (remaining > 0 && geocodeRounds < MAX_ROUNDS) {
         const { data: geoData, error: geoErr } = await supabase.functions.invoke("localist-geocode-contacts", {
-          body: { limit: 500 },
+          body: { limit: 50 },
         });
 
         if (geoErr || !geoData) break;
@@ -172,7 +172,7 @@ const { data, error } = await supabase.functions.invoke("localist-sync-contacts"
 
       while (countyRemaining > 0 && countyRounds < MAX_ROUNDS) {
         const { data: countyData, error: countyErr } = await supabase.functions.invoke("localist-geocode-contacts", {
-          body: { backfill_county: true, limit: 500 },
+          body: { backfill_county: true, limit: 50 },
         });
 
         if (countyErr || !countyData) break;
