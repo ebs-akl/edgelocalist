@@ -59,3 +59,6 @@ verify_jwt = false
 
 [functions.localist-stripe-webhook]
 verify_jwt = false
+
+[functions.localist-push-counties]
+verify_jwt = false
