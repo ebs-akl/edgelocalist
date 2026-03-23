@@ -150,18 +150,27 @@ serve(async (req) => {
   }
 
   // ── Fetch contacts needing geocoding ──
+  const backfillCounty = body.backfill_county === true;
   const maxContacts = (typeof body.limit === "number" && body.limit > 0)
     ? Math.min(body.limit as number, 500)
     : 500;
 
-  const { data: contacts, error: fetchErr } = await supabase
+  let query = supabase
     .from("localist_contacts")
     .select("id, address, city, state, zip")
     .eq("rep_id", repId)
-    .is("latitude", null)
     .not("address", "is", null)
-    .not("address", "eq", "")
-    .limit(maxContacts);
+    .not("address", "eq", "");
+
+  if (backfillCounty) {
+    // Target contacts that have coordinates but no county
+    query = query.not("latitude", "is", null).is("county", null);
+  } else {
+    // Normal mode: contacts without coordinates
+    query = query.is("latitude", null);
+  }
+
+  const { data: contacts, error: fetchErr } = await query.limit(maxContacts);
 
   if (fetchErr) {
     return new Response(JSON.stringify({ error: "Failed to fetch contacts" }), {
