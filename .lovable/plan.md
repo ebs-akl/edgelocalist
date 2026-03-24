@@ -1,38 +1,58 @@
 
+Goal: fix why counties appear in Localist but never make it to HighLevel.
 
-## Push County Data Back to GHL (EdgeDMS)
+What I found
+- The county push function is being reached, but it fails before any contact updates happen.
+- Runtime logs show the blocker clearly: `localist-push-counties` returns `Failed to list custom fields: 401`.
+- Database state confirms the push never succeeds: thousands of contacts have `county`, but `county_pushed = true` is still `0`.
+- The current OAuth authorization URL only requests:
+  - `contacts.readonly`
+  - `contacts.write`
+  - `users.readonly`
+  - `locations.readonly`
+  - `conversations/message.write`
+- It does not request the custom-field scopes needed for:
+  - `GET /locations/{locationId}/customFields`
+  - `POST /locations/{locationId}/customFields`
 
-### Problem
-The geocoding step populates the `county` column in the local `localist_contacts` database, but never writes it back to GoHighLevel. The geocode edge function doesn't have access to GHL credentials, so there's no mechanism to update the CRM contact records with county data.
+Implementation plan
 
-### Solution
-Add a new step after geocoding that pushes county values to GHL contacts via the GHL `PUT /contacts/:id` API using a custom field (e.g., `contact.county`). This will be a new edge function to keep concerns separated.
+1. Update the GHL OAuth scopes
+- Edit `supabase/functions/localist-get-auth-url/index.ts`
+- Add the missing custom-field scopes required by the county sync flow:
+  - `locations/customFields.readonly`
+  - `locations/customFields.write`
+- Keep the existing scopes already used elsewhere.
 
-### Changes
+2. Improve the county push function error handling
+- Edit `supabase/functions/localist-push-counties/index.ts`
+- When the custom-fields request returns `401`, parse and log the response body, then return a clear error like:
+  - “Your HighLevel connection is missing custom-field permissions. Please reconnect HighLevel.”
+- Do the same for custom-field creation failures so the cause is visible instead of a generic 500.
 
-**1. New Edge Function — `localist-push-counties/index.ts`**
-- Auth: same SSO/Bearer pattern as other functions
-- Fetches GHL access token from `localist_reps` (with auto-refresh)
-- Queries `localist_contacts` for records where `county IS NOT NULL` and `contact_id IS NOT NULL` that haven't been pushed yet (we'll add a `county_pushed` boolean column or compare against GHL)
-- Discovers/creates a "County" custom field in GHL via the `GET /locations/:id/customFields` + `POST` endpoints
-- Batches `PUT /contacts/:id` calls to write the county custom field value
-- Accepts `limit` parameter, returns `{ pushed, remaining }`
+3. Make the dashboard surface the real failure
+- Edit `src/pages/Dashboard.tsx`
+- In the Step 4c push loop, do not silently `break` on `pushErr`.
+- Extract the edge-function error message and show it in the sync dialog / toast so the user sees “reconnect required” instead of a vague sync failure.
+- Keep the rest of the sync flow intact.
 
-**2. Database Migration**
-- Add `county_pushed boolean DEFAULT false` to `localist_contacts` — tracks which contacts have had their county synced to GHL
-- After a successful push, set `county_pushed = true`
-- Reset to `false` when county changes (via trigger or in the geocode update)
+4. Reauthorization requirement
+- Existing HighLevel tokens will not automatically gain the new scopes.
+- After shipping the scope change, users with existing connections must reconnect HighLevel once to mint a token with the added permissions.
+- This is likely the actual reason counties are not reaching HighLevel right now.
 
-**3. Frontend — `Dashboard.tsx`**
-- Add a Step 4c after county backfill that calls the new function in a loop (same pattern as geocoding)
-- Progress text: "Syncing county data to EdgeDMS... X pushed, Y remaining"
-- Loop until `remaining === 0` or `pushed === 0`
+5. Validation after implementation
+- Reconnect HighLevel using the updated auth URL.
+- Run the county push again.
+- Confirm:
+  - the custom field list call no longer returns 401
+  - the County field is found or created
+  - `county_pushed` starts increasing from 0
+  - pending rows decrease in `localist_contacts`
 
-### Alternative: Simpler approach without new column
-Instead of tracking `county_pushed`, we could query contacts where `county IS NOT NULL AND contact_id IS NOT NULL` and always push. This is simpler but does redundant writes on subsequent syncs. Given the user likely wants a one-time backfill + ongoing sync, the `county_pushed` flag is cleaner.
-
-### What does NOT change
-- Existing geocoding logic
-- Nearby search, map markers, or other RPCs
-- Webhook update flow
-
+Technical details
+- Root cause is not geocoding: county values already exist in the app/database.
+- Root cause is not basic auth into the edge function: the function gets far enough to call HighLevel.
+- Root cause is most likely missing HighLevel OAuth scopes for custom-field APIs.
+- No database migration is needed for this fix.
+- Optional follow-up after this: there are also duplicate-key errors in `localist-sync-contacts` during smart upsert; that is a separate sync-quality issue, but it is not the current blocker for county push.
