@@ -208,7 +208,24 @@ const { data, error } = await supabase.functions.invoke("localist-sync-contacts"
           body: { limit: 100 },
         });
 
-        if (pushErr || !pushData) break;
+        if (pushErr || !pushData) {
+          // Try to extract a meaningful error message
+          let pushMsg = "County sync failed";
+          try {
+            if (pushErr && typeof pushErr === "object" && "context" in pushErr) {
+              const ctx = (pushErr as any).context;
+              if (ctx && typeof ctx.json === "function") {
+                const body = await ctx.json();
+                pushMsg = body?.error ?? pushMsg;
+              }
+            } else if (pushErr instanceof Error) {
+              pushMsg = pushErr.message;
+            }
+          } catch { /* fallback */ }
+          console.error("[push-counties] error:", pushMsg);
+          updateStep("geocode", { status: "error", detail: pushMsg });
+          break;
+        }
 
         countyPushed += pushData.pushed ?? 0;
         pushRemaining = pushData.remaining ?? 0;
