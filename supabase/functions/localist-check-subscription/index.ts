@@ -17,6 +17,12 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // Auth client: verify JWT against the project that issued the token
+  const authUrl = Deno.env.get("VITE_SUPABASE_URL") ?? Deno.env.get("SUPABASE_URL") ?? "";
+  const authKey = Deno.env.get("VITE_SUPABASE_ANON_KEY") ?? Deno.env.get("SUPABASE_ANON_KEY") ?? "";
+  const authClient = createClient(authUrl, authKey, { auth: { persistSession: false } });
+
+  // DB client: queries against the shared ALOMAR database
   const supabaseClient = createClient(
     Deno.env.get("SUPABASE_URL") ?? "",
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
@@ -63,7 +69,7 @@ serve(async (req) => {
     if (!authHeader) throw new Error("No authorization header provided");
 
     const token = authHeader.replace("Bearer ", "");
-    const { data: userData, error: userError } = await supabaseClient.auth.getUser(token);
+    const { data: userData, error: userError } = await authClient.auth.getUser(token);
     if (userError) throw new Error(`Authentication error: ${userError.message}`);
     const user = userData.user;
     if (!user?.email) throw new Error("User not authenticated or email not available");
