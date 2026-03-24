@@ -49,7 +49,7 @@ serve(async (req) => {
     response_type: "code",
     client_id: GHL_CLIENT_ID,
     redirect_uri,
-    scope: "contacts.readonly contacts.write users.readonly locations.readonly conversations/message.write",
+    scope: "contacts.readonly contacts.write users.readonly locations.readonly conversations/message.write locations/customFields.readonly locations/customFields.write",
   });
 
   const url = `https://marketplace.leadconnectorhq.com/oauth/chooselocation?${params}`;

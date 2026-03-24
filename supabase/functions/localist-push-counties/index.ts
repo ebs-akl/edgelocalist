@@ -105,7 +105,11 @@ async function resolveCountyFieldId(
     );
 
     if (!listRes.ok) {
-      console.error(`[push-counties] Failed to list custom fields: ${listRes.status}`);
+      const errBody = await listRes.text();
+      console.error(`[push-counties] Failed to list custom fields: ${listRes.status} ${errBody}`);
+      if (listRes.status === 401 || listRes.status === 403) {
+        throw new Error("Your HighLevel connection is missing custom-field permissions. Please disconnect and reconnect HighLevel to grant the updated scopes.");
+      }
       return null;
     }
 
@@ -146,6 +150,9 @@ async function resolveCountyFieldId(
     if (!createRes.ok) {
       const errText = await createRes.text();
       console.error(`[push-counties] Failed to create County field: ${createRes.status} ${errText}`);
+      if (createRes.status === 401 || createRes.status === 403) {
+        throw new Error("Your HighLevel connection is missing custom-field permissions. Please disconnect and reconnect HighLevel to grant the updated scopes.");
+      }
       return null;
     }
 
@@ -155,6 +162,9 @@ async function resolveCountyFieldId(
     return newId;
   } catch (err) {
     console.error("[push-counties] resolveCountyFieldId error:", err);
+    if (err instanceof Error && err.message.includes("permissions")) {
+      throw err; // Re-throw permission errors so the caller returns them to the client
+    }
     return null;
   }
 }
@@ -205,7 +215,16 @@ serve(async (req) => {
   }
 
   // Resolve custom field ID
-  const countyFieldId = await resolveCountyFieldId(accessToken, ghlLocationId);
+  let countyFieldId: string | null;
+  try {
+    countyFieldId = await resolveCountyFieldId(accessToken, ghlLocationId);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Could not find or create County custom field in GHL";
+    return new Response(JSON.stringify({ error: msg }), {
+      status: 403,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
   if (!countyFieldId) {
     return new Response(JSON.stringify({ error: "Could not find or create County custom field in GHL" }), {
       status: 500,
