@@ -1,16 +1,16 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "npm:@supabase/supabase-js@2";
 import CryptoJS from "npm:crypto-js";
 import { refreshGhlToken, isTokenExpired } from "../_shared/ghl-refresh-token.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
+    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 const LOCATION_ID_RE = /^[a-zA-Z0-9]{5,50}$/;
-const BATCH_SIZE = 5; // Conservative to avoid GHL rate limits
+const BATCH_SIZE = 5;
 const DELAY_MS = 600;
 
 function decryptSsoPayload(ssoPayload: string): string | null {
@@ -28,19 +28,21 @@ function decryptSsoPayload(ssoPayload: string): string | null {
 }
 
 async function resolveCredentials(
-  supabase: ReturnType<typeof createClient>,
+  authClient: ReturnType<typeof createClient>,
+  dbClient: ReturnType<typeof createClient>,
   authHeader: string | null,
   body: Record<string, unknown>
 ): Promise<
   | { accessToken: string; ghlLocationId: string; repId: string; refreshToken: string; expiresAt: string | null }
   | { error: string; status: number }
 > {
+  // SSO mode
   if (typeof body.sso_payload === "string" && body.sso_payload) {
     const locationId = decryptSsoPayload(body.sso_payload);
     if (!locationId || !LOCATION_ID_RE.test(locationId)) {
       return { error: "Invalid SSO payload", status: 401 };
     }
-    const { data: rep } = await supabase
+    const { data: rep } = await dbClient
       .from("localist_reps")
       .select("id, ghl_access_token, ghl_refresh_token, ghl_expires_at, ghl_location_id")
       .eq("ghl_location_id", locationId)
@@ -58,16 +60,19 @@ async function resolveCredentials(
     };
   }
 
+  // Bearer token mode – validate against the LOCAL auth project
   if (!authHeader?.startsWith("Bearer ")) {
     return { error: "Authorization required", status: 401 };
   }
-  const { data: { user }, error: authError } = await supabase.auth.getUser(
+  const { data: { user }, error: authError } = await authClient.auth.getUser(
     authHeader.replace("Bearer ", "")
   );
   if (authError || !user) {
     return { error: "Invalid authorization", status: 401 };
   }
-  const { data: rep } = await supabase
+
+  // Look up rep in the shared DB
+  const { data: rep } = await dbClient
     .from("localist_reps")
     .select("id, ghl_access_token, ghl_refresh_token, ghl_expires_at, ghl_location_id")
     .eq("id", user.id)
@@ -91,7 +96,6 @@ async function resolveCountyFieldId(
   locationId: string
 ): Promise<string | null> {
   try {
-    // List existing custom fields
     const listRes = await fetch(
       `https://services.leadconnectorhq.com/locations/${locationId}/customFields`,
       {
@@ -116,7 +120,6 @@ async function resolveCountyFieldId(
     const listData = await listRes.json();
     const fields = listData.customFields ?? [];
 
-    // Look for existing County field
     const existing = fields.find(
       (f: { name?: string; fieldKey?: string }) =>
         f.name?.toLowerCase() === "county" ||
@@ -127,7 +130,6 @@ async function resolveCountyFieldId(
       return existing.id;
     }
 
-    // Create one
     const createRes = await fetch(
       `https://services.leadconnectorhq.com/locations/${locationId}/customFields`,
       {
@@ -163,7 +165,7 @@ async function resolveCountyFieldId(
   } catch (err) {
     console.error("[push-counties] resolveCountyFieldId error:", err);
     if (err instanceof Error && err.message.includes("permissions")) {
-      throw err; // Re-throw permission errors so the caller returns them to the client
+      throw err;
     }
     return null;
   }
@@ -171,26 +173,31 @@ async function resolveCountyFieldId(
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+    return new Response("ok", { headers: corsHeaders });
   }
 
   const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
   const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
+  // Auth client: verify JWT against the LOCAL project that issued the token
+  const authUrl = Deno.env.get("VITE_SUPABASE_URL") ?? SUPABASE_URL ?? "";
+  const authKey = Deno.env.get("VITE_SUPABASE_ANON_KEY") ?? Deno.env.get("SUPABASE_ANON_KEY") ?? "";
+  const authClient = createClient(authUrl, authKey, { auth: { persistSession: false } });
+
+  // DB client: queries against the shared ALOMAR database
   if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
     return new Response(JSON.stringify({ error: "Missing server configuration" }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
-
-  const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+  const dbClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
 
   let body: Record<string, unknown> = {};
   try { body = await req.json(); } catch { /* ok */ }
 
   const authHeader = req.headers.get("Authorization");
-  const creds = await resolveCredentials(supabase, authHeader, body);
+  const creds = await resolveCredentials(authClient, dbClient, authHeader, body);
   if ("error" in creds) {
     return new Response(JSON.stringify({ error: creds.error }), {
       status: creds.status,
@@ -204,7 +211,7 @@ serve(async (req) => {
   // Refresh token if needed
   if (isTokenExpired(expiresAt)) {
     console.log(`[push-counties] Token expired, refreshing for rep ${repId}...`);
-    const newToken = await refreshGhlToken(supabase, repId, refreshToken);
+    const newToken = await refreshGhlToken(dbClient, repId, refreshToken);
     if (!newToken) {
       return new Response(JSON.stringify({ error: "Failed to refresh GHL token. Please re-authorize." }), {
         status: 401,
@@ -237,7 +244,7 @@ serve(async (req) => {
     ? Math.min(body.limit as number, 200)
     : 100;
 
-  const { data: contacts, error: fetchErr } = await supabase
+  const { data: contacts, error: fetchErr } = await dbClient
     .from("localist_contacts")
     .select("id, contact_id, county")
     .eq("rep_id", repId)
@@ -257,8 +264,7 @@ serve(async (req) => {
   console.log(`[push-counties] Found ${contacts?.length ?? 0} contacts to push`);
 
   if (!contacts || contacts.length === 0) {
-    // Count remaining
-    const { count: remaining } = await supabase
+    const { count: remaining } = await dbClient
       .from("localist_contacts")
       .select("id", { count: "exact", head: true })
       .eq("rep_id", repId)
@@ -313,10 +319,9 @@ serve(async (req) => {
       })
     );
 
-    // Mark successful pushes
     const successIds = results.filter((r) => r.success).map((r) => r.id);
     if (successIds.length > 0) {
-      const { error: updateErr } = await supabase
+      const { error: updateErr } = await dbClient
         .from("localist_contacts")
         .update({ county_pushed: true })
         .in("id", successIds);
@@ -328,14 +333,13 @@ serve(async (req) => {
       }
     }
 
-    // Rate-limit delay
     if (i + BATCH_SIZE < contacts.length) {
       await new Promise((r) => setTimeout(r, DELAY_MS));
     }
   }
 
   // Count remaining
-  const { count: remaining } = await supabase
+  const { count: remaining } = await dbClient
     .from("localist_contacts")
     .select("id", { count: "exact", head: true })
     .eq("rep_id", repId)
