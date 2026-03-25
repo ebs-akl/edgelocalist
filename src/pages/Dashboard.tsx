@@ -135,7 +135,7 @@ const { data, error } = await supabase.functions.invoke("localist-sync-contacts"
       let totalGeocoded = 0;
       let remaining = 1; // Start with 1 to enter loop
       let geocodeRounds = 0;
-      const MAX_ROUNDS = 20; // 500 per round × 20 = up to 10,000 contacts
+      const MAX_ROUNDS = 60; // Supports up to ~6,000 contacts per step
 
       while (remaining > 0 && geocodeRounds < MAX_ROUNDS) {
         const { data: geoData, error: geoErr } = await supabase.functions.invoke("localist-geocode-contacts", {
