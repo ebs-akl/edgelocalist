@@ -244,6 +244,33 @@ serve(async (req) => {
     ? Math.min(body.limit as number, 200)
     : 100;
 
+  // First, mark any non-GHL contact IDs (e.g. numeric CSV IDs) as county_pushed
+  // so they don't clog the sync queue — they can never be pushed to GHL
+  const { data: allUnpushed } = await dbClient
+    .from("localist_contacts")
+    .select("id, contact_id")
+    .eq("rep_id", repId)
+    .eq("county_pushed", false)
+    .not("county", "is", null)
+    .not("contact_id", "is", null)
+    .limit(500);
+
+  if (allUnpushed && allUnpushed.length > 0) {
+    const GHL_ID_RE = /^[a-zA-Z0-9]{20}$/;
+    const invalidIds = allUnpushed
+      .filter((c) => !GHL_ID_RE.test(c.contact_id))
+      .map((c) => c.id);
+
+    if (invalidIds.length > 0) {
+      console.log(`[push-counties] Marking ${invalidIds.length} non-GHL contacts as county_pushed`);
+      await dbClient
+        .from("localist_contacts")
+        .update({ county_pushed: true })
+        .in("id", invalidIds);
+    }
+  }
+
+  // Now fetch only contacts with valid GHL IDs
   const { data: contacts, error: fetchErr } = await dbClient
     .from("localist_contacts")
     .select("id, contact_id, county")
