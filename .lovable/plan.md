@@ -1,58 +1,61 @@
 
-Goal: fix why counties appear in Localist but never make it to HighLevel.
+Goal: get county sync actually working in HighLevel by fixing the current runtime blockers, not redoing the earlier scope change.
 
 What I found
-- The county push function is being reached, but it fails before any contact updates happen.
-- Runtime logs show the blocker clearly: `localist-push-counties` returns `Failed to list custom fields: 401`.
-- Database state confirms the push never succeeds: thousands of contacts have `county`, but `county_pushed = true` is still `0`.
-- The current OAuth authorization URL only requests:
-  - `contacts.readonly`
-  - `contacts.write`
-  - `users.readonly`
-  - `locations.readonly`
-  - `conversations/message.write`
-- It does not request the custom-field scopes needed for:
-  - `GET /locations/{locationId}/customFields`
-  - `POST /locations/{locationId}/customFields`
+- The OAuth URL already includes the needed HighLevel custom-field scopes, so the auth-url code is no longer the missing piece.
+- The current `localist-push-counties` function still uses incomplete CORS headers:
+  - it only allows `authorization, x-client-info, apikey, content-type`
+  - your app is sending extra `x-supabase-client-*` headers
+  - this matches the browser error: preflight blocked before the function can respond cleanly
+- The same function is also still using the old single-client auth pattern:
+  - it validates Bearer tokens with the shared DB client
+  - this project uses split Supabase auth/database config
+  - that pattern is already known to break in this codebase
+- Your logs show two separate blockers:
+  1. `403` from HighLevel: existing token is missing custom-field permissions
+  2. browser CORS failure: the function cannot be called reliably from `localist.edgedms.com`
 
-Implementation plan
+Plan
+1. Fix `localist-push-counties` CORS handling
+- Update its `corsHeaders` to match the full header set already used by working functions.
+- Keep the OPTIONS handler and make sure every response path includes those headers.
+- This should remove the browser preflight failure and let the frontend receive the real function response.
 
-1. Update the GHL OAuth scopes
-- Edit `supabase/functions/localist-get-auth-url/index.ts`
-- Add the missing custom-field scopes required by the county sync flow:
+2. Fix `localist-push-counties` auth for this split Supabase setup
+- Refactor it to use the same dual-client pattern as `localist-check-subscription`:
+  - auth client = local project URL + anon key for JWT verification
+  - DB client = shared `SUPABASE_URL` + service role for reads/writes
+- Use the auth client only for `getUser(token)`.
+- Use the service-role client for `localist_reps` and `localist_contacts`.
+
+3. Preserve GHL-mode compatibility in the dashboard
+- Update the dashboard sync step to pass `sso_payload` when available in iframe/GHL mode.
+- Keep Bearer auth support for standalone mode.
+- This gives the county push flow the same resilient auth path used elsewhere in the app.
+
+4. Improve county-push failure reporting
+- Keep the existing HighLevel permission error message, but ensure it reaches the UI after the CORS fix.
+- If GHL returns `401/403`, surface the exact reconnect instruction instead of generic “County sync failed.”
+
+5. Validate the full path after implementation
+- Confirm the browser no longer shows a preflight/CORS error for `localist-push-counties`.
+- Confirm the function either:
+  - successfully finds/creates the County field and starts incrementing `county_pushed`, or
+  - returns the explicit reconnect-required error from HighLevel.
+- If the reconnect error remains after CORS/auth fixes, the remaining action is operational, not code-related: disconnect and reconnect HighLevel so the existing token gets the new scopes.
+
+Files to update
+- `supabase/functions/localist-push-counties/index.ts`
+- `src/pages/Dashboard.tsx`
+
+What should not change
+- No database migration needed.
+- No change needed to `localist-get-auth-url` unless I find the deployed code differs from the repo.
+- No geocoding logic changes.
+
+Technical notes
+- The repo already confirms `localist-get-auth-url` includes:
   - `locations/customFields.readonly`
   - `locations/customFields.write`
-- Keep the existing scopes already used elsewhere.
-
-2. Improve the county push function error handling
-- Edit `supabase/functions/localist-push-counties/index.ts`
-- When the custom-fields request returns `401`, parse and log the response body, then return a clear error like:
-  - “Your HighLevel connection is missing custom-field permissions. Please reconnect HighLevel.”
-- Do the same for custom-field creation failures so the cause is visible instead of a generic 500.
-
-3. Make the dashboard surface the real failure
-- Edit `src/pages/Dashboard.tsx`
-- In the Step 4c push loop, do not silently `break` on `pushErr`.
-- Extract the edge-function error message and show it in the sync dialog / toast so the user sees “reconnect required” instead of a vague sync failure.
-- Keep the rest of the sync flow intact.
-
-4. Reauthorization requirement
-- Existing HighLevel tokens will not automatically gain the new scopes.
-- After shipping the scope change, users with existing connections must reconnect HighLevel once to mint a token with the added permissions.
-- This is likely the actual reason counties are not reaching HighLevel right now.
-
-5. Validation after implementation
-- Reconnect HighLevel using the updated auth URL.
-- Run the county push again.
-- Confirm:
-  - the custom field list call no longer returns 401
-  - the County field is found or created
-  - `county_pushed` starts increasing from 0
-  - pending rows decrease in `localist_contacts`
-
-Technical details
-- Root cause is not geocoding: county values already exist in the app/database.
-- Root cause is not basic auth into the edge function: the function gets far enough to call HighLevel.
-- Root cause is most likely missing HighLevel OAuth scopes for custom-field APIs.
-- No database migration is needed for this fix.
-- Optional follow-up after this: there are also duplicate-key errors in `localist-sync-contacts` during smart upsert; that is a separate sync-quality issue, but it is not the current blocker for county push.
+- The repo also confirms `localist-push-counties` is still missing the full required CORS allow-header list and still uses the old auth pattern.
+- So the best implementation is to fix the function call reliability first, then let the real HighLevel permission state surface clearly.
