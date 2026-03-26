@@ -56,6 +56,15 @@ serve(async (req) => {
       mode: "subscription",
       success_url: `${origin}/dashboard?checkout=success`,
       cancel_url: `${origin}/dashboard?checkout=cancelled`,
+      consent_collection: {
+        terms_of_service: "required",
+      },
+      custom_text: {
+        terms_of_service_acceptance: {
+          message:
+            "I agree to the [Terms of Service](https://localist.edgedms.com/legal#terms-of-service)",
+        },
+      },
     });
 
     logStep("Checkout session created", { sessionId: session.id });

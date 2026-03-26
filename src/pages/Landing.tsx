@@ -154,7 +154,7 @@ export default function Landing() {
   const [contactCount] = useState(500000);
   const { isAuthenticated, loading, loadingSubscription, session, subscription } = useAuth();
   const navigate = useNavigate();
-  const PAYMENT_LINK = "https://buy.stripe.com/28E7sK90udzW7pa2Bl7Vm0R";
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
 
   // Only redirect to dashboard after subscription hydration confirms a valid tier
   useEffect(() => {
@@ -163,9 +163,26 @@ export default function Landing() {
     }
   }, [isAuthenticated, loading, loadingSubscription, navigate, subscription.subscribed, subscription.tier]);
 
-  const openPaymentLink = (email?: string) => {
-    const url = email ? `${PAYMENT_LINK}?prefilled_email=${encodeURIComponent(email)}` : PAYMENT_LINK;
-    window.open(url, "_blank");
+  const triggerCheckout = async (tierKey: TierKey) => {
+    const priceId = TIERS[tierKey]?.price_id;
+    if (!priceId) return;
+    setCheckoutLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("localist-create-checkout", {
+        body: { priceId },
+      });
+      if (error) throw error;
+      if (data?.url) {
+        window.location.href = data.url;
+      } else {
+        throw new Error("No checkout URL returned");
+      }
+    } catch (err: any) {
+      console.error("[checkout]", err);
+      toast({ title: "Checkout failed", description: err.message || "Please try again.", variant: "destructive" });
+    } finally {
+      setCheckoutLoading(false);
+    }
   };
 
   // Auto-trigger checkout if returning from auth with a pending plan
@@ -174,18 +191,18 @@ export default function Landing() {
       const pendingTier = localStorage.getItem("pending_checkout_tier") as TierKey | null;
       if (pendingTier && TIERS[pendingTier]) {
         localStorage.removeItem("pending_checkout_tier");
-        openPaymentLink(session.user.email);
+        triggerCheckout(pendingTier);
       }
     }
   }, [loading, isAuthenticated, session?.user?.email]);
 
-  const handleCheckout = async (_tierKey: TierKey) => {
+  const handleCheckout = async (tierKey: TierKey) => {
     if (!isAuthenticated) {
-      localStorage.setItem("pending_checkout_tier", _tierKey);
+      localStorage.setItem("pending_checkout_tier", tierKey);
       navigate("/auth");
       return;
     }
-    openPaymentLink(session?.user?.email ?? undefined);
+    triggerCheckout(tierKey);
   };
 
   return (
