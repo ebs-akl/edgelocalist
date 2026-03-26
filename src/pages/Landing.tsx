@@ -56,39 +56,39 @@ const pricingPlans: { name: string; tierKey: TierKey | null; price: string; peri
   name: "AKL LocaList",
   tierKey: "LOCALIST",
   price: "$9",
-  period: "/mo",
+  period: "/mo after 7-day free trial",
   features: [
     "CSV Upload from VectorConnect",
     "Radius Search (10/25/50 mi)",
     "Call & SMS one-tap actions",
     "Lifetime value tracking"],
-  cta: "Get Started",
+  cta: "Start Free Trial",
   highlighted: false
 },
 {
   name: "AKL Snack Pack",
   tierKey: "SNACK PACK",
   price: "$16",
-  period: "/mo",
+  period: "/mo after 7-day free trial",
   features: [
     "Everything in Edge LocaList",
     "ALOMAR Order Catcher included",
     "Full email parsing & CRM sync",
     "Best value — save $2/mo"],
-  cta: "Get the Bundle",
+  cta: "Start Free Trial",
   highlighted: true
 },
 {
   name: "EdgeDMS",
   tierKey: "EDGE BASIC",
   price: "$97",
-  period: "/mo",
+  period: "/mo after 7-day free trial",
   features: [
     "Everything in Snack Pack",
     "Auto-sync from GoHighLevel",
     "LC Call integration",
     "Full EdgeDMS suite"],
-  cta: "Get Started",
+  cta: "Start Free Trial",
   highlighted: false
 }];
 
