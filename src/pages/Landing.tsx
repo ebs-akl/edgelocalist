@@ -406,10 +406,10 @@ export default function Landing() {
                       <Button
                         className={`w-full ${plan.highlighted ? 'bg-primary text-primary-foreground' : ''}`}
                         variant={plan.highlighted ? 'default' : 'outline'}
-                        disabled={checkoutLoading === plan.tierKey || (subscription.subscribed && subscription.tier === plan.tierKey)}
+                        disabled={subscription.subscribed && subscription.tier === plan.tierKey}
                         onClick={() => handleCheckout(plan.tierKey!)}
                       >
-                        {checkoutLoading === plan.tierKey && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        
                         {subscription.subscribed && subscription.tier === plan.tierKey ? "Your Plan" : plan.cta}
                       </Button>
                     ) : (
