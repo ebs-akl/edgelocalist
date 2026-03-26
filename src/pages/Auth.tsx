@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -13,7 +13,8 @@ import { validatePasswordStrength } from "@/lib/password-validation";
 import Footer from "@/components/Footer";
 
 export default function Auth() {
-  const [isLogin, setIsLogin] = useState(true);
+  const [searchParams] = useSearchParams();
+  const [isLogin, setIsLogin] = useState(searchParams.get("mode") !== "signup");
   const [forgotPassword, setForgotPassword] = useState(false);
   const [useMagicLink, setUseMagicLink] = useState(false);
   const [email, setEmail] = useState("");
