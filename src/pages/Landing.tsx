@@ -79,7 +79,7 @@ const pricingPlans: { name: string; tierKey: TierKey | null; price: string; peri
   highlighted: true
 },
 {
-  name: "EdgeDMS",
+  name: "EdgeDMS Basic",
   tierKey: "EDGE BASIC",
   price: "$97",
   period: "/mo after 7-day trial · $7 setup fee",
