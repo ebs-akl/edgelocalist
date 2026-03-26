@@ -309,6 +309,9 @@ export default function Auth() {
             <p className="text-[11px] text-muted-foreground/60">
               © {new Date().getFullYear()} Edge Branding Solutions · Part of the EdgeDMS Platform
             </p>
+            <p className="text-[10px] text-muted-foreground/50 leading-relaxed max-w-sm mx-auto">
+              Edge Branding Solutions LLC is an independent company and is not affiliated with, sponsored by, or endorsed by Cutco Corporation or Vector Marketing. We do not have an official corporate partnership with Cutco Cutlery®. All software, strategies, templates, and systems offered are based on Kevin Connor's extensive experience and success in his personal capacity as a Cutco Hall of Fame Independent Sales Representative.
+            </p>
           </div>
         </div>
       </div>
