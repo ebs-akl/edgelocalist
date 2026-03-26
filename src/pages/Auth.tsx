@@ -27,8 +27,14 @@ export default function Auth() {
   const { isAuthenticated, loading: authLoading, loadingSubscription, subscription } = useAuth();
 
   useEffect(() => {
-    if (!authLoading && !loadingSubscription && isAuthenticated && subscription.subscribed && subscription.tier) {
+    if (authLoading || loadingSubscription || !isAuthenticated) return;
+
+    if (subscription.subscribed && subscription.tier) {
       navigate("/dashboard", { replace: true });
+    } else if (localStorage.getItem("pending_checkout_tier")) {
+      navigate("/", { replace: true });
+    } else {
+      navigate("/", { replace: true });
     }
   }, [authLoading, isAuthenticated, loadingSubscription, navigate, subscription.subscribed, subscription.tier]);
 
