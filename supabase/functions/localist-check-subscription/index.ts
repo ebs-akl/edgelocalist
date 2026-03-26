@@ -33,7 +33,6 @@ serve(async (req) => {
   const DB_TIER_TO_PRODUCT: Record<string, string> = {
     edgedms: "prod_TT1lDpEK83RxB1",
     "EDGE BASIC": "prod_TT1lDpEK83RxB1",
-    standalone: "prod_U3ouP5GYR2UtCT",
     LOCALIST: "prod_U3ouP5GYR2UtCT",
     "SNACK PACK": "prod_U3ovoEBZGIHGd6",
   };
