@@ -13,7 +13,8 @@ import { validatePasswordStrength } from "@/lib/password-validation";
 import Footer from "@/components/Footer";
 
 export default function Auth() {
-  const [isLogin, setIsLogin] = useState(true);
+  const [searchParams] = useSearchParams();
+  const [isLogin, setIsLogin] = useState(searchParams.get("mode") !== "signup");
   const [forgotPassword, setForgotPassword] = useState(false);
   const [useMagicLink, setUseMagicLink] = useState(false);
   const [email, setEmail] = useState("");

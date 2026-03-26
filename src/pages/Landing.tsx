@@ -219,7 +219,7 @@ export default function Landing() {
             <Link to="/auth">
               <Button variant="ghost" size="sm">Login</Button>
             </Link>
-            <Link to="/auth">
+            <Link to="/auth?mode=signup">
               <Button size="sm" className="bg-primary text-primary-foreground hover:bg-primary/90">
                 Start Free Trial
               </Button>
@@ -241,7 +241,7 @@ export default function Landing() {
                       <Button variant="ghost" className="w-full justify-start">Login</Button>
                     </SheetClose>
                   </Link>
-                  <Link to="/auth" className="w-full">
+                  <Link to="/auth?mode=signup" className="w-full">
                     <SheetClose asChild>
                       <Button className="w-full bg-primary text-primary-foreground hover:bg-primary/90">
                         Start Free Trial
@@ -304,7 +304,7 @@ export default function Landing() {
               </p>
 
               <div className="flex flex-col items-center md:items-start gap-4">
-                <Link to="/auth" className="w-full sm:w-64">
+              <Link to="/auth?mode=signup" className="w-full sm:w-64">
                   <Button
                     size="lg"
                     className="text-base px-8 min-h-[48px] w-full"
