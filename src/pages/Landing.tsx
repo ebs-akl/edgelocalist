@@ -82,13 +82,13 @@ const pricingPlans: { name: string; tierKey: TierKey | null; price: string; peri
   name: "EdgeDMS",
   tierKey: "EDGE BASIC",
   price: "$97",
-  period: "/mo after 7-day free trial",
+  period: "/mo · $7 setup fee",
   features: [
     "Everything in Snack Pack",
     "Auto-sync from GoHighLevel",
     "LC Call integration",
     "Full EdgeDMS suite"],
-  cta: "Start Free Trial",
+  cta: "Get Started",
   highlighted: false
 }];
 
