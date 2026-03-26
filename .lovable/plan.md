@@ -1,35 +1,35 @@
 
 
-## Replace Stripe Checkout with Payment Link + Fix Subscription Gate
+## Redesign Auth Page to Match Alomar Layout
 
-### Problem
-1. New users bypass the subscription gate because `standalone` in the DB fallback maps to a paid product.
-2. The current checkout flow uses a Supabase edge function to create Stripe Checkout sessions. User wants to replace it with a direct Stripe Payment Link.
+### Current state
+The auth page is a single centered Card on a plain background with a Footer.
+
+### Target layout (from Alomar project)
+A full-screen split layout:
+- **Left half** (desktop only): full-bleed GIF image covering the entire left side
+- **Right half**: vertically centered form area with logo at top, heading, form fields, and footer links — no Card wrapper
 
 ### Changes
 
-**1. Landing page — `src/pages/Landing.tsx`**
-- Replace `triggerCheckout()` and `handleCheckout()`: instead of calling `localist-create-checkout`, open the payment link directly: `https://buy.stripe.com/28E7sK90udzW7pa2Bl7Vm0R`
-- For unauthenticated users: still redirect to `/auth` first, store `pending_checkout_tier` in localStorage
-- For authenticated users: open the payment link in a new tab (append `?prefilled_email={user_email}` to pre-fill their email on the Stripe page)
-- The auto-checkout effect (lines 187-195) does the same: open the payment link instead of invoking the edge function
-- Remove the `checkoutLoading` state since there's no async call to wait for
+**1. Copy the uploaded GIF into the project**
+- Copy `user-uploads://696f8a802da948b83db18ef4.gif` to `public/images/auth-bg.gif`
 
-**2. Edge function — `localist-check-subscription/index.ts`**
-- Remove the `standalone` entry from `DB_TIER_TO_PRODUCT` (line 36). New users with the default `standalone` tier will correctly return `subscribed: false`.
+**2. Rewrite the layout in `src/pages/Auth.tsx`**
+- Remove the `Card` wrapper and `Footer` component
+- Change outer container from centered single-column to `min-h-screen flex flex-col md:flex-row`
+- Add left panel: `<div className="hidden md:block md:w-1/2 relative overflow-hidden">` with the GIF as an `object-cover` background image
+- Right panel: `<div className="w-full md:w-1/2 flex items-center justify-center bg-background px-6 py-12 min-h-screen">` containing `<div className="w-full max-w-md space-y-6">`
+- Keep the existing LocaList logo at the top center of the right panel
+- Style inputs with `h-12 bg-muted/40 border-border/60` classes
+- Style buttons with `h-12 text-base font-semibold uppercase tracking-wide`
+- Move "Forgot password?" link inline next to Password label (like Alomar)
+- Add footer support link and terms text at bottom of form area
+- Use `HelpCircle` icon for support link
 
-**3. Redeploy** the `localist-check-subscription` edge function.
+All existing form logic, state, handlers, and validation remain unchanged — only the JSX layout and styling classes change.
 
-### What stays the same
-- Auth.tsx redirect logic (already fixed in prior change)
-- ProtectedRoute subscription gate logic
-- Stripe webhook handling (still updates `subscription_tier` after payment)
-- All other tier mappings in the DB fallback
-- The `localist-create-checkout` edge function remains (no harm, just unused for now)
-
-### Flow after fix
-1. New user clicks pricing button → redirected to `/auth` → signs up
-2. After signup, redirected to Landing → payment link opens in new tab with email pre-filled
-3. User pays on Stripe → webhook fires → sets `subscription_tier` to paid tier
-4. User returns to app → subscription check returns `subscribed: true` → dashboard access granted
+### Files to change
+- `src/pages/Auth.tsx` — layout rewrite
+- `public/images/auth-bg.gif` — new file (copied from upload)
 
