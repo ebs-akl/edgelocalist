@@ -64,7 +64,7 @@ serve(async (req) => {
       customer_email: customerId ? undefined : user.email,
       line_items: lineItems,
       mode: "subscription",
-      ...(isEdgeBasic ? {} : { subscription_data: { trial_period_days: 7 } }),
+      subscription_data: { trial_period_days: 7 },
       success_url: `${origin}/dashboard?checkout=success`,
       cancel_url: `${origin}/dashboard?checkout=cancelled`,
       consent_collection: {
