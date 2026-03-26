@@ -154,7 +154,7 @@ export default function Landing() {
   const [contactCount] = useState(500000);
   const { isAuthenticated, loading, loadingSubscription, session, subscription } = useAuth();
   const navigate = useNavigate();
-  const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
+  const PAYMENT_LINK = "https://buy.stripe.com/28E7sK90udzW7pa2Bl7Vm0R";
 
   // Only redirect to dashboard after subscription hydration confirms a valid tier
   useEffect(() => {
@@ -163,44 +163,29 @@ export default function Landing() {
     }
   }, [isAuthenticated, loading, loadingSubscription, navigate, subscription.subscribed, subscription.tier]);
 
-  const triggerCheckout = async (tierKey: TierKey) => {
-    setCheckoutLoading(tierKey);
-    try {
-      const priceId = TIERS[tierKey].price_id;
-      const { data, error } = await supabase.functions.invoke("localist-create-checkout", {
-        headers: { Authorization: `Bearer ${session?.access_token}` },
-        body: { priceId },
-      });
-      if (error) throw error;
-      if (data?.url) {
-        window.open(data.url, "_blank");
-      }
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Checkout failed";
-      toast({ title: "Checkout error", description: msg, variant: "destructive" });
-    } finally {
-      setCheckoutLoading(null);
-    }
+  const openPaymentLink = (email?: string) => {
+    const url = email ? `${PAYMENT_LINK}?prefilled_email=${encodeURIComponent(email)}` : PAYMENT_LINK;
+    window.open(url, "_blank");
   };
 
   // Auto-trigger checkout if returning from auth with a pending plan
   useEffect(() => {
-    if (!loading && isAuthenticated && session?.access_token) {
+    if (!loading && isAuthenticated && session?.user?.email) {
       const pendingTier = localStorage.getItem("pending_checkout_tier") as TierKey | null;
       if (pendingTier && TIERS[pendingTier]) {
         localStorage.removeItem("pending_checkout_tier");
-        triggerCheckout(pendingTier);
+        openPaymentLink(session.user.email);
       }
     }
-  }, [loading, isAuthenticated, session?.access_token]);
+  }, [loading, isAuthenticated, session?.user?.email]);
 
-  const handleCheckout = async (tierKey: TierKey) => {
+  const handleCheckout = async (_tierKey: TierKey) => {
     if (!isAuthenticated) {
-      localStorage.setItem("pending_checkout_tier", tierKey);
+      localStorage.setItem("pending_checkout_tier", _tierKey);
       navigate("/auth");
       return;
     }
-    triggerCheckout(tierKey);
+    openPaymentLink(session?.user?.email ?? undefined);
   };
 
   return (
@@ -421,10 +406,10 @@ export default function Landing() {
                       <Button
                         className={`w-full ${plan.highlighted ? 'bg-primary text-primary-foreground' : ''}`}
                         variant={plan.highlighted ? 'default' : 'outline'}
-                        disabled={checkoutLoading === plan.tierKey || (subscription.subscribed && subscription.tier === plan.tierKey)}
+                        disabled={subscription.subscribed && subscription.tier === plan.tierKey}
                         onClick={() => handleCheckout(plan.tierKey!)}
                       >
-                        {checkoutLoading === plan.tierKey && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        
                         {subscription.subscribed && subscription.tier === plan.tierKey ? "Your Plan" : plan.cta}
                       </Button>
                     ) : (
