@@ -49,14 +49,22 @@ serve(async (req) => {
 
     const origin = req.headers.get("origin") || "https://edgelocalist.lovable.app";
 
+    // EdgeDMS ($97) gets a $7 setup fee instead of a free trial
+    const EDGE_BASIC_PRICE_ID = "price_1SW5i4AecJc70Cb5GBytGbCf";
+    const EDGE_SETUP_FEE_PRICE_ID = "price_1TFKkkAecJc70Cb56yjlQwdd";
+    const isEdgeBasic = priceId === EDGE_BASIC_PRICE_ID;
+
+    const lineItems: { price: string; quantity: number }[] = [{ price: priceId, quantity: 1 }];
+    if (isEdgeBasic) {
+      lineItems.push({ price: EDGE_SETUP_FEE_PRICE_ID, quantity: 1 });
+    }
+
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       customer_email: customerId ? undefined : user.email,
-      line_items: [{ price: priceId, quantity: 1 }],
+      line_items: lineItems,
       mode: "subscription",
-      subscription_data: {
-        trial_period_days: 7,
-      },
+      ...(isEdgeBasic ? {} : { subscription_data: { trial_period_days: 7 } }),
       success_url: `${origin}/dashboard?checkout=success`,
       cancel_url: `${origin}/dashboard?checkout=cancelled`,
       consent_collection: {
