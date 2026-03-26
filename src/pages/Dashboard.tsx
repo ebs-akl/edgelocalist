@@ -238,7 +238,7 @@ const { data, error } = await supabase.functions.invoke("localist-sync-contacts"
           });
         }
 
-        if (pushData.pushed === 0) break;
+        if (pushData.pushed === 0 && pushRemaining <= 5) break;
       }
 
       if (countyPushed > 0) {

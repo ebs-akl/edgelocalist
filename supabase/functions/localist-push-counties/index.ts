@@ -335,6 +335,10 @@ serve(async (req) => {
           if (!res.ok) {
             const errText = await res.text();
             console.error(`[push-counties] PUT failed for ${c.contact_id}: ${res.status} ${errText}`);
+            // Mark 404/422 as "done" — contact doesn't exist in GHL
+            if (res.status === 404 || res.status === 422) {
+              return { id: c.id, success: true };
+            }
             return { id: c.id, success: false };
           }
 
