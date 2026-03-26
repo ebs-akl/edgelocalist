@@ -5,12 +5,10 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "@/hooks/use-toast";
-import { Loader2 } from "lucide-react";
+import { Loader2, HelpCircle } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { validatePasswordStrength } from "@/lib/password-validation";
-import Footer from "@/components/Footer";
 
 export default function Auth() {
   const [searchParams] = useSearchParams();
@@ -71,8 +69,6 @@ export default function Auth() {
         });
         if (error) throw error;
         if (data.user) {
-          // handle_new_user trigger creates the row; update it with full_name & rep_number
-          // Use rpc or a direct update (row belongs to this user via RLS)
           await supabase
             .from("localist_reps")
             .update({
@@ -88,7 +84,6 @@ export default function Auth() {
       }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Something went wrong.";
-      // Show generic error for signup to prevent information disclosure
       const userMessage = isLogin ? message : "Signup failed. Please try again or contact support.";
       toast({ title: "Error", description: userMessage, variant: "destructive" });
     } finally {
@@ -140,15 +135,35 @@ export default function Auth() {
     }
   };
 
+  const inputClasses = "h-12 bg-muted/40 border-border/60 text-base";
+  const buttonClasses = "h-12 text-base font-semibold uppercase tracking-wide w-full";
+
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      <div className="flex-1 flex items-center justify-center px-4">
-        <Card className="w-full max-w-md">
-          <CardHeader className="text-center">
-            <div className="flex items-center justify-center mb-2">
-              <img src="/lovable-uploads/localist-final-logo-2.png" alt="AKL LocaList" className="h-14 w-auto object-contain" />
-            </div>
-            <CardTitle className="text-base font-normal">
+    <div className="min-h-screen flex flex-col md:flex-row">
+      {/* Left panel — GIF background (desktop only) */}
+      <div className="hidden md:block md:w-1/2 relative overflow-hidden">
+        <img
+          src="/images/auth-bg.gif"
+          alt=""
+          className="absolute inset-0 w-full h-full object-cover"
+        />
+      </div>
+
+      {/* Right panel — form */}
+      <div className="w-full md:w-1/2 flex items-center justify-center bg-background px-6 py-12 min-h-screen">
+        <div className="w-full max-w-md space-y-6">
+          {/* Logo */}
+          <div className="flex justify-center">
+            <img
+              src="/lovable-uploads/localist-final-logo-2.png"
+              alt="AKL LocaList"
+              className="h-14 w-auto object-contain"
+            />
+          </div>
+
+          {/* Heading */}
+          <div className="text-center space-y-1">
+            <h1 className="text-xl font-semibold text-foreground">
               {forgotPassword
                 ? "Reset your password"
                 : useMagicLink
@@ -156,199 +171,147 @@ export default function Auth() {
                 : isLogin
                 ? "Sign in to your dashboard"
                 : "Create your account"}
-            </CardTitle>
-            <CardDescription className="text-xs">
-              <a href="mailto:support@edgedms.com" className="text-primary hover:underline">
-                Need help? Contact support
-              </a>
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {forgotPassword ? (
-              <form onSubmit={handleForgotPassword} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="reset-email">Email</Label>
-                  <Input
-                    id="reset-email"
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="you@example.com"
-                    style={{ fontSize: "16px" }}
-                    required
-                  />
-                </div>
-                <Button type="submit" className="w-full min-h-[44px]" disabled={loading}>
-                  {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Send Reset Link
-                </Button>
-                <p className="text-center text-sm text-muted-foreground">
-                  <button
-                    type="button"
-                    onClick={() => setForgotPassword(false)}
-                    className="text-primary hover:underline font-medium"
-                  >
-                    Back to sign in
-                  </button>
-                </p>
-              </form>
-            ) : useMagicLink ? (
-              <form onSubmit={handleMagicLink} className="space-y-4">
-                <p className="text-sm text-muted-foreground">
-                  Enter your email and we'll send you a secure login link — no password needed.
-                </p>
-                <div className="space-y-2">
-                  <Label htmlFor="magic-email">Email</Label>
-                  <Input
-                    id="magic-email"
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="you@example.com"
-                    style={{ fontSize: "16px" }}
-                    required
-                  />
-                </div>
-                <Button type="submit" className="w-full min-h-[44px]" disabled={loading}>
-                  {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Send Magic Link
-                </Button>
-                <p className="text-center text-sm text-muted-foreground">
-                  <button
-                    type="button"
-                    onClick={() => setUseMagicLink(false)}
-                    className="text-primary hover:underline font-medium"
-                  >
-                    Sign in with password instead
-                  </button>
-                </p>
-              </form>
-            ) : (
-              <form onSubmit={handleSubmit} className="space-y-4">
-                {!isLogin && (
-                  <>
-                    <div className="space-y-2">
-                      <Label htmlFor="fullName">Full Name</Label>
-                      <Input
-                        id="fullName"
-                        value={fullName}
-                        onChange={(e) => setFullName(e.target.value)}
-                        placeholder="Jane Smith"
-                        style={{ fontSize: "16px" }}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="repNumber">Cutco Rep Number <span className="text-destructive">*</span></Label>
-                      <Input
-                        id="repNumber"
-                        value={repNumber}
-                        onChange={(e) => {
-                          const val = e.target.value.replace(/\D/g, "").slice(0, 8);
-                          setRepNumber(val);
-                          if (val.length > 0 && val.length !== 8) {
-                            setRepError("Rep Number must be exactly 8 digits (0-9 only).");
-                          } else {
-                            setRepError("");
-                          }
-                        }}
-                        placeholder="e.g. 12345678"
-                        maxLength={8}
-                        inputMode="numeric"
-                        pattern="\d{8}"
-                        required
-                        style={{ fontSize: "16px" }}
-                        className={repError ? "border-destructive" : ""}
-                      />
-                      {repError ? (
-                        <p className="text-xs text-destructive">{repError}</p>
-                      ) : (
-                        <p className="text-xs text-muted-foreground">Required — exactly 8 digits. Cannot be changed later.</p>
-                      )}
-                    </div>
-                  </>
-                )}
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="you@example.com"
-                    style={{ fontSize: "16px" }}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
+            </h1>
+          </div>
+
+          {/* Forms */}
+          {forgotPassword ? (
+            <form onSubmit={handleForgotPassword} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="reset-email">Email</Label>
+                <Input id="reset-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" className={inputClasses} required />
+              </div>
+              <Button type="submit" className={buttonClasses} disabled={loading}>
+                {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Send Reset Link
+              </Button>
+              <p className="text-center text-sm text-muted-foreground">
+                <button type="button" onClick={() => setForgotPassword(false)} className="text-primary hover:underline font-medium">
+                  Back to sign in
+                </button>
+              </p>
+            </form>
+          ) : useMagicLink ? (
+            <form onSubmit={handleMagicLink} className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Enter your email and we'll send you a secure login link — no password needed.
+              </p>
+              <div className="space-y-2">
+                <Label htmlFor="magic-email">Email</Label>
+                <Input id="magic-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" className={inputClasses} required />
+              </div>
+              <Button type="submit" className={buttonClasses} disabled={loading}>
+                {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Send Magic Link
+              </Button>
+              <p className="text-center text-sm text-muted-foreground">
+                <button type="button" onClick={() => setUseMagicLink(false)} className="text-primary hover:underline font-medium">
+                  Sign in with password instead
+                </button>
+              </p>
+            </form>
+          ) : (
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {!isLogin && (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="fullName">Full Name</Label>
+                    <Input id="fullName" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Jane Smith" className={inputClasses} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="repNumber">
+                      Cutco Rep Number <span className="text-destructive">*</span>
+                    </Label>
+                    <Input
+                      id="repNumber"
+                      value={repNumber}
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/\D/g, "").slice(0, 8);
+                        setRepNumber(val);
+                        setRepError(val.length > 0 && val.length !== 8 ? "Rep Number must be exactly 8 digits (0-9 only)." : "");
+                      }}
+                      placeholder="e.g. 12345678"
+                      maxLength={8}
+                      inputMode="numeric"
+                      pattern="\d{8}"
+                      required
+                      className={`${inputClasses} ${repError ? "border-destructive" : ""}`}
+                    />
+                    {repError ? (
+                      <p className="text-xs text-destructive">{repError}</p>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">Required — exactly 8 digits. Cannot be changed later.</p>
+                    )}
+                  </div>
+                </>
+              )}
+
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" className={inputClasses} required />
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
                   <Label htmlFor="password">Password</Label>
-                  <Input
-                    id="password"
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="••••••••"
-                    style={{ fontSize: "16px" }}
-                    required
-                  />
-                </div>
-                {isLogin && (
-                  <div className="flex items-center justify-between -mt-2">
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <Checkbox
-                        checked={keepSignedIn}
-                        onCheckedChange={(v) => setKeepSignedIn(!!v)}
-                      />
-                      <span className="text-xs text-muted-foreground select-none">Keep me signed in</span>
-                    </label>
-                    <button
-                      type="button"
-                      onClick={() => setForgotPassword(true)}
-                      className="text-xs text-muted-foreground hover:text-primary hover:underline"
-                    >
+                  {isLogin && (
+                    <button type="button" onClick={() => setForgotPassword(true)} className="text-xs text-muted-foreground hover:text-primary hover:underline">
                       Forgot password?
                     </button>
-                  </div>
-                )}
-                <Button type="submit" className="w-full min-h-[44px]" disabled={loading || (!isLogin && !/^\d{8}$/.test(repNumber))}>
-                  {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  {isLogin ? "Sign In" : "Create Account"}
-                </Button>
-                {isLogin && (
+                  )}
+                </div>
+                <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" className={inputClasses} required />
+              </div>
+
+              {isLogin && (
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <Checkbox checked={keepSignedIn} onCheckedChange={(v) => setKeepSignedIn(!!v)} />
+                  <span className="text-xs text-muted-foreground select-none">Keep me signed in</span>
+                </label>
+              )}
+
+              <Button type="submit" className={buttonClasses} disabled={loading || (!isLogin && !/^\d{8}$/.test(repNumber))}>
+                {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {isLogin ? "Sign In" : "Create Account"}
+              </Button>
+
+              {isLogin && (
+                <>
                   <div className="relative my-2">
                     <div className="absolute inset-0 flex items-center">
                       <span className="w-full border-t border-border" />
                     </div>
                     <div className="relative flex justify-center text-xs uppercase">
-                      <span className="bg-card px-2 text-muted-foreground">or</span>
+                      <span className="bg-background px-2 text-muted-foreground">or</span>
                     </div>
                   </div>
-                )}
-                {isLogin && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="w-full min-h-[44px]"
-                    onClick={() => setUseMagicLink(true)}
-                  >
+                  <Button type="button" variant="outline" className={buttonClasses} onClick={() => setUseMagicLink(true)}>
                     Sign in with Magic Link
                   </Button>
-                )}
-                <p className="text-center text-sm text-muted-foreground">
-                  {isLogin ? "No account? " : "Already have one? "}
-                  <button
-                    type="button"
-                    onClick={() => setIsLogin(!isLogin)}
-                    className="text-primary hover:underline font-medium"
-                  >
-                    {isLogin ? "Sign up free" : "Sign in"}
-                  </button>
-                </p>
-              </form>
-            )}
-          </CardContent>
-        </Card>
+                </>
+              )}
+
+              <p className="text-center text-sm text-muted-foreground">
+                {isLogin ? "No account? " : "Already have one? "}
+                <button type="button" onClick={() => setIsLogin(!isLogin)} className="text-primary hover:underline font-medium">
+                  {isLogin ? "Sign up free" : "Sign in"}
+                </button>
+              </p>
+            </form>
+          )}
+
+          {/* Footer */}
+          <div className="pt-4 border-t border-border/40 space-y-2 text-center">
+            <a href="mailto:support@edgedms.com" className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary">
+              <HelpCircle className="h-3.5 w-3.5" />
+              Need help? Contact support
+            </a>
+            <p className="text-[11px] text-muted-foreground/60">
+              © {new Date().getFullYear()} Edge Branding Solutions · Part of the EdgeDMS Platform
+            </p>
+          </div>
+        </div>
       </div>
-      <Footer />
     </div>
   );
 }
