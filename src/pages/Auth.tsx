@@ -70,17 +70,19 @@ export default function Auth() {
         });
         if (error) throw error;
         if (data.user) {
-          await supabase.from("localist_reps").upsert({
-            id: data.user.id,
-            email,
-            full_name: fullName.trim() || email,
-            
-            rep_number: repNumber.trim(),
-          }, { onConflict: 'id' });
+          // handle_new_user trigger creates the row; update it with full_name & rep_number
+          // Use rpc or a direct update (row belongs to this user via RLS)
+          await supabase
+            .from("localist_reps")
+            .update({
+              full_name: fullName.trim() || email,
+              rep_number: repNumber.trim(),
+            })
+            .eq("id", data.user.id);
         }
         toast({
-          title: "Check your email",
-          description: "We sent you a confirmation link to activate your account.",
+          title: "Account created!",
+          description: "Redirecting you to choose a plan…",
         });
       }
     } catch (err: unknown) {

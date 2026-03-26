@@ -11,5 +11,8 @@ export function validatePasswordStrength(password: string): { valid: boolean; me
   if (!/[0-9]/.test(password)) {
     return { valid: false, message: "Password must contain a number." };
   }
+  if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|<>?,./`~]/.test(password)) {
+    return { valid: false, message: "Password must contain a special character (e.g. !@#$%&*)." };
+  }
   return { valid: true };
 }
