@@ -164,7 +164,7 @@ export default function Landing() {
   }, [isAuthenticated, loading, loadingSubscription, navigate, subscription.subscribed, subscription.tier]);
 
   const triggerCheckout = async (tierKey: TierKey) => {
-    const priceId = TIERS[tierKey]?.priceId;
+    const priceId = TIERS[tierKey]?.price_id;
     if (!priceId) return;
     setCheckoutLoading(true);
     try {
