@@ -20,8 +20,15 @@ function isInIframe(): boolean {
 
 export default function ProtectedRoute({ children }: ProtectedRouteProps) {
   const { isAuthenticated, loading, subscription, loadingSubscription } = useAuth();
+  const verifiedOnce = useRef(false);
 
-  if (loading || (isAuthenticated && loadingSubscription)) {
+  // Once subscription has been verified, remember it so background checks don't unmount children
+  if (isAuthenticated && !loadingSubscription && subscription.tier) {
+    verifiedOnce.current = true;
+  }
+
+  // Only gate on loading during initial page load, not background refreshes
+  if (loading || (isAuthenticated && loadingSubscription && !verifiedOnce.current)) {
     if (isInIframe()) {
       return (
         <div className="min-h-screen bg-background flex items-center justify-center">

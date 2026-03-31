@@ -340,9 +340,11 @@ const { data, error } = await supabase.functions.invoke("localist-sync-contacts"
     // to avoid "Too Many Requests" errors from rapid API calls on load.
   }, [userId, isGhlMode]);
 
-  // ── Realtime subscription for webhook-driven contact updates ──
+  // ── Realtime subscription for webhook-driven contact updates (debounced) ──
   useEffect(() => {
     if (!user?.id) return;
+
+    let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
     const channel = supabase
       .channel("contact-updates")
@@ -356,12 +358,14 @@ const { data, error } = await supabase.functions.invoke("localist-sync-contacts"
         },
         (payload) => {
           console.log("[Dashboard] Realtime contact event:", payload.eventType);
-          fetchContactStats();
+          if (debounceTimer) clearTimeout(debounceTimer);
+          debounceTimer = setTimeout(() => fetchContactStats(true), 5000);
         }
       )
       .subscribe();
 
     return () => {
+      if (debounceTimer) clearTimeout(debounceTimer);
       supabase.removeChannel(channel);
     };
   }, [user?.id]);

@@ -196,7 +196,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     supabase.auth.getSession().then(({ data: { session } }) => {
-      syncSessionState(session);
+      syncSessionState("INITIAL_SESSION", session);
     });
 
     return () => subscription.unsubscribe();
