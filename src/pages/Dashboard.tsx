@@ -44,9 +44,11 @@ export default function Dashboard() {
   const userId = user?.id ?? ghlLocationId ?? "unknown";
   const repName = repProfile?.full_name ?? user?.email ?? "Rep";
 
-  const fetchContactStats = async () => {
+  const initialLoadDone = useRef(false);
+
+  const fetchContactStats = async (background = false) => {
     if (!user) return;
-    setLoadingStats(true);
+    if (!background) setLoadingStats(true);
     try {
       if (isGhlMode) {
         // GHL mode: fetch stats via edge function (Bearer auth auto-included)
