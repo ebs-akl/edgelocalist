@@ -173,21 +173,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // ── Auth listener ──
   useEffect(() => {
-    const syncSessionState = (session: Session | null) => {
+    const syncSessionState = (event: string, session: Session | null) => {
+      const isTokenRefresh = event === "TOKEN_REFRESHED";
       setState((s) => ({
         ...s,
         session,
         user: session?.user ?? null,
         loading: false,
         subscription: session ? s.subscription : DEFAULT_SUBSCRIPTION,
-        loadingSubscription: !!session,
+        // Don't flip loadingSubscription on token refresh — keeps ProtectedRoute stable
+        loadingSubscription: isTokenRefresh ? s.loadingSubscription : !!session,
       }));
       setTimeout(() => fetchRepProfile(session?.user?.id), 0);
-      setTimeout(() => checkSubscription(session), 0);
+      // Still refresh subscription data in background, but without the loading flag
+      if (!isTokenRefresh) {
+        setTimeout(() => checkSubscription(session), 0);
+      }
     };
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      syncSessionState(session);
+      syncSessionState(_event, session);
     });
 
     supabase.auth.getSession().then(({ data: { session } }) => {
