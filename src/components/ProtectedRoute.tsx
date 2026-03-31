@@ -70,23 +70,8 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
     return <Navigate to="/auth" replace />;
   }
 
-  // Wait for subscription check to complete before gating
-  if (loadingSubscription) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center space-y-3">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
-          <p className="text-sm text-muted-foreground font-medium">
-            Verifying subscription...
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  // Subscription gate: redirect to pricing if no valid tier
-  if (!subscription.tier || !VALID_TIERS.has(subscription.tier)) {
-    // Don't gate iframe/GHL users
+  // Subscription gate: redirect to pricing if no valid tier (skip if still loading or already verified)
+  if (!loadingSubscription && !subscription.tier || (!loadingSubscription && subscription.tier && !VALID_TIERS.has(subscription.tier))) {
     if (!isInIframe()) {
       return <Navigate to="/#pricing" replace />;
     }
