@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -44,9 +44,11 @@ export default function Dashboard() {
   const userId = user?.id ?? ghlLocationId ?? "unknown";
   const repName = repProfile?.full_name ?? user?.email ?? "Rep";
 
-  const fetchContactStats = async () => {
+  const initialLoadDone = useRef(false);
+
+  const fetchContactStats = async (background = false) => {
     if (!user) return;
-    setLoadingStats(true);
+    if (!background) setLoadingStats(true);
     try {
       if (isGhlMode) {
         // GHL mode: fetch stats via edge function (Bearer auth auto-included)
@@ -338,9 +340,11 @@ const { data, error } = await supabase.functions.invoke("localist-sync-contacts"
     // to avoid "Too Many Requests" errors from rapid API calls on load.
   }, [userId, isGhlMode]);
 
-  // ── Realtime subscription for webhook-driven contact updates ──
+  // ── Realtime subscription for webhook-driven contact updates (debounced) ──
   useEffect(() => {
     if (!user?.id) return;
+
+    let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
     const channel = supabase
       .channel("contact-updates")
@@ -354,12 +358,14 @@ const { data, error } = await supabase.functions.invoke("localist-sync-contacts"
         },
         (payload) => {
           console.log("[Dashboard] Realtime contact event:", payload.eventType);
-          fetchContactStats();
+          if (debounceTimer) clearTimeout(debounceTimer);
+          debounceTimer = setTimeout(() => fetchContactStats(true), 5000);
         }
       )
       .subscribe();
 
     return () => {
+      if (debounceTimer) clearTimeout(debounceTimer);
       supabase.removeChannel(channel);
     };
   }, [user?.id]);
