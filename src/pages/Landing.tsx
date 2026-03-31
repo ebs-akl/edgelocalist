@@ -312,12 +312,14 @@ export default function Landing() {
                     Start Free Trial <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
                 </Link>
-                <Button
-                  size="lg"
-                  variant="outline"
-                  className="border-primary-foreground/30 hover:bg-primary-foreground/10 text-[#485856] hover:text-[#34dfdf] min-h-[48px] w-full sm:w-64 text-base px-8">
-                  Watch Demo
-                </Button>
+                <a href="https://video.edgedms.com/video/exploring-the-localist-app-2sut" target="_blank" rel="noopener noreferrer" className="w-full sm:w-64">
+                  <Button
+                    size="lg"
+                    variant="outline"
+                    className="border-primary-foreground/30 hover:bg-primary-foreground/10 text-[#485856] hover:text-[#34dfdf] min-h-[48px] w-full text-base px-8">
+                    Watch Demo
+                  </Button>
+                </a>
               </div>
             </motion.div>
           </div>
