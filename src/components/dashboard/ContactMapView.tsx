@@ -195,16 +195,28 @@ export default function ContactMapView({
       if (!f.length || f[0].geometry.type !== "Point") return;
       const props = f[0].properties!;
       const coords = f[0].geometry.coordinates as [number, number];
-      const ltvDisplay = props.ltv != null && props.ltv !== 0 ? formatCurrency(Number(props.ltv)) : "—";
 
-      // If lightweight marker (no name), show minimal popup
-      if (!props.name) {
+      // Try to find full contact details from the contacts array
+      const match = contacts.find((c) => c.id === props.id);
+      const name = match
+        ? `${toTitleCase(match.first_name)} ${toTitleCase(match.last_name)}`
+        : props.name || "";
+      const city = match
+        ? `${toTitleCase(match.city)}, ${match.state?.toUpperCase() ?? ""}`
+        : props.city || "";
+      const phone = match ? match.phone : props.phone || "";
+      const address = match ? match.address ?? "" : props.address || "";
+      const ltv = match ? match.lifetime_value : props.ltv;
+      const distance = match ? match.distance_miles.toFixed(1) : props.distance;
+      const ltvDisplay = ltv != null && ltv !== 0 ? formatCurrency(Number(ltv)) : "—";
+
+      if (!name) {
         new mapboxgl.Popup({ offset: 15, maxWidth: "200px" })
           .setLngLat(coords)
           .setHTML(`
             <div style="font-family:'Poppins',sans-serif;min-width:120px;">
               <div style="display:flex;gap:12px;font-size:12px;">
-                <span>📍 ${props.distance} mi</span>
+                <span>📍 ${distance} mi</span>
                 <span>💰 ${ltvDisplay}</span>
               </div>
             </div>
@@ -217,16 +229,16 @@ export default function ContactMapView({
         .setLngLat(coords)
         .setHTML(`
           <div style="font-family:'Poppins',sans-serif;min-width:180px;">
-            <p style="font-weight:600;font-size:14px;margin:0 0 2px;">${props.name}</p>
-            <p style="color:#666;font-size:12px;margin:0 0 6px;">${props.city}</p>
+            <p style="font-weight:600;font-size:14px;margin:0 0 2px;">${name}</p>
+            <p style="color:#666;font-size:12px;margin:0 0 6px;">${city}</p>
             <div style="display:flex;gap:12px;font-size:12px;margin-bottom:6px;">
-              <span>📍 ${props.distance} mi</span>
+              <span>📍 ${distance} mi</span>
               <span>💰 ${ltvDisplay}</span>
             </div>
             <div style="display:flex;gap:6px;margin-top:4px;">
-              <a href="tel:${props.phone}" style="font-size:12px;color:hsl(174,30%,42%);text-decoration:none;">📞 Call</a>
-              <a href="sms:${props.phone}?body=Hi ${encodeURIComponent(String(props.name).split(" ")[0])}, this is ${encodeURIComponent(repName)} from Cutco!" style="font-size:12px;color:hsl(174,30%,42%);text-decoration:none;">💬 Text</a>
-              <a href="https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(props.address + ", " + props.city)}" target="_blank" style="font-size:12px;color:hsl(174,30%,42%);text-decoration:none;">🗺️ Dir</a>
+              <a href="tel:${phone}" style="font-size:12px;color:hsl(174,30%,42%);text-decoration:none;">📞 Call</a>
+              <a href="sms:${phone}?body=Hi ${encodeURIComponent(name.split(" ")[0])}, this is ${encodeURIComponent(repName)} from Cutco!" style="font-size:12px;color:hsl(174,30%,42%);text-decoration:none;">💬 Text</a>
+              <a href="https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(address + ", " + city)}" target="_blank" style="font-size:12px;color:hsl(174,30%,42%);text-decoration:none;">🗺️ Dir</a>
             </div>
           </div>
         `)
