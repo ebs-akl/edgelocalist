@@ -3,6 +3,7 @@ import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import type { NearbyContact, MapMarker } from "@/lib/contacts";
 import { formatCurrency, toTitleCase } from "@/lib/contacts";
+import { supabase } from "@/integrations/supabase/client";
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN ?? "";
 
@@ -190,24 +191,66 @@ export default function ContactMapView({
       });
     });
 
-    m.on("click", "unclustered-point", (e) => {
+    m.on("click", "unclustered-point", async (e) => {
       const f = m.queryRenderedFeatures(e.point, { layers: ["unclustered-point"] });
       if (!f.length || f[0].geometry.type !== "Point") return;
       const props = f[0].properties!;
       const coords = f[0].geometry.coordinates as [number, number];
+      const distance = props.distance;
+      const ltvFromProps = props.ltv;
 
-      // Try to find full contact details from the contacts array
-      const match = contacts.find((c) => c.id === props.id);
+      // Try local contacts first, then fetch from DB
+      let match = contacts.find((c) => c.id === props.id);
+
+      if (!match && props.id) {
+        // Show loading popup while fetching
+        const loadingPopup = new mapboxgl.Popup({ offset: 15, maxWidth: "200px" })
+          .setLngLat(coords)
+          .setHTML(`<div style="font-family:'Poppins',sans-serif;padding:4px;font-size:12px;">Loading…</div>`)
+          .addTo(m);
+
+        try {
+          const { data } = await supabase
+            .from("localist_contacts")
+            .select("id,first_name,last_name,phone,address,city,state,zip,lifetime_value,distance_miles:latitude")
+            .eq("id", props.id)
+            .single();
+          if (data) {
+            match = {
+              id: data.id,
+              first_name: data.first_name ?? "",
+              last_name: data.last_name ?? "",
+              phone: data.phone ?? "",
+              address: data.address ?? "",
+              city: data.city ?? "",
+              state: data.state ?? "",
+              zip: data.zip ?? "",
+              lifetime_value: data.lifetime_value,
+              last_order_date: null,
+              last_service_date: null,
+              rlt: null,
+              biz: null,
+              cat: null,
+              order_count: null,
+              gift_count: null,
+              distance_miles: Number(distance) || 0,
+            };
+          }
+        } catch {
+          // ignore fetch errors, show what we have
+        }
+        loadingPopup.remove();
+      }
+
       const name = match
         ? `${toTitleCase(match.first_name)} ${toTitleCase(match.last_name)}`
-        : props.name || "";
+        : "";
       const city = match
         ? `${toTitleCase(match.city)}, ${match.state?.toUpperCase() ?? ""}`
-        : props.city || "";
-      const phone = match ? match.phone : props.phone || "";
-      const address = match ? match.address ?? "" : props.address || "";
-      const ltv = match ? match.lifetime_value : props.ltv;
-      const distance = match ? match.distance_miles.toFixed(1) : props.distance;
+        : "";
+      const phone = match ? match.phone : "";
+      const address = match ? match.address ?? "" : "";
+      const ltv = match ? match.lifetime_value : ltvFromProps;
       const ltvDisplay = ltv != null && ltv !== 0 ? formatCurrency(Number(ltv)) : "—";
 
       if (!name) {
