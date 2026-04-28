@@ -1,0 +1,1 @@
+ALTER TABLE public.localist_reps ALTER COLUMN rep_number TYPE text USING rep_number::text;
