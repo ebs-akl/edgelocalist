@@ -508,7 +508,7 @@ export type Database = {
           ghl_refresh_token: string | null
           id: string
           location_id: string | null
-          rep_number: number | null
+          rep_number: string | null
           stripe_customer_id: string | null
           subscription_tier: string | null
         }
@@ -522,7 +522,7 @@ export type Database = {
           ghl_refresh_token?: string | null
           id?: string
           location_id?: string | null
-          rep_number?: number | null
+          rep_number?: string | null
           stripe_customer_id?: string | null
           subscription_tier?: string | null
         }
@@ -536,7 +536,7 @@ export type Database = {
           ghl_refresh_token?: string | null
           id?: string
           location_id?: string | null
-          rep_number?: number | null
+          rep_number?: string | null
           stripe_customer_id?: string | null
           subscription_tier?: string | null
         }
