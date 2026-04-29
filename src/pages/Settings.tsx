@@ -36,7 +36,9 @@ export default function Settings() {
     }
     setSaving(true);
     try {
-      const { error } = await supabase.from("localist_reps").update({ full_name: value }).eq("id", user!.id);
+      const { error } = await supabase
+        .from("localist_reps")
+        .upsert({ id: user!.id, email: user!.email, full_name: value }, { onConflict: "id" });
       if (error) throw error;
       await refreshProfile();
       setEditing(null);
