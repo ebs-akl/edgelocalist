@@ -30,9 +30,12 @@ serve(async (req) => {
 
     const authHeader = req.headers.get("Authorization")!;
     const token = authHeader.replace("Bearer ", "");
-    const { data } = await supabaseClient.auth.getUser(token);
-    const user = data.user;
-    if (!user?.email) throw new Error("User not authenticated or email not available");
+    const { data: claimsData, error: claimsError } = await supabaseClient.auth.getClaims(token);
+    if (claimsError || !claimsData?.claims) {
+      throw new Error(`Authentication error: ${claimsError?.message ?? "invalid token"}`);
+    }
+    const user = { id: claimsData.claims.sub as string, email: claimsData.claims.email as string };
+    if (!user.email) throw new Error("User not authenticated or email not available");
     logStep("User authenticated", { email: user.email });
 
     const { priceId } = await req.json();
