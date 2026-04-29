@@ -135,7 +135,7 @@ export default function Auth() {
     }
   };
 
-  const inputClasses = "h-12 bg-muted/40 border-border/60 text-base";
+  const inputClasses = "h-12 bg-muted/40 border-border/60 text-base text-secondary placeholder:text-muted-foreground";
   const buttonClasses = "h-12 text-base font-semibold uppercase tracking-wide w-full";
 
   return (
