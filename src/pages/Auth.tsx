@@ -62,11 +62,7 @@ export default function Auth() {
         localStorage.setItem("localist_keep_signed_in", keepSignedIn ? "1" : "0");
         toast({ title: "Welcome back!" });
       } else {
-        const { data, error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: { emailRedirectTo: `https://edgelocalist.lovable.app/auth` },
-        });
+        const { data, error } = await supabase.auth.signUp({ email, password });
         if (error) throw error;
         if (data.user) {
           await supabase
@@ -77,19 +73,11 @@ export default function Auth() {
             })
             .eq("id", data.user.id);
         }
-        if (data.session) {
-          toast({
-            title: "Account created!",
-            description: "Redirecting you to choose a plan…",
-          });
-          navigate("/", { replace: true });
-        } else {
-          toast({
-            title: "Check your email",
-            description: "Confirm your email address, then sign in to choose a plan.",
-          });
-          setIsLogin(true);
-        }
+        toast({
+          title: "Account created!",
+          description: "Redirecting you to choose a plan…",
+        });
+        navigate("/", { replace: true });
       }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Something went wrong.";
