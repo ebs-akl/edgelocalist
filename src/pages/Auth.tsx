@@ -77,10 +77,19 @@ export default function Auth() {
             })
             .eq("id", data.user.id);
         }
-        toast({
-          title: "Account created!",
-          description: "Redirecting you to choose a plan…",
-        });
+        if (data.session) {
+          toast({
+            title: "Account created!",
+            description: "Redirecting you to choose a plan…",
+          });
+          navigate("/", { replace: true });
+        } else {
+          toast({
+            title: "Check your email",
+            description: "Confirm your email address, then sign in to choose a plan.",
+          });
+          setIsLogin(true);
+        }
       }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Something went wrong.";
