@@ -17,9 +17,13 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  // Auth client: always verify JWT against the function's connected Supabase project
-  const authUrl = Deno.env.get("SUPABASE_URL") ?? "";
-  const authKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
+  // Auth client: verify JWT against the local project that issued the browser token
+  const authUrl = Deno.env.get("VITE_SUPABASE_URL") ?? Deno.env.get("SUPABASE_URL") ?? "";
+  const authKey =
+    Deno.env.get("VITE_SUPABASE_PUBLISHABLE_KEY") ??
+    Deno.env.get("VITE_SUPABASE_ANON_KEY") ??
+    Deno.env.get("SUPABASE_ANON_KEY") ??
+    "";
   const authClient = createClient(authUrl, authKey, { auth: { persistSession: false } });
 
   // DB client: queries against the shared ALOMAR database
