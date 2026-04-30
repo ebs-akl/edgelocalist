@@ -1,50 +1,38 @@
-## Problem
+## Goal
 
-When you open AKL LocaList from inside HighLevel, the page is stuck on **"Establishing Secure Connection to HighLevel..."** forever.
+Make LocaList read its own GHL Marketplace credentials from per-app secrets so that updating Alomar or Cooky keys can never silently break LocaList (and vice versa).
 
-## Root Cause (confirmed in logs)
+## Changes
 
-Edge function `localist-sso-verify` is being called with the encrypted SSO payload from HighLevel, but every decryption attempt fails:
+### 1. Edge function code edits (hard switch — no fallback)
 
-```
-AES decryption attempt failed: Malformed UTF-8 data
-Decryption failed for all configured keys. Payload length: 684
-```
+| File | Change |
+|---|---|
+| `supabase/functions/localist-sso-verify/index.ts` | Read **only** `GHL_SSO_KEY_LOCALIST` (drop `GHL_SSO_KEY` and `VITE_GHL_SHARED_SECRET`) |
+| `supabase/functions/localist-oauth-callback/index.ts` | Read `GHL_CLIENT_ID_LOCALIST` and `GHL_CLIENT_SECRET_LOCALIST` |
+| `supabase/functions/localist-get-auth-url/index.ts` | Read `GHL_CLIENT_ID_LOCALIST` |
+| `supabase/functions/_shared/ghl-refresh-token.ts` | Read `GHL_CLIENT_ID_LOCALIST` and `GHL_CLIENT_SECRET_LOCALIST` |
 
-"Malformed UTF-8 data" after AES decryption is the canonical fingerprint of a **wrong decryption key**. The frontend handshake is working (it captures the payload and posts it), but neither `GHL_SSO_KEY` nor `VITE_GHL_SHARED_SECRET` stored as Supabase Edge Function secrets matches the SSO key currently configured on your GoHighLevel Marketplace App.
+### 2. Untouched (intentionally)
 
-This usually happens because:
-1. The SSO key was regenerated in the GHL Marketplace App, OR
-2. The secret value in Supabase was overwritten / has stray whitespace or quotes, OR
-3. The wrong key (e.g., the OAuth client secret) was pasted into `GHL_SSO_KEY`.
+The 11 functions that read `GHL_SSO_KEY` for **internal HMAC signing** (`fetch-contacts`, `tag-contacts`, `group-sms`, `lc-call`, `list-phone-numbers`, `merge-contacts`, `nearby-search`, `push-counties`, `set-custom-value`, `sync-contacts`, `geocode-contacts`) — these are app‑internal request signatures, not the GHL Marketplace SSO key. They keep using `GHL_SSO_KEY` and continue to work unchanged.
 
-## Fix
+### 3. Secrets to set in Supabase
 
-### Step 1 — Get the current SSO key from GoHighLevel
+I'll prompt you to add three new secrets:
 
-1. Log in to https://marketplace.gohighlevel.com
-2. Open your **AKL LocaList** app
-3. Go to **Settings → SSO** (or "Custom Page SSO")
-4. Copy the **SSO Key** value exactly (no quotes, no surrounding spaces)
+- `GHL_SSO_KEY_LOCALIST` — the LocaList Marketplace App **SSO key** (the one you regenerated)
+- `GHL_CLIENT_ID_LOCALIST` — the LocaList Marketplace App **Client ID**
+- `GHL_CLIENT_SECRET_LOCALIST` — the LocaList Marketplace App **Client Secret**
 
-### Step 2 — Update the Supabase secret
+The old `GHL_SSO_KEY`, `GHL_CLIENT_ID`, `GHL_CLIENT_SECRET`, and `VITE_GHL_SHARED_SECRET` secrets stay in Supabase (other LocaList functions still use `GHL_SSO_KEY` for HMAC; Alomar/Cooky may still use the OAuth ones). We just stop reading them from the four files above.
 
-I'll prompt you to set `GHL_SSO_KEY` to the value from Step 1. (We'll keep `VITE_GHL_SHARED_SECRET` as a fallback so nothing else breaks.)
+### 4. Verify
 
-### Step 3 — Verify
+- I'll redeploy the four affected edge functions.
+- You reload AKL LocaList inside HighLevel.
+- I'll pull `localist-sso-verify` logs and confirm `✅ SSO verified + session provisioned` instead of `Decryption failed`.
 
-After the secret is updated, I'll:
-1. Re-test the `localist-sso-verify` edge function with a fresh payload to confirm decryption succeeds.
-2. Check the function logs for `✅ SSO verified + session provisioned` instead of `Decryption failed`.
-3. Ask you to reload AKL LocaList inside HighLevel and confirm the spinner clears and the dashboard loads.
+### 5. Memory
 
-## What this does NOT change
-
-- No code changes are needed. The SSO handshake hook, decryption logic, and user-provisioning logic are all working correctly.
-- OAuth (the "Connect GHL" install flow on Settings) is unaffected — that uses different secrets (`GHL_CLIENT_ID` / `GHL_CLIENT_SECRET`) and is healthy.
-- Standalone web login (outside the iframe) is unaffected.
-
-## Technical notes
-
-- File involved: `supabase/functions/localist-sso-verify/index.ts` (lines 61–74 read both keys; lines 39–53 attempt AES-decrypt with each).
-- The function tries `GHL_SSO_KEY` first, then falls back to `VITE_GHL_SHARED_SECRET`. Both currently fail, so updating either to the correct value will resolve the issue — but `GHL_SSO_KEY` is the canonical name we should keep.
+Save a project memory noting: **LocaList GHL Marketplace credentials use the `*_LOCALIST` suffixed secret names. Internal HMAC signing still uses `GHL_SSO_KEY` (do not rename).**
