@@ -58,20 +58,19 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const GHL_SSO_KEY = Deno.env.get("GHL_SSO_KEY");
-    const GHL_SHARED_SECRET = Deno.env.get("VITE_GHL_SHARED_SECRET");
+    const GHL_SSO_KEY_LOCALIST = Deno.env.get("GHL_SSO_KEY_LOCALIST");
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
-    if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY || (!GHL_SSO_KEY && !GHL_SHARED_SECRET)) {
-      console.error("Missing server config: GHL_SSO_KEY/VITE_GHL_SHARED_SECRET, SUPABASE_URL, or SUPABASE_SERVICE_ROLE_KEY");
+    if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY || !GHL_SSO_KEY_LOCALIST) {
+      console.error("Missing server config: GHL_SSO_KEY_LOCALIST, SUPABASE_URL, or SUPABASE_SERVICE_ROLE_KEY");
       return new Response(
         JSON.stringify({ error: "Server configuration error" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    const decryptionKeys = [GHL_SSO_KEY, GHL_SHARED_SECRET].filter((key): key is string => Boolean(key));
+    const decryptionKeys = [GHL_SSO_KEY_LOCALIST];
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
     let body: { payload?: string } = {};

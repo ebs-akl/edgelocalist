@@ -12,8 +12,8 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  const GHL_CLIENT_ID = Deno.env.get("GHL_CLIENT_ID");
-  const GHL_CLIENT_SECRET = Deno.env.get("GHL_CLIENT_SECRET");
+  const GHL_CLIENT_ID = Deno.env.get("GHL_CLIENT_ID_LOCALIST");
+  const GHL_CLIENT_SECRET = Deno.env.get("GHL_CLIENT_SECRET_LOCALIST");
   const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
   const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
@@ -25,7 +25,7 @@ serve(async (req) => {
   }
 
   if (!GHL_CLIENT_SECRET) {
-    console.error("GHL_CLIENT_SECRET is not defined in environment variables.");
+    console.error("GHL_CLIENT_SECRET_LOCALIST is not defined in environment variables.");
     return new Response(JSON.stringify({ error: "Missing server configuration" }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
