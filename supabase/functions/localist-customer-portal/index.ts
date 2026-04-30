@@ -23,12 +23,13 @@ serve(async (req) => {
     const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
     if (!stripeKey) throw new Error("STRIPE_SECRET_KEY is not set");
 
-    const authUrl = Deno.env.get("VITE_SUPABASE_URL") ?? Deno.env.get("SUPABASE_URL") ?? "";
+    const authUrl = Deno.env.get("SUPABASE_URL") ?? Deno.env.get("VITE_SUPABASE_URL") ?? "";
     const authKey =
+      Deno.env.get("SUPABASE_ANON_KEY") ??
       Deno.env.get("VITE_SUPABASE_PUBLISHABLE_KEY") ??
       Deno.env.get("VITE_SUPABASE_ANON_KEY") ??
-      Deno.env.get("SUPABASE_ANON_KEY") ??
       "";
+    try { console.log("[CUSTOMER-PORTAL] auth host", new URL(authUrl).host); } catch {}
     const supabaseClient = createClient(authUrl, authKey, { auth: { persistSession: false } });
 
     const authHeader = req.headers.get("Authorization");

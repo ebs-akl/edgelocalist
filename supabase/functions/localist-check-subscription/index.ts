@@ -17,13 +17,16 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  // Auth client: verify JWT against the local project that issued the browser token
-  const authUrl = Deno.env.get("VITE_SUPABASE_URL") ?? Deno.env.get("SUPABASE_URL") ?? "";
+  // Auth client: verify JWT against the connected project that issued the browser token.
+  // Prefer runtime-injected SUPABASE_URL/ANON_KEY (always matches the connected project)
+  // over legacy VITE_* secrets which may still point to an old project.
+  const authUrl = Deno.env.get("SUPABASE_URL") ?? Deno.env.get("VITE_SUPABASE_URL") ?? "";
   const authKey =
+    Deno.env.get("SUPABASE_ANON_KEY") ??
     Deno.env.get("VITE_SUPABASE_PUBLISHABLE_KEY") ??
     Deno.env.get("VITE_SUPABASE_ANON_KEY") ??
-    Deno.env.get("SUPABASE_ANON_KEY") ??
     "";
+  try { console.log("[CHECK-SUBSCRIPTION] auth host", new URL(authUrl).host); } catch {}
   const authClient = createClient(authUrl, authKey, { auth: { persistSession: false } });
 
   // DB client: queries against the shared ALOMAR database
