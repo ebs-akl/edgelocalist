@@ -17,10 +17,13 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  const supabaseClient = createClient(
-    Deno.env.get("SUPABASE_URL") ?? "",
-    Deno.env.get("SUPABASE_ANON_KEY") ?? ""
-  );
+  const authUrl = Deno.env.get("VITE_SUPABASE_URL") ?? Deno.env.get("SUPABASE_URL") ?? "";
+  const authKey =
+    Deno.env.get("VITE_SUPABASE_PUBLISHABLE_KEY") ??
+    Deno.env.get("VITE_SUPABASE_ANON_KEY") ??
+    Deno.env.get("SUPABASE_ANON_KEY") ??
+    "";
+  const supabaseClient = createClient(authUrl, authKey, { auth: { persistSession: false } });
 
   try {
     logStep("Function started");
