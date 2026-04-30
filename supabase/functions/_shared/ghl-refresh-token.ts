@@ -9,11 +9,11 @@ export async function refreshGhlToken(
   repId: string,
   refreshToken: string
 ): Promise<string | null> {
-  const clientId = Deno.env.get("GHL_CLIENT_ID");
-  const clientSecret = Deno.env.get("GHL_CLIENT_SECRET");
+  const clientId = Deno.env.get("GHL_CLIENT_ID_LOCALIST");
+  const clientSecret = Deno.env.get("GHL_CLIENT_SECRET_LOCALIST");
 
   if (!clientId || !clientSecret) {
-    console.error("GHL_CLIENT_ID or GHL_CLIENT_SECRET not configured — cannot refresh token");
+    console.error("GHL_CLIENT_ID_LOCALIST or GHL_CLIENT_SECRET_LOCALIST not configured — cannot refresh token");
     return null;
   }
 

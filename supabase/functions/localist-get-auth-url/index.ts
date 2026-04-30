@@ -11,10 +11,10 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  const GHL_CLIENT_ID = Deno.env.get("GHL_CLIENT_ID");
+  const GHL_CLIENT_ID = Deno.env.get("GHL_CLIENT_ID_LOCALIST");
 
   if (!GHL_CLIENT_ID) {
-    return new Response(JSON.stringify({ error: "GHL_CLIENT_ID not configured" }), {
+    return new Response(JSON.stringify({ error: "GHL_CLIENT_ID_LOCALIST not configured" }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
