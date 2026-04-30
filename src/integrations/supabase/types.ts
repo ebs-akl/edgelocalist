@@ -850,6 +850,7 @@ export type Database = {
           is_pro: boolean | null
           stripe_customer_id: string | null
           updated_at: string | null
+          user_id: string | null
         }
         Insert: {
           created_at?: string | null
@@ -858,6 +859,7 @@ export type Database = {
           is_pro?: boolean | null
           stripe_customer_id?: string | null
           updated_at?: string | null
+          user_id?: string | null
         }
         Update: {
           created_at?: string | null
@@ -866,6 +868,7 @@ export type Database = {
           is_pro?: boolean | null
           stripe_customer_id?: string | null
           updated_at?: string | null
+          user_id?: string | null
         }
         Relationships: []
       }
