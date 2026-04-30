@@ -1,64 +1,41 @@
-## Problem
+1. Confirm the real failure point
+- Treat this as a post-login failure, not a password-auth failure.
+- The browser/network logs already show password login succeeds with HTTP 200 against Supabase Auth.
+- The actual blocker is the follow-up `localist-check-subscription` edge function call returning 500, which prevents the app from completing the authenticated flow cleanly.
 
-The pre-flight verification script returned only 1 row (`AUTH CHECK / auth.users / 1 / PASS`) instead of the full ~40-row report. This means the SQL Editor hit an error partway through and stopped — almost certainly because the new Supabase project is missing one of: PostGIS extension, the `extensions` schema, a required table, or a required function.
+2. Fix edge-function JWT verification to use the correct Supabase project
+- Update `supabase/functions/localist-check-subscription/index.ts` so JWT verification prefers the edge runtime’s connected-project values (`SUPABASE_URL` + publishable/anon key) before any legacy `VITE_*` secrets.
+- Apply the same fix to `localist-create-checkout` and `localist-customer-portal`, because they currently use the same auth-client pattern and would fail later for the same reason.
+- Add lightweight logging of which auth host is being used (host only, no secrets) so future JWT mismatches are diagnosable from logs.
 
-The current script is also fragile: it assumes every object exists. If `localist_contacts` doesn't exist yet, the whole script aborts at that line.
+3. Remove the legacy hybrid-auth assumption from these functions
+- The repo memory still references an older dual-project setup, but the current connected Supabase project is `uemcenvotzcebbyiypju` and the frontend is authenticating there.
+- Refactor these functions so they no longer prioritize stale `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` values that may still point at an old project.
+- If needed, clean up outdated function secrets after the code fix so future deployments cannot regress.
 
-## Solution
+4. Validate the full login path after the fix
+- Re-test sign-in in preview.
+- Confirm `localist-check-subscription` returns 200 instead of 500.
+- Verify the app lands on the correct next screen after auth (dashboard for active subscribers, pricing/home for non-subscribers).
+- Smoke-test checkout and billing portal auth paths to confirm the same JWT issue is gone there too.
 
-Rewrite the verification script to be **fault-tolerant** so every check runs independently and reports `PASS` / `FAIL` / `MISSING` instead of erroring out. Also surface the **first error message** the user actually got, so we can diagnose what's blocking the migration.
+5. Optional cleanup while touching the flow
+- Fix the noisy `ref` warnings coming from the landing/sheet dialog components if they still appear after the auth issue is resolved. They are not the login blocker, but they add noise during debugging.
 
-## Deliverables
+Technical details
+- Evidence gathered:
+  - `POST /auth/v1/token` succeeds with 200 for the working password attempt.
+  - `get_my_rep_profile` succeeds immediately after login.
+  - `POST /functions/v1/localist-check-subscription` fails with `unrecognized JWT kid ... ES256`.
+  - Edge logs show the error occurs inside `localist-check-subscription` during `auth.getClaims(token)`.
+- Most likely root cause:
+  - The edge functions are verifying the JWT against the wrong JWKS endpoint because they currently prioritize `VITE_SUPABASE_URL`; that secret likely still reflects an older project from the previous hybrid setup.
+- Files to update:
+  - `supabase/functions/localist-check-subscription/index.ts`
+  - `supabase/functions/localist-create-checkout/index.ts`
+  - `supabase/functions/localist-customer-portal/index.ts`
 
-### 1. New verification script — `localist-migration-preflight-verification-v2.sql`
-
-Rewrite using a single results table built up by individual `DO` blocks wrapped in `BEGIN ... EXCEPTION WHEN OTHERS` handlers. Each check:
-
-- Runs in isolation (one failing check doesn't kill the rest)
-- Inserts a row into a temp `_preflight_results` table with `(section, check_name, status, detail)`
-- Returns the full table with one final `SELECT * FROM _preflight_results ORDER BY section, check_name`
-
-Checks grouped by section:
-
-```text
-EXTENSIONS    → postgis, pg_trgm, pgcrypto present
-SCHEMA        → 'extensions' schema exists, search_path includes it
-TABLES (19)   → each of: localist_reps, localist_contacts, contacts, customers,
-                orders, profiles, user_roles, user_settings, oauth_states,
-                sms_rate_limits, api_rate_limits, ghl_locations, portal_leads,
-                service_requests, commission_deposits, push_subscriptions,
-                pending_confirmations, recipe_cache, usage_ledger, ghl_social_posts
-FUNCTIONS (18)→ each db function from the schema (nearby_contacts_page,
-                smart_upsert_ghl_contacts, get_my_rep_profile, has_role,
-                handle_new_user, sync_contact_location, etc.)
-TRIGGERS      → on_auth_user_created on auth.users, sync_contact_location_trg,
-                reset_county_pushed_trg, prevent_rep_number_change_trg,
-                protect_subscription_tier_trg
-RLS           → row count of policies per public table; flag tables with 0
-GEOGRAPHY     → localist_contacts.location column type = geography(Point,4326)
-AUTH          → auth.users count, presence of handle_new_user trigger
-```
-
-Each check returns one row regardless of pass/fail. Final query returns everything.
-
-### 2. Diagnostic helper — single-query "what's the first thing missing"
-
-At the top of the new script, add a quick-diagnose `SELECT` that lists in one shot:
-- Which of the 19 tables exist
-- Whether PostGIS is installed
-- Whether the `extensions` schema exists
-
-This lets you (and me) see at a glance what's been migrated and what hasn't, even if you only run that block.
-
-## What I need from you after running v2
-
-Paste back the full output (or screenshot). With the fault-tolerant version, I'll be able to tell you:
-- Exactly which tables/functions/triggers are missing
-- Whether PostGIS needs to be enabled
-- Whether the `auth.users → handle_new_user` trigger needs to be re-attached (this is the most commonly missed step)
-- What migration phase to re-run from the runbook
-
-## Files to create
-
-- `/mnt/documents/localist-migration-preflight-verification-v2.sql` (new, fault-tolerant)
-- Keep the original v1 in place for reference
+<lov-actions>
+<lov-link url="https://supabase.com/dashboard/project/uemcenvotzcebbyiypju/functions/localist-check-subscription/logs">Check subscription function logs</lov-link>
+<lov-link url="https://supabase.com/dashboard/project/uemcenvotzcebbyiypju/settings/functions">Edge Function secrets</lov-link>
+</lov-actions>
