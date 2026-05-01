@@ -13,7 +13,7 @@ import { TIERS } from "@/lib/stripe-tiers";
 import localistLogo from "@/assets/Localist-Final-Logo.png";
 import Footer from "@/components/Footer";
 
-const UPGRADE_URL = "/#pricing";
+const UPGRADE_URL = "https://automatedknifelife.com/checkout";
 
 export default function Settings() {
   const { user, repProfile, signOut, isGhlMode, refreshProfile, subscription, loadingSubscription, refreshSubscription, session } = useAuth();
