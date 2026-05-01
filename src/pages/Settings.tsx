@@ -13,7 +13,7 @@ import { TIERS } from "@/lib/stripe-tiers";
 import localistLogo from "@/assets/Localist-Final-Logo.png";
 import Footer from "@/components/Footer";
 
-const UPGRADE_URL = "/#pricing";
+const UPGRADE_URL = "https://automatedknifelife.com/checkout";
 
 export default function Settings() {
   const { user, repProfile, signOut, isGhlMode, refreshProfile, subscription, loadingSubscription, refreshSubscription, session } = useAuth();
@@ -238,7 +238,7 @@ export default function Settings() {
             <CardContent className="space-y-3">
               <p className="text-sm text-muted-foreground">Unlock automatic CRM syncing, LC Calls, and more by upgrading to EdgeDMS.</p>
               <Button asChild className="w-full min-h-[44px]">
-                <a href={UPGRADE_URL}>
+                <a href={UPGRADE_URL} target="_blank" rel="noopener noreferrer">
                   <Rocket className="mr-2 h-4 w-4" />
                   Upgrade To EdgeDMS
                 </a>
