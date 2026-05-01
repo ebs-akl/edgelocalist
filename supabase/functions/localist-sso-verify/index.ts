@@ -7,49 +7,53 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const BASE64_LIKE_RE = /^[A-Za-z0-9+/=_-]+$/;
+function getPayloadVariants(payload: string): string[] {
+  const variants = new Set<string>();
+  const add = (value: string | null | undefined) => {
+    if (value && value.trim()) variants.add(value.trim());
+  };
 
-function normalizeCipherPayload(raw: string): string | null {
-  let normalized = raw.trim();
-  if (!normalized) return null;
+  add(payload);
+  add(payload.replace(/ /g, "+"));
+  add(payload.replace(/-/g, "+").replace(/_/g, "/"));
+  add(payload.replace(/\s+/g, ""));
+  add(payload.replace(/\s+/g, "").replace(/-/g, "+").replace(/_/g, "/"));
 
   try {
-    if (/%[0-9A-Fa-f]{2}/.test(normalized)) {
-      normalized = decodeURIComponent(normalized);
-    }
+    const decoded = decodeURIComponent(payload);
+    add(decoded);
+    add(decoded.replace(/ /g, "+"));
+    add(decoded.replace(/-/g, "+").replace(/_/g, "/"));
+    add(decoded.replace(/\s+/g, ""));
+    add(decoded.replace(/\s+/g, "").replace(/-/g, "+").replace(/_/g, "/"));
   } catch {
-    // noop
+    // Payload may already be decoded.
   }
 
-  normalized = normalized.replace(/\s+/g, "");
-  normalized = normalized.replace(/-/g, "+").replace(/_/g, "/");
-
-  if (!BASE64_LIKE_RE.test(normalized) || normalized.length < 20) {
-    return null;
-  }
-
-  const remainder = normalized.length % 4;
-  if (remainder !== 0) {
-    normalized = normalized.padEnd(normalized.length + (4 - remainder), "=");
-  }
-
-  return normalized;
+  return Array.from(variants);
 }
 
-function tryDecryptPayload(payload: string, decryptionKeys: string[]): string | null {
+function tryDecryptPayload(payload: string, decryptionKeys: string[]): { decrypted: string | null; variantCount: number } {
+  const payloadVariants = getPayloadVariants(payload);
+
   for (const key of decryptionKeys) {
-    try {
-      const bytes = CryptoJS.AES.decrypt(payload, key);
-      const decrypted = bytes.toString(CryptoJS.enc.Utf8);
-      if (decrypted && decrypted.trim()) {
-        return decrypted;
+    for (const variant of payloadVariants) {
+      try {
+        const bytes = CryptoJS.AES.decrypt(variant, key);
+        const decrypted = bytes.toString(CryptoJS.enc.Utf8);
+        if (decrypted && decrypted.trim().startsWith("{")) {
+          return { decrypted, variantCount: payloadVariants.length };
+        }
+      } catch (decryptErr) {
+        console.warn(
+          "AES decryption attempt failed:",
+          decryptErr instanceof Error ? decryptErr.message : String(decryptErr)
+        );
       }
-    } catch (decryptErr) {
-      console.warn("AES decryption attempt failed:", decryptErr instanceof Error ? decryptErr.message : String(decryptErr));
     }
   }
 
-  return null;
+  return { decrypted: null, variantCount: payloadVariants.length };
 }
 
 Deno.serve(async (req) => {
@@ -73,7 +77,7 @@ Deno.serve(async (req) => {
     const decryptionKeys = [GHL_SSO_KEY_LOCALIST];
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    let body: { payload?: string } = {};
+    let body: { payload?: string; ssoPayload?: string } = {};
     try {
       body = await req.json();
     } catch {
@@ -83,7 +87,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    const { payload } = body;
+    const payload = body.payload || body.ssoPayload;
     if (!payload || typeof payload !== "string" || payload.length < 20) {
       return new Response(
         JSON.stringify({ error: "Missing or invalid 'payload' field" }),
@@ -91,19 +95,11 @@ Deno.serve(async (req) => {
       );
     }
 
-    const normalizedPayload = normalizeCipherPayload(payload);
-    if (!normalizedPayload) {
-      return new Response(
-        JSON.stringify({ error: "Invalid payload format for decryption" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
     // ── Step 1: Decrypt SSO payload ──
-    const decryptedString = tryDecryptPayload(normalizedPayload, decryptionKeys);
+    const { decrypted: decryptedString, variantCount } = tryDecryptPayload(payload, decryptionKeys);
 
     if (!decryptedString) {
-      console.error("Decryption failed for all configured keys. Payload length:", normalizedPayload.length, "First 40 chars:", normalizedPayload.substring(0, 40));
+      console.error("Decryption failed for all configured keys. Payload length:", payload.length, "Variants tried:", variantCount, "First 40 chars:", payload.substring(0, 40));
       return new Response(
         JSON.stringify({ error: "SSO authentication failed" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
