@@ -1,5 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import CryptoJS from "npm:crypto-js";
+import CryptoJS from "https://esm.sh/crypto-js@4.2.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
