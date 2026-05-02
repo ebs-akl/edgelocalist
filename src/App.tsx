@@ -18,22 +18,11 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import { supabaseConfigured } from "@/integrations/supabase/client";
 import { MapPin, AlertTriangle } from "lucide-react";
 import IframeApp from "./components/IframeApp";
+import { isRunningInGhlIframe } from "@/lib/is-ghl-iframe";
 
 // ─── Top-level iframe detection (runs before any React tree) ───
 // Only treat as GHL iframe if actually embedded AND not in Lovable preview
-const isIframe = (() => {
-  try {
-    if (window.self === window.top) return false;
-    // Lovable preview runs in an iframe too — don't trigger GHL mode there
-    const host = window.location.hostname;
-    if (host.includes("lovable.app") || host.includes("lovableproject.com") || host.includes("localhost")) {
-      return false;
-    }
-    return true;
-  } catch {
-    return true; // cross-origin = definitely in iframe
-  }
-})();
+const isIframe = isRunningInGhlIframe();
 
 const queryClient = new QueryClient();
 
