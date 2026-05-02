@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from "react";
+import { isRunningInGhlIframe } from "@/lib/is-ghl-iframe";
 
 /**
  * GHL Custom Page SSO handshake hook.
@@ -109,16 +110,7 @@ export function useGhlSso() {
   const messageCount = useRef(0);
 
   const isInIframe = useCallback(() => {
-    try {
-      if (window.self === window.top) return false;
-      const host = window.location.hostname;
-      if (host.includes("lovable.app") || host.includes("lovableproject.com") || host.includes("localhost")) {
-        return false;
-      }
-      return true;
-    } catch {
-      return true;
-    }
+    return isRunningInGhlIframe();
   }, []);
 
   const sendRequest = useCallback(() => {
