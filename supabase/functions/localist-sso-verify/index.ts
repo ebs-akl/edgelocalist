@@ -33,27 +33,46 @@ function getPayloadVariants(payload: string): string[] {
   return Array.from(variants);
 }
 
-function tryDecryptPayload(payload: string, decryptionKeys: string[]): { decrypted: string | null; variantCount: number } {
+function getCandidateKeys(): Array<{ name: string; key: string }> {
+  const candidates = [
+    { name: "GHL_SSO_KEY_LOCALIST", key: Deno.env.get("GHL_SSO_KEY_LOCALIST") },
+    { name: "GHL_SSO_KEY_ALOMAR", key: Deno.env.get("GHL_SSO_KEY_ALOMAR") },
+    { name: "GHL_SSO_KEY_COOKY", key: Deno.env.get("GHL_SSO_KEY_COOKY") },
+    { name: "GHL_SSO_KEY", key: Deno.env.get("GHL_SSO_KEY") },
+    { name: "VITE_GHL_SHARED_SECRET", key: Deno.env.get("VITE_GHL_SHARED_SECRET") },
+  ];
+  return candidates.filter((c): c is { name: string; key: string } => !!c.key && c.key.length > 0);
+}
+
+function tryDecryptPayload(
+  payload: string,
+  candidateKeys: Array<{ name: string; key: string }>
+): { decrypted: string | null; variantCount: number; usedKeyName: string | null } {
   const payloadVariants = getPayloadVariants(payload);
 
-  for (const key of decryptionKeys) {
-    for (const variant of payloadVariants) {
+  for (const { name, key } of candidateKeys) {
+    for (const [variantIndex, variant] of payloadVariants.entries()) {
       try {
         const bytes = CryptoJS.AES.decrypt(variant, key);
         const decrypted = bytes.toString(CryptoJS.enc.Utf8);
         if (decrypted && decrypted.trim().startsWith("{")) {
-          return { decrypted, variantCount: payloadVariants.length };
+          return {
+            decrypted,
+            variantCount: payloadVariants.length,
+            usedKeyName: `${name} (variant ${variantIndex + 1})`,
+          };
         }
       } catch (decryptErr) {
-        console.warn(
-          "AES decryption attempt failed:",
+        // Expected for wrong key; only log at debug level
+        console.log(
+          `Decrypt miss with ${name} variant ${variantIndex + 1}:`,
           decryptErr instanceof Error ? decryptErr.message : String(decryptErr)
         );
       }
     }
   }
 
-  return { decrypted: null, variantCount: payloadVariants.length };
+  return { decrypted: null, variantCount: payloadVariants.length, usedKeyName: null };
 }
 
 Deno.serve(async (req) => {
