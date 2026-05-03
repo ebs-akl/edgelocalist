@@ -33,27 +33,46 @@ function getPayloadVariants(payload: string): string[] {
   return Array.from(variants);
 }
 
-function tryDecryptPayload(payload: string, decryptionKeys: string[]): { decrypted: string | null; variantCount: number } {
+function getCandidateKeys(): Array<{ name: string; key: string }> {
+  const candidates = [
+    { name: "GHL_SSO_KEY_LOCALIST", key: Deno.env.get("GHL_SSO_KEY_LOCALIST") },
+    { name: "GHL_SSO_KEY_ALOMAR", key: Deno.env.get("GHL_SSO_KEY_ALOMAR") },
+    { name: "GHL_SSO_KEY_COOKY", key: Deno.env.get("GHL_SSO_KEY_COOKY") },
+    { name: "GHL_SSO_KEY", key: Deno.env.get("GHL_SSO_KEY") },
+    { name: "VITE_GHL_SHARED_SECRET", key: Deno.env.get("VITE_GHL_SHARED_SECRET") },
+  ];
+  return candidates.filter((c): c is { name: string; key: string } => !!c.key && c.key.length > 0);
+}
+
+function tryDecryptPayload(
+  payload: string,
+  candidateKeys: Array<{ name: string; key: string }>
+): { decrypted: string | null; variantCount: number; usedKeyName: string | null } {
   const payloadVariants = getPayloadVariants(payload);
 
-  for (const key of decryptionKeys) {
-    for (const variant of payloadVariants) {
+  for (const { name, key } of candidateKeys) {
+    for (const [variantIndex, variant] of payloadVariants.entries()) {
       try {
         const bytes = CryptoJS.AES.decrypt(variant, key);
         const decrypted = bytes.toString(CryptoJS.enc.Utf8);
         if (decrypted && decrypted.trim().startsWith("{")) {
-          return { decrypted, variantCount: payloadVariants.length };
+          return {
+            decrypted,
+            variantCount: payloadVariants.length,
+            usedKeyName: `${name} (variant ${variantIndex + 1})`,
+          };
         }
       } catch (decryptErr) {
-        console.warn(
-          "AES decryption attempt failed:",
+        // Expected for wrong key; only log at debug level
+        console.log(
+          `Decrypt miss with ${name} variant ${variantIndex + 1}:`,
           decryptErr instanceof Error ? decryptErr.message : String(decryptErr)
         );
       }
     }
   }
 
-  return { decrypted: null, variantCount: payloadVariants.length };
+  return { decrypted: null, variantCount: payloadVariants.length, usedKeyName: null };
 }
 
 Deno.serve(async (req) => {
@@ -62,19 +81,26 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const GHL_SSO_KEY_LOCALIST = Deno.env.get("GHL_SSO_KEY_LOCALIST");
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
-    if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY || !GHL_SSO_KEY_LOCALIST) {
-      console.error("Missing server config: GHL_SSO_KEY_LOCALIST, SUPABASE_URL, or SUPABASE_SERVICE_ROLE_KEY");
+    if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+      console.error("Missing server config: SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY");
       return new Response(
         JSON.stringify({ error: "Server configuration error" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    const decryptionKeys = [GHL_SSO_KEY_LOCALIST];
+    const candidateKeys = getCandidateKeys();
+    if (candidateKeys.length === 0) {
+      console.error("No GHL SSO keys configured (checked: GHL_SSO_KEY_LOCALIST, GHL_SSO_KEY_ALOMAR, GHL_SSO_KEY_COOKY, GHL_SSO_KEY, VITE_GHL_SHARED_SECRET)");
+      return new Response(
+        JSON.stringify({ error: "Server configuration error: no SSO key" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
     let body: { payload?: string; ssoPayload?: string } = {};
@@ -95,16 +121,30 @@ Deno.serve(async (req) => {
       );
     }
 
-    // ── Step 1: Decrypt SSO payload ──
-    const { decrypted: decryptedString, variantCount } = tryDecryptPayload(payload, decryptionKeys);
+    // ── Step 1: Decrypt SSO payload (try all configured GHL app keys) ──
+    const { decrypted: decryptedString, variantCount, usedKeyName } = tryDecryptPayload(
+      payload,
+      candidateKeys
+    );
 
     if (!decryptedString) {
-      console.error("Decryption failed for all configured keys. Payload length:", payload.length, "Variants tried:", variantCount, "First 40 chars:", payload.substring(0, 40));
+      console.error(
+        "Decryption failed. Payload length:",
+        payload.length,
+        "Variants tried:",
+        variantCount,
+        "Keys tried:",
+        candidateKeys.map((k) => k.name).join(", "),
+        "First 40 chars:",
+        payload.substring(0, 40)
+      );
       return new Response(
         JSON.stringify({ error: "SSO authentication failed" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    console.log(`✅ Decrypted SSO payload using ${usedKeyName}`);
 
     let userData: Record<string, unknown>;
     try {
