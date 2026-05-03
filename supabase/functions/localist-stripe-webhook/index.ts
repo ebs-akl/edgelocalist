@@ -246,8 +246,18 @@ Deno.serve(async (req) => {
         }
       }
 
-      // Update subscription_tier in database
-      await updateSubscriptionTier(customerEmail, tierName);
+      // Update tier + sync sub fields (status, PM, trial)
+      if (session.subscription) {
+        try {
+          const subscription = await stripe.subscriptions.retrieve(session.subscription as string);
+          await syncSubscription(stripe, subscription);
+        } catch (e) {
+          logStep("syncSubscription failed during checkout.completed", { error: String(e) });
+          await updateSubscriptionTier(customerEmail, tierName);
+        }
+      } else {
+        await updateSubscriptionTier(customerEmail, tierName);
+      }
 
       // Send confirmation email
       const html = buildConfirmationEmail(customerEmail, tierName);
@@ -273,31 +283,36 @@ Deno.serve(async (req) => {
       }
     }
 
+    // ── customer.subscription.created / updated ─────────────────────
+    if (event.type === "customer.subscription.created" || event.type === "customer.subscription.updated") {
+      const subscription = event.data.object as Stripe.Subscription;
+      await syncSubscription(stripe, subscription);
+    }
+
     // ── customer.subscription.deleted ───────────────────────────────
     if (event.type === "customer.subscription.deleted") {
       const subscription = event.data.object as Stripe.Subscription;
-      const customerId = subscription.customer as string;
-      const email = await getCustomerEmail(stripe, customerId);
-
+      const email = await getCustomerEmail(stripe, subscription.customer as string);
       if (email) {
-        await updateSubscriptionTier(email, "expired");
-        logStep("Subscription deleted — set to expired", { email });
+        await updateRepByEmail(email, {
+          subscription_tier: "expired",
+          subscription_status: "canceled",
+          payment_method_on_file: false,
+        });
       } else {
-        logStep("WARNING: Could not resolve email for deleted subscription", { customerId });
+        logStep("WARNING: Could not resolve email for deleted subscription", { subId: subscription.id });
       }
     }
 
     // ── invoice.payment_failed ──────────────────────────────────────
     if (event.type === "invoice.payment_failed") {
       const invoice = event.data.object as Stripe.Invoice;
-      const customerId = invoice.customer as string;
-      const email = await getCustomerEmail(stripe, customerId);
-
+      const email = await getCustomerEmail(stripe, invoice.customer as string);
       if (email) {
-        await updateSubscriptionTier(email, "expired");
-        logStep("Payment failed — set to expired", { email });
+        await updateRepByEmail(email, { subscription_status: "past_due" });
+        logStep("Payment failed — set to past_due", { email });
       } else {
-        logStep("WARNING: Could not resolve email for failed invoice", { customerId });
+        logStep("WARNING: Could not resolve email for failed invoice", { customerId: invoice.customer });
       }
     }
 
