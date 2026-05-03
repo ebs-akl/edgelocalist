@@ -29,8 +29,15 @@ const logStep = (step: string, details?: unknown) => {
   console.log(`[STRIPE-WEBHOOK] ${step}${d}`);
 };
 
-/** Update subscription_tier in localist_reps by email */
-async function updateSubscriptionTier(email: string, tier: string): Promise<void> {
+type RepUpdate = Partial<{
+  subscription_tier: string;
+  subscription_status: string;
+  trial_ends_at: string | null;
+  payment_method_on_file: boolean;
+}>;
+
+/** Update fields in localist_reps by email */
+async function updateRepByEmail(email: string, patch: RepUpdate): Promise<void> {
   const supabase = createClient(
     Deno.env.get("SUPABASE_URL")!,
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
@@ -39,17 +46,59 @@ async function updateSubscriptionTier(email: string, tier: string): Promise<void
 
   const { data, error } = await supabase
     .from("localist_reps")
-    .update({ subscription_tier: tier })
+    .update(patch)
     .eq("email", email)
     .select("id, email");
 
   if (error) {
-    logStep("ERROR updating subscription_tier", { email, tier, error: error.message });
+    logStep("ERROR updating rep", { email, patch, error: error.message });
   } else if (!data || data.length === 0) {
-    logStep("WARNING: No rep found for email", { email, tier });
+    logStep("WARNING: No rep found for email", { email, patch });
   } else {
-    logStep("✅ Updated subscription_tier", { email, tier, repId: data[0].id });
+    logStep("✅ Updated rep", { email, patch, repId: data[0].id });
   }
+}
+
+async function updateSubscriptionTier(email: string, tier: string): Promise<void> {
+  await updateRepByEmail(email, { subscription_tier: tier });
+}
+
+/** Determine if a subscription has a payment method on file */
+async function hasPaymentMethod(stripe: Stripe, sub: Stripe.Subscription): Promise<boolean> {
+  if (sub.default_payment_method) return true;
+  try {
+    const cust = await stripe.customers.retrieve(sub.customer as string);
+    if (cust.deleted) return false;
+    const c = cust as Stripe.Customer;
+    if (c.invoice_settings?.default_payment_method || c.default_source) return true;
+    const pms = await stripe.paymentMethods.list({ customer: c.id, type: "card", limit: 1 });
+    return pms.data.length > 0;
+  } catch (e) {
+    logStep("hasPaymentMethod error", { error: String(e) });
+    return false;
+  }
+}
+
+/** Sync a subscription's status/PM/tier to the rep row */
+async function syncSubscription(stripe: Stripe, sub: Stripe.Subscription): Promise<void> {
+  const email = await getCustomerEmail(stripe, sub.customer as string);
+  if (!email) {
+    logStep("WARNING: No email for subscription sync", { subId: sub.id });
+    return;
+  }
+  const productId = sub.items.data[0]?.price?.product as string | undefined;
+  const tier = (productId && TIER_NAMES[productId]) || undefined;
+  const pm = await hasPaymentMethod(stripe, sub);
+  const trialEnd = (sub as any).trial_end;
+  const trial_ends_at = typeof trialEnd === "number" ? new Date(trialEnd * 1000).toISOString() : null;
+
+  const patch: RepUpdate = {
+    subscription_status: sub.status,
+    payment_method_on_file: pm,
+    trial_ends_at,
+  };
+  if (tier) patch.subscription_tier = tier;
+  await updateRepByEmail(email, patch);
 }
 
 /** Resolve customer email from a Stripe customer ID */
