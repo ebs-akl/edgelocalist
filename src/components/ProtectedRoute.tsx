@@ -70,9 +70,10 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
     return <Navigate to="/auth" replace />;
   }
 
-  // Subscription gate: redirect to pricing if no valid tier
-  if (!loadingSubscription && (!subscription.tier || !VALID_TIERS.has(subscription.tier))) {
-    if (!isInIframe()) {
+  // Subscription gate: redirect to pricing if no valid tier OR no payment method on file
+  if (!loadingSubscription && !isInIframe()) {
+    const hasValidTier = subscription.tier && VALID_TIERS.has(subscription.tier);
+    if (!hasValidTier || !subscription.paymentMethodOnFile) {
       return <Navigate to="/#pricing" replace />;
     }
   }
