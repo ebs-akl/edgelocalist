@@ -2445,6 +2445,22 @@ export type Database = {
         }
         Returns: string
       }
+      upsert_customer: {
+        Args: {
+          p_address?: string
+          p_app_source?: string
+          p_city?: string
+          p_email?: string
+          p_full_name: string
+          p_phone?: string
+          p_source_type?: string
+          p_state?: string
+          p_user_id: string
+          p_value?: number
+          p_zip?: string
+        }
+        Returns: string
+      }
     }
     Enums: {
       app_role: "admin" | "moderator" | "user" | "super_admin"
