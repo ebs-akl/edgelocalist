@@ -83,16 +83,12 @@ serve(async (req) => {
       .maybeSingle();
 
     if (!rep) {
-      const { data: anyRep } = await supabase
-        .from("localist_reps")
-        .select("id")
-        .not("ghl_access_token", "is", null)
-        .limit(1)
-        .maybeSingle();
-      repId = anyRep?.id ?? null;
-    } else {
-      repId = rep.id;
+      return new Response(JSON.stringify({ error: "No rep found for this location" }), {
+        status: 404,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
+    repId = rep.id;
   } else {
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
