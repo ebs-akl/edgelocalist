@@ -47,7 +47,7 @@ serve(async (req) => {
   async function dbFallback(userId: string): Promise<Response | null> {
     const { data: rep } = await supabaseClient
       .from("localist_reps")
-      .select("subscription_tier")
+      .select("subscription_tier, subscription_status, payment_method_on_file, trial_ends_at")
       .eq("id", userId)
       .maybeSingle();
 
@@ -56,7 +56,14 @@ serve(async (req) => {
 
     if (productId) {
       logStep("DB fallback matched", { tier, productId });
-      return new Response(JSON.stringify({ subscribed: true, product_id: productId, subscription_end: null }), {
+      return new Response(JSON.stringify({
+        subscribed: true,
+        product_id: productId,
+        subscription_end: null,
+        subscription_status: rep?.subscription_status ?? null,
+        payment_method_on_file: !!rep?.payment_method_on_file,
+        trial_ends_at: rep?.trial_ends_at ?? null,
+      }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,
       });
