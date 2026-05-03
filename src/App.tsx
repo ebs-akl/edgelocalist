@@ -17,6 +17,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import { supabaseConfigured } from "@/integrations/supabase/client";
 import { MapPin, AlertTriangle } from "lucide-react";
 import IframeApp from "./components/IframeApp";
+import CookieConsent from "./components/CookieConsent";
 import { isRunningInGhlIframe } from "@/lib/is-ghl-iframe";
 
 // ─── Top-level iframe detection (runs before any React tree) ───
@@ -106,6 +107,7 @@ const App = () => {
               <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
+            <CookieConsent />
           </AuthProvider>
         </BrowserRouter>
       </TooltipProvider>
