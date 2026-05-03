@@ -27,14 +27,9 @@ export default function Auth() {
 
   useEffect(() => {
     if (authLoading || loadingSubscription || !isAuthenticated) return;
-
-    if (subscription.subscribed && subscription.tier) {
-      navigate("/dashboard", { replace: true });
-    } else if (localStorage.getItem("pending_checkout_tier")) {
-      navigate("/", { replace: true });
-    } else {
-      navigate("/", { replace: true });
-    }
+    // Always send authenticated users to /dashboard. ProtectedRoute will
+    // forward them to Stripe checkout if no active subscription / card on file.
+    navigate("/dashboard", { replace: true });
   }, [authLoading, isAuthenticated, loadingSubscription, navigate, subscription.subscribed, subscription.tier]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -77,7 +72,7 @@ export default function Auth() {
           title: "Account created!",
           description: "Redirecting you to choose a plan…",
         });
-        navigate("/", { replace: true });
+        navigate("/dashboard", { replace: true });
       }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Something went wrong.";
