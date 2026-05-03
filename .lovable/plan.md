@@ -1,38 +1,36 @@
-# Fix LocaList SSO Decryption ("Malformed UTF-8 data")
+## Goal
+Determine why all 5 candidate SSO keys fail to decrypt even after rotating `GHL_SSO_KEY_LOCALIST` in Supabase. We need to confirm whether the secret you pasted actually landed in the right slot, and whether it differs from the other slots.
 
-## Problem
-`localist-sso-verify` only attempts decryption with `GHL_SSO_KEY_LOCALIST`. Every recent SSO attempt fails with `Malformed UTF-8 data` — meaning AES decrypts to garbage bytes (wrong key). The Alomar sibling app solves this by trying **all configured GHL app keys** as fallbacks, and it works.
+## Change
+Edit `supabase/functions/localist-sso-verify/index.ts`:
 
-## Fix
+1. After loading candidate keys, log a **safe fingerprint** for each:
+   - `name`
+   - `length`
+   - `first4` + `last4` characters
+   - `sha256` (first 12 hex chars) — so identical values across slots are obvious
+   - `hasWhitespace` boolean (catches stray space/newline from paste)
 
-### 1. Edit `supabase/functions/localist-sso-verify/index.ts`
-Replace the single-key array with a candidate-key loop that tries every configured GHL SSO secret until one yields valid JSON:
+   Example log line:
+   ```
+   Key GHL_SSO_KEY_LOCALIST: len=44 first=ab12 last=xy90 sha256=3f2a91b… ws=false
+   ```
 
-```ts
-function getCandidateKeys(): Array<{ name: string; key: string }> {
-  const candidates = [
-    { name: "GHL_SSO_KEY_LOCALIST", key: Deno.env.get("GHL_SSO_KEY_LOCALIST") },
-    { name: "GHL_SSO_KEY_ALOMAR",   key: Deno.env.get("GHL_SSO_KEY_ALOMAR") },
-    { name: "GHL_SSO_KEY_COOKY",    key: Deno.env.get("GHL_SSO_KEY_COOKY") },
-    { name: "GHL_SSO_KEY",          key: Deno.env.get("GHL_SSO_KEY") }, // legacy unsuffixed
-  ];
-  return candidates.filter((c): c is { name: string; key: string } => !!c.key);
-}
-```
+2. Also log a fingerprint of the incoming payload's first 16 chars so we can correlate which encryption attempt corresponds to which secret-rotation moment.
 
-Update `tryDecryptPayload` to log **which** key+variant succeeded (`✅ Decrypted with GHL_SSO_KEY_ALOMAR variant 2`), and to log all configured key names on failure so we can immediately tell whether the right secret is even present.
-
-Keep the existing payload-variant logic (base64url → base64, decodeURIComponent, whitespace strip) unchanged.
-
-### 2. Verify the secret value
-After deploying, if logs still show `Decryption failed (tried keys: GHL_SSO_KEY_LOCALIST, GHL_SSO_KEY_ALOMAR, ...)`, the actual shared secret in GHL Marketplace doesn't match any stored secret. In that case:
-- Open GHL Marketplace → LocaList app → SSO → copy the **Shared Secret**
-- Update Supabase secret `GHL_SSO_KEY_LOCALIST` to match (per memory rule: per-app suffixed secrets, never touch `GHL_SSO_KEY`)
-
-### 3. Don't touch
-- The HMAC/`GHL_SSO_KEY` rule from memory remains: we **add** suffixed candidates, we don't rename or delete `GHL_SSO_KEY`.
-- Client-side `useGhlSso.ts` and `is-ghl-iframe.ts` are working correctly (logs show payloads of length 684 arriving at the function).
+3. No secret values are ever logged in full — only length, edges, and a one-way hash. Safe to leave on while debugging.
 
 ## Expected outcome
-- Next SSO handshake either succeeds via a fallback key (proving the wrong secret was being used) **or** the failure log explicitly names every key tried, letting us pinpoint the GHL Marketplace secret to copy over.
-- No change to the iframe handshake, magic-link flow, rep provisioning, or RLS.
+Next SSO attempt will produce a log block like:
+```
+Key GHL_SSO_KEY_LOCALIST: len=44 first=q7Aa last=Pp2= sha256=9c4e… ws=false
+Key GHL_SSO_KEY_ALOMAR:   len=64 first=8f3K last=zZ0= sha256=a118… ws=false
+...
+```
+
+You then verify in GHL Marketplace → LocaList → SSO that the Shared Secret's length and first/last 4 chars match `GHL_SSO_KEY_LOCALIST`. If they don't, the rotation didn't reach the right slot. If they do, the GHL app itself is encrypting with a stale/different secret — at which point we open a Marketplace support ticket.
+
+## Files
+- `supabase/functions/localist-sso-verify/index.ts` — add fingerprint helper + one log block; no behavior changes.
+
+After approval I'll deploy the update; then trigger a fresh SSO load and re-check logs.
