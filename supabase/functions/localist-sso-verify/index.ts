@@ -141,6 +141,16 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Payload fingerprint (safe — encrypted ciphertext, no plaintext)
+    try {
+      const pHash = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(payload));
+      const pSha = Array.from(new Uint8Array(pHash))
+        .slice(0, 6)
+        .map((b) => b.toString(16).padStart(2, "0"))
+        .join("");
+      console.log(`Payload: len=${payload.length} first16=${payload.substring(0, 16)} sha256=${pSha}`);
+    } catch {}
+
     // ── Step 1: Decrypt SSO payload (try all configured GHL app keys) ──
     const { decrypted: decryptedString, variantCount, usedKeyName } = tryDecryptPayload(
       payload,
