@@ -135,7 +135,7 @@ export default function Auth() {
       {/* Left panel — GIF background (desktop only) */}
       <div className="hidden md:block md:w-1/2 relative overflow-hidden">
         <img
-          src="/images/auth-bg.gif"
+          src="/images/auth-bg.png"
           alt=""
           className="absolute inset-0 w-full h-full object-cover"
         />
