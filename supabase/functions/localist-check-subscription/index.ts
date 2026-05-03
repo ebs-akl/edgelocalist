@@ -116,24 +116,42 @@ serve(async (req) => {
     const hasActiveSub = allActive.length > 0;
     let productId: string | null = null;
     let subscriptionEnd: string | null = null;
+    let subscriptionStatus: string | null = null;
+    let paymentMethodOnFile = false;
+    let trialEndsAt: string | null = null;
 
     if (hasActiveSub) {
       const subscription = allActive[0];
+      subscriptionStatus = subscription.status;
       try {
         const endVal = subscription.current_period_end;
-        // Handle both Unix timestamp (number) and ISO string formats
         if (typeof endVal === "number") {
           subscriptionEnd = new Date(endVal * 1000).toISOString();
         } else if (typeof endVal === "string") {
           subscriptionEnd = new Date(endVal).toISOString();
-        } else {
-          subscriptionEnd = null;
         }
-      } catch {
-        subscriptionEnd = null;
-      }
+      } catch { subscriptionEnd = null; }
+      try {
+        const tEnd = (subscription as any).trial_end;
+        if (typeof tEnd === "number") trialEndsAt = new Date(tEnd * 1000).toISOString();
+      } catch {}
       productId = subscription.items.data[0].price.product as string;
-      logStep("Active subscription found", { productId, subscriptionEnd });
+
+      // Determine payment method on file
+      const subDefaultPm = (subscription as any).default_payment_method;
+      if (subDefaultPm) {
+        paymentMethodOnFile = true;
+      } else {
+        const cust = customers.data[0] as Stripe.Customer;
+        if (cust.invoice_settings?.default_payment_method || cust.default_source) {
+          paymentMethodOnFile = true;
+        } else {
+          // fallback: list customer payment methods
+          const pms = await stripe.paymentMethods.list({ customer: customerId, type: "card", limit: 1 });
+          paymentMethodOnFile = pms.data.length > 0;
+        }
+      }
+      logStep("Active subscription", { productId, subscriptionStatus, paymentMethodOnFile, trialEndsAt });
     } else {
       logStep("No active Stripe subscription, trying DB fallback");
       const fallback = await dbFallback(user.id);
@@ -144,6 +162,9 @@ serve(async (req) => {
       subscribed: hasActiveSub,
       product_id: productId,
       subscription_end: subscriptionEnd,
+      subscription_status: subscriptionStatus,
+      payment_method_on_file: paymentMethodOnFile,
+      trial_ends_at: trialEndsAt,
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
