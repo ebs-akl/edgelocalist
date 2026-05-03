@@ -102,29 +102,17 @@ serve(async (req) => {
     });
   }
 
-  // Look up rep by location_id, then fallback to any rep with a token
-  let { data: rep } = await supabase
+  // Look up rep strictly by location_id (no cross-rep fallback for data isolation)
+  const { data: rep } = await supabase
     .from("localist_reps")
     .select("id, ghl_access_token, ghl_refresh_token, ghl_expires_at, ghl_location_id")
     .eq("ghl_location_id", locationId)
     .maybeSingle();
 
   if (!rep?.ghl_access_token) {
-    const { data: tokenRep } = await supabase
-      .from("localist_reps")
-      .select("id, ghl_access_token, ghl_refresh_token, ghl_expires_at, ghl_location_id")
-      .not("ghl_access_token", "is", null)
-      .limit(1)
-      .maybeSingle();
-
-    if (tokenRep?.ghl_access_token) {
-      console.log(`Using rep ${tokenRep.id} with token for location ${tokenRep.ghl_location_id} (SSO location: ${locationId})`);
-      rep = tokenRep;
-    } else {
-      return new Response(JSON.stringify({ error: "No CRM token found for this location." }), {
-        status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    return new Response(JSON.stringify({ error: "No CRM token found for this location." }), {
+      status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 
   if (!rep?.ghl_location_id) {
