@@ -12,7 +12,19 @@ import { validatePasswordStrength } from "@/lib/password-validation";
 
 export default function Auth() {
   const [searchParams] = useSearchParams();
-  const [isLogin, setIsLogin] = useState(searchParams.get("mode") !== "signup");
+  const [isLogin, setIsLogin] = useState(() => {
+    const mode = searchParams.get("mode");
+    if (mode === "signup") return false;
+    if (mode === "signin" || mode === "login") return true;
+    // First-time visitors default to Sign Up; returning visitors default to Sign In.
+    if (typeof document !== "undefined") {
+      const isReturning = document.cookie
+        .split("; ")
+        .some((c) => c.startsWith("localist_returning=1"));
+      return isReturning;
+    }
+    return true;
+  });
   const [forgotPassword, setForgotPassword] = useState(false);
   const [useMagicLink, setUseMagicLink] = useState(false);
   const [email, setEmail] = useState("");
