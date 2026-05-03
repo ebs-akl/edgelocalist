@@ -144,6 +144,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           tier,
           productId: data?.product_id ?? null,
           subscriptionEnd: data?.subscription_end ?? null,
+          status: data?.subscription_status ?? null,
+          paymentMethodOnFile: !!data?.payment_method_on_file,
+          trialEndsAt: data?.trial_ends_at ?? null,
         },
         loadingSubscription: false,
       }));
