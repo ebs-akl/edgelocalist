@@ -3,6 +3,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Loader2 } from "lucide-react";
 import { useRef, type ReactNode } from "react";
+import CheckoutRedirect from "./CheckoutRedirect";
 
 const VALID_TIERS = new Set(["LOCALIST", "SNACK PACK", "EDGE BASIC"]);
 
@@ -70,11 +71,11 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
     return <Navigate to="/auth" replace />;
   }
 
-  // Subscription gate: redirect to pricing if no valid tier OR no payment method on file
+  // Subscription gate: if no valid tier OR no payment method on file, send to Stripe checkout
   if (!loadingSubscription && !isInIframe()) {
     const hasValidTier = subscription.tier && VALID_TIERS.has(subscription.tier);
     if (!hasValidTier || !subscription.paymentMethodOnFile) {
-      return <Navigate to="/#pricing" replace />;
+      return <CheckoutRedirect />;
     }
   }
 
