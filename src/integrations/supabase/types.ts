@@ -508,9 +508,12 @@ export type Database = {
           ghl_refresh_token: string | null
           id: string
           location_id: string | null
+          payment_method_on_file: boolean
           rep_number: string | null
           stripe_customer_id: string | null
+          subscription_status: string | null
           subscription_tier: string | null
+          trial_ends_at: string | null
         }
         Insert: {
           created_at?: string | null
@@ -522,9 +525,12 @@ export type Database = {
           ghl_refresh_token?: string | null
           id?: string
           location_id?: string | null
+          payment_method_on_file?: boolean
           rep_number?: string | null
           stripe_customer_id?: string | null
+          subscription_status?: string | null
           subscription_tier?: string | null
+          trial_ends_at?: string | null
         }
         Update: {
           created_at?: string | null
@@ -536,9 +542,12 @@ export type Database = {
           ghl_refresh_token?: string | null
           id?: string
           location_id?: string | null
+          payment_method_on_file?: boolean
           rep_number?: string | null
           stripe_customer_id?: string | null
+          subscription_status?: string | null
           subscription_tier?: string | null
+          trial_ends_at?: string | null
         }
         Relationships: []
       }
