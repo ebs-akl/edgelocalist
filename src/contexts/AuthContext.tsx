@@ -20,6 +20,9 @@ export interface SubscriptionInfo {
   tier: TierKey | null;
   productId: string | null;
   subscriptionEnd: string | null;
+  status: string | null;
+  paymentMethodOnFile: boolean;
+  trialEndsAt: string | null;
 }
 
 interface AuthState {
@@ -74,6 +77,9 @@ const DEFAULT_SUBSCRIPTION: SubscriptionInfo = {
   tier: null,
   productId: null,
   subscriptionEnd: null,
+  status: null,
+  paymentMethodOnFile: false,
+  trialEndsAt: null,
 };
 
 const DEFAULT_STATE: AuthState = {
