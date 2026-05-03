@@ -20,6 +20,9 @@ export interface SubscriptionInfo {
   tier: TierKey | null;
   productId: string | null;
   subscriptionEnd: string | null;
+  status: string | null;
+  paymentMethodOnFile: boolean;
+  trialEndsAt: string | null;
 }
 
 interface AuthState {
@@ -74,6 +77,9 @@ const DEFAULT_SUBSCRIPTION: SubscriptionInfo = {
   tier: null,
   productId: null,
   subscriptionEnd: null,
+  status: null,
+  paymentMethodOnFile: false,
+  trialEndsAt: null,
 };
 
 const DEFAULT_STATE: AuthState = {
@@ -138,6 +144,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           tier,
           productId: data?.product_id ?? null,
           subscriptionEnd: data?.subscription_end ?? null,
+          status: data?.subscription_status ?? null,
+          paymentMethodOnFile: !!data?.payment_method_on_file,
+          trialEndsAt: data?.trial_ends_at ?? null,
         },
         loadingSubscription: false,
       }));
