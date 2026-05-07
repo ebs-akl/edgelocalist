@@ -38,6 +38,24 @@ export default function Dashboard() {
   const [syncSteps, setSyncSteps] = useState<SyncStep[]>([]);
   const [syncSummary, setSyncSummary] = useState<{ total: number; searchable: number; needsGeocoding: number } | null>(null);
   const [syncError, setSyncError] = useState<string | null>(null);
+  const [crmTokenMissing, setCrmTokenMissing] = useState(false);
+  const [installingGhl, setInstallingGhl] = useState(false);
+
+  const handleInstallGhl = async () => {
+    setInstallingGhl(true);
+    try {
+      const redirectUri = `${window.location.origin}/callback`;
+      const { data, error } = await supabase.functions.invoke("localist-get-auth-url", {
+        body: { redirect_uri: redirectUri },
+      });
+      if (error || !data?.url) throw new Error(error?.message || "Failed to get install URL");
+      window.location.href = data.url;
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to start install";
+      toast({ title: "Install error", description: msg, variant: "destructive" });
+      setInstallingGhl(false);
+    }
+  };
 
   // SSO payload sync no longer needed — auth session handles everything
 
@@ -52,10 +70,23 @@ export default function Dashboard() {
     try {
       if (isGhlMode) {
         // GHL mode: fetch stats via edge function (Bearer auth auto-included)
-const { data, error } = await supabase.functions.invoke("localist-sync-contacts", {
+        const { data, error } = await supabase.functions.invoke("localist-sync-contacts", {
           body: { stats_only: true },
         });
-        if (!error && data) {
+        if (error) {
+          // Detect missing CRM token (location not yet OAuth-installed)
+          let detail = "";
+          try {
+            if ((error as any).context && typeof (error as any).context.json === "function") {
+              const body = await (error as any).context.json();
+              detail = body?.error ?? "";
+            }
+          } catch { /* ignore */ }
+          if (/No CRM/i.test(detail) || /reconnect/i.test(detail)) {
+            setCrmTokenMissing(true);
+          }
+        } else if (data) {
+          setCrmTokenMissing(false);
           setContactCount(data.count ?? 0);
           setLastSync(data.last_sync ?? null);
           if (data.rep_id) setGhlRepId(data.rep_id);
@@ -543,6 +574,9 @@ const { data, error } = await supabase.functions.invoke("localist-sync-contacts"
             subscriptionTier={repProfile?.subscription_tier ?? null}
             onRefresh={isGhlMode ? handleGhlSync : undefined}
             refreshing={refreshing}
+            crmTokenMissing={crmTokenMissing}
+            onInstallGhl={handleInstallGhl}
+            installingGhl={installingGhl}
           />
         </div>
 
@@ -625,6 +659,9 @@ const { data, error } = await supabase.functions.invoke("localist-sync-contacts"
               subscriptionTier={repProfile?.subscription_tier ?? null}
               onRefresh={isGhlMode ? handleGhlSync : undefined}
               refreshing={refreshing}
+              crmTokenMissing={crmTokenMissing}
+              onInstallGhl={handleInstallGhl}
+              installingGhl={installingGhl}
             />
           </div>
         </div>
