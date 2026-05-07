@@ -172,7 +172,7 @@ const { data, error } = await supabase.functions.invoke("localist-sync-contacts"
 
       while (remaining > 0 && geocodeRounds < MAX_ROUNDS) {
         const { data: geoData, error: geoErr } = await supabase.functions.invoke("localist-geocode-contacts", {
-          body: { limit: 50 },
+          body: ssoPayload ? { limit: 50, sso_payload: ssoPayload } : { limit: 50 },
         });
 
         if (geoErr || !geoData) break;
