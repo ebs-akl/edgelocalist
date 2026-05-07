@@ -1,7 +1,7 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Settings, RefreshCw } from "lucide-react";
+import { Settings, RefreshCw, AlertTriangle, ExternalLink } from "lucide-react";
 import { Link } from "react-router-dom";
 
 interface ControlPanelProps {
@@ -12,6 +12,9 @@ interface ControlPanelProps {
   subscriptionTier: string | null;
   onRefresh?: () => void;
   refreshing?: boolean;
+  crmTokenMissing?: boolean;
+  onInstallGhl?: () => void;
+  installingGhl?: boolean;
 }
 
 function formatRelativeTime(dateStr: string) {
