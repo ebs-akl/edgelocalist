@@ -38,6 +38,24 @@ export default function Dashboard() {
   const [syncSteps, setSyncSteps] = useState<SyncStep[]>([]);
   const [syncSummary, setSyncSummary] = useState<{ total: number; searchable: number; needsGeocoding: number } | null>(null);
   const [syncError, setSyncError] = useState<string | null>(null);
+  const [crmTokenMissing, setCrmTokenMissing] = useState(false);
+  const [installingGhl, setInstallingGhl] = useState(false);
+
+  const handleInstallGhl = async () => {
+    setInstallingGhl(true);
+    try {
+      const redirectUri = `${window.location.origin}/callback`;
+      const { data, error } = await supabase.functions.invoke("localist-get-auth-url", {
+        body: { redirect_uri: redirectUri },
+      });
+      if (error || !data?.url) throw new Error(error?.message || "Failed to get install URL");
+      window.location.href = data.url;
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to start install";
+      toast({ title: "Install error", description: msg, variant: "destructive" });
+      setInstallingGhl(false);
+    }
+  };
 
   // SSO payload sync no longer needed — auth session handles everything
 
