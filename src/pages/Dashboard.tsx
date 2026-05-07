@@ -140,7 +140,7 @@ export default function Dashboard() {
       updateStep("fetch", { status: "active", label: "Fetching your contacts from CRM..." });
 
 const { data, error } = await supabase.functions.invoke("localist-sync-contacts", {
-        body: {},
+        body: ssoPayload ? { sso_payload: ssoPayload } : {},
       });
 
       if (error) {
