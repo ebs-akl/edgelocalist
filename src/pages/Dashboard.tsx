@@ -205,7 +205,7 @@ const { data, error } = await supabase.functions.invoke("localist-sync-contacts"
 
       while (countyRemaining > 0 && countyRounds < MAX_ROUNDS) {
         const { data: countyData, error: countyErr } = await supabase.functions.invoke("localist-geocode-contacts", {
-          body: { backfill_county: true, limit: 50 },
+          body: ssoPayload ? { backfill_county: true, limit: 50, sso_payload: ssoPayload } : { backfill_county: true, limit: 50 },
         });
 
         if (countyErr || !countyData) break;
