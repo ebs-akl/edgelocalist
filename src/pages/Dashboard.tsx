@@ -659,6 +659,9 @@ const { data, error } = await supabase.functions.invoke("localist-sync-contacts"
               subscriptionTier={repProfile?.subscription_tier ?? null}
               onRefresh={isGhlMode ? handleGhlSync : undefined}
               refreshing={refreshing}
+              crmTokenMissing={crmTokenMissing}
+              onInstallGhl={handleInstallGhl}
+              installingGhl={installingGhl}
             />
           </div>
         </div>
