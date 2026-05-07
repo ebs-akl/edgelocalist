@@ -71,7 +71,7 @@ export default function Dashboard() {
       if (isGhlMode) {
         // GHL mode: fetch stats via edge function (Bearer auth auto-included)
         const { data, error } = await supabase.functions.invoke("localist-sync-contacts", {
-          body: { stats_only: true },
+          body: ssoPayload ? { stats_only: true, sso_payload: ssoPayload } : { stats_only: true },
         });
         if (error) {
           // Detect missing CRM token (location not yet OAuth-installed)
