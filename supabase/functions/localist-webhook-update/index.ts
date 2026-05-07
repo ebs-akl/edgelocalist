@@ -13,10 +13,9 @@ serve(async (req) => {
   }
 
   try {
-    // Verify shared secret — check header first, fall back to query param for backward compatibility
-    const secret = req.headers.get("X-GHL-Webhook-Secret")
-      ?? new URL(req.url).searchParams.get("secret");
-    if (secret !== Deno.env.get("GHL_WEBHOOK_SECRET")) {
+    // Verify shared secret — header only (query params leak via logs/proxies)
+    const secret = req.headers.get("X-GHL-Webhook-Secret");
+    if (!secret || secret !== Deno.env.get("GHL_WEBHOOK_SECRET")) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
