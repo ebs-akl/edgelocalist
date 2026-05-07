@@ -159,8 +159,22 @@ export function useGhlSso() {
       return () => {};
     }
 
+    const ALLOWED_ORIGIN_SUFFIXES = [
+      "gohighlevel.com",
+      "leadconnectorhq.com",
+            "msgsndr.com",
+    ];
+
     const handleMessage = (event: MessageEvent) => {
       if (handshakeComplete.current) return;
+
+      // Origin allowlist — reject messages from untrusted parents
+      let originHost = "";
+      try { originHost = new URL(event.origin).hostname; } catch { return; }
+      const originAllowed = ALLOWED_ORIGIN_SUFFIXES.some(
+        (suffix) => originHost === suffix || originHost.endsWith("." + suffix)
+      );
+      if (!originAllowed) return;
 
       messageCount.current++;
       // Log ALL messages for debugging (first 5 only to avoid spam)
