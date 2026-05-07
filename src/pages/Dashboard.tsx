@@ -24,7 +24,7 @@ interface StatCard {
 }
 
 export default function Dashboard() {
-  const { user, session, repProfile, signOut, isGhlMode, ghlLocationId, ghlRepNum } = useAuth();
+  const { user, session, repProfile, signOut, isGhlMode, ghlLocationId, ghlRepNum, ssoPayload } = useAuth();
   // Only run internal SSO hook when NOT already in GHL mode via IframeApp bridge
   const { ssoReady, ssoError, isInIframe, retry } = useGhlSso();
   const [contactCount, setContactCount] = useState(0);
