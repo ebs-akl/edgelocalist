@@ -36,8 +36,12 @@ export default function ControlPanel({
   subscriptionTier,
   onRefresh,
   refreshing,
+  crmTokenMissing,
+  onInstallGhl,
+  installingGhl,
 }: ControlPanelProps) {
   const hasContacts = contactCount > 0;
+  const showInstallCta = isGhlMode && crmTokenMissing;
 
   return (
     <Card>
