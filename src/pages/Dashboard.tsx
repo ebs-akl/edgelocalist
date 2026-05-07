@@ -24,7 +24,7 @@ interface StatCard {
 }
 
 export default function Dashboard() {
-  const { user, session, repProfile, signOut, isGhlMode, ghlLocationId, ghlRepNum } = useAuth();
+  const { user, session, repProfile, signOut, isGhlMode, ghlLocationId, ghlRepNum, ssoPayload } = useAuth();
   // Only run internal SSO hook when NOT already in GHL mode via IframeApp bridge
   const { ssoReady, ssoError, isInIframe, retry } = useGhlSso();
   const [contactCount, setContactCount] = useState(0);
@@ -71,7 +71,7 @@ export default function Dashboard() {
       if (isGhlMode) {
         // GHL mode: fetch stats via edge function (Bearer auth auto-included)
         const { data, error } = await supabase.functions.invoke("localist-sync-contacts", {
-          body: { stats_only: true },
+          body: ssoPayload ? { stats_only: true, sso_payload: ssoPayload } : { stats_only: true },
         });
         if (error) {
           // Detect missing CRM token (location not yet OAuth-installed)
@@ -140,7 +140,7 @@ export default function Dashboard() {
       updateStep("fetch", { status: "active", label: "Fetching your contacts from CRM..." });
 
 const { data, error } = await supabase.functions.invoke("localist-sync-contacts", {
-        body: {},
+        body: ssoPayload ? { sso_payload: ssoPayload } : {},
       });
 
       if (error) {
@@ -172,7 +172,7 @@ const { data, error } = await supabase.functions.invoke("localist-sync-contacts"
 
       while (remaining > 0 && geocodeRounds < MAX_ROUNDS) {
         const { data: geoData, error: geoErr } = await supabase.functions.invoke("localist-geocode-contacts", {
-          body: { limit: 50 },
+          body: ssoPayload ? { limit: 50, sso_payload: ssoPayload } : { limit: 50 },
         });
 
         if (geoErr || !geoData) break;
@@ -205,7 +205,7 @@ const { data, error } = await supabase.functions.invoke("localist-sync-contacts"
 
       while (countyRemaining > 0 && countyRounds < MAX_ROUNDS) {
         const { data: countyData, error: countyErr } = await supabase.functions.invoke("localist-geocode-contacts", {
-          body: { backfill_county: true, limit: 50 },
+          body: ssoPayload ? { backfill_county: true, limit: 50, sso_payload: ssoPayload } : { backfill_county: true, limit: 50 },
         });
 
         if (countyErr || !countyData) break;
