@@ -70,10 +70,23 @@ export default function Dashboard() {
     try {
       if (isGhlMode) {
         // GHL mode: fetch stats via edge function (Bearer auth auto-included)
-const { data, error } = await supabase.functions.invoke("localist-sync-contacts", {
+        const { data, error } = await supabase.functions.invoke("localist-sync-contacts", {
           body: { stats_only: true },
         });
-        if (!error && data) {
+        if (error) {
+          // Detect missing CRM token (location not yet OAuth-installed)
+          let detail = "";
+          try {
+            if ((error as any).context && typeof (error as any).context.json === "function") {
+              const body = await (error as any).context.json();
+              detail = body?.error ?? "";
+            }
+          } catch { /* ignore */ }
+          if (/No CRM/i.test(detail) || /reconnect/i.test(detail)) {
+            setCrmTokenMissing(true);
+          }
+        } else if (data) {
+          setCrmTokenMissing(false);
           setContactCount(data.count ?? 0);
           setLastSync(data.last_sync ?? null);
           if (data.rep_id) setGhlRepId(data.rep_id);
