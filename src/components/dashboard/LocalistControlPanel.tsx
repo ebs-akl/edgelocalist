@@ -55,33 +55,65 @@ export default function ControlPanel({
           <div className="flex items-center gap-3">
             <div
               className={`h-3 w-3 rounded-full ${
-                isGhlMode ? "bg-success animate-pulse" : hasContacts ? "bg-success animate-pulse" : "bg-muted-foreground"
+                showInstallCta
+                  ? "bg-destructive"
+                  : isGhlMode
+                    ? "bg-success animate-pulse"
+                    : hasContacts
+                      ? "bg-success animate-pulse"
+                      : "bg-muted-foreground"
               }`}
             />
             <div>
               <p className="text-sm font-medium">
-                {isGhlMode
-                  ? "Connected to GoHighLevel"
-                  : hasContacts
-                    ? "Contacts Active"
-                    : "No contacts loaded"}
+                {showInstallCta
+                  ? "CRM not authorized"
+                  : isGhlMode
+                    ? "Connected to GoHighLevel"
+                    : hasContacts
+                      ? "Contacts Active"
+                      : "No contacts loaded"}
               </p>
               <p className="text-xs text-muted-foreground">
-                {isGhlMode
-                  ? hasContacts
-                    ? lastSync
-                      ? `Last sync: ${formatRelativeTime(lastSync)}`
-                      : `${contactCount.toLocaleString()} contacts synced`
-                    : "Syncing contacts from CRM…"
-                  : hasContacts
-                    ? lastSync
-                      ? `Last sync: ${formatRelativeTime(lastSync)}`
-                      : `${contactCount.toLocaleString()} contacts`
-                    : "Upload a CSV to get started"}
+                {showInstallCta
+                  ? "Install the LocaList app to finish setup."
+                  : isGhlMode
+                    ? hasContacts
+                      ? lastSync
+                        ? `Last sync: ${formatRelativeTime(lastSync)}`
+                        : `${contactCount.toLocaleString()} contacts synced`
+                      : "Syncing contacts from CRM…"
+                    : hasContacts
+                      ? lastSync
+                        ? `Last sync: ${formatRelativeTime(lastSync)}`
+                        : `${contactCount.toLocaleString()} contacts`
+                      : "Upload a CSV to get started"}
               </p>
             </div>
           </div>
         </div>
+
+        {showInstallCta && (
+          <div className="mb-4 rounded-lg border border-destructive/30 bg-destructive/5 p-3 space-y-2">
+            <div className="flex items-start gap-2">
+              <AlertTriangle className="h-4 w-4 text-destructive mt-0.5 shrink-0" />
+              <p className="text-xs text-foreground">
+                Your account is linked to a CRM location, but the LocaList Marketplace app hasn't been installed yet. Install it to sync contacts and enable nearby search.
+              </p>
+            </div>
+            {onInstallGhl && (
+              <Button
+                size="sm"
+                className="w-full"
+                onClick={onInstallGhl}
+                disabled={installingGhl}
+              >
+                <ExternalLink className="mr-2 h-3.5 w-3.5" />
+                {installingGhl ? "Opening Marketplace..." : "Install LocaList in GHL"}
+              </Button>
+            )}
+          </div>
+        )}
 
         {/* Stats */}
         <div className="space-y-2 mb-4">
