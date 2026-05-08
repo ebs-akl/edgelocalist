@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import CryptoJS from "npm:crypto-js";
+import { decryptSsoPayload } from "../_shared/sso-decrypt.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -11,18 +12,6 @@ const corsHeaders = {
 const UUID_RE = /^[0-9a-zA-Z]{20,40}$/;
 const PHONE_RE = /^\+?[0-9]{7,15}$/;
 const LOCATION_ID_RE = /^[a-zA-Z0-9]{5,50}$/;
-
-function decryptSsoPayload(ssoPayload: string): string | null {
-  const ssoKey = Deno.env.get("GHL_SSO_KEY");
-  if (!ssoKey) { console.error("GHL_SSO_KEY not configured"); return null; }
-  try {
-    const bytes = CryptoJS.AES.decrypt(ssoPayload, ssoKey);
-    const decryptedString = bytes.toString(CryptoJS.enc.Utf8);
-    if (!decryptedString) return null;
-    const decryptedData = JSON.parse(decryptedString);
-    return decryptedData.activeLocation ?? decryptedData.locationId ?? decryptedData.location_id ?? null;
-  } catch (err) { console.error("SSO decryption failed:", err); return null; }
-}
 
 async function resolveCredentials(
   supabase: ReturnType<typeof createClient>,
