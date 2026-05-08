@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import CryptoJS from "npm:crypto-js";
 import { refreshGhlToken, isTokenExpired } from "../_shared/ghl-refresh-token.ts";
+import { decryptSsoPayload } from "../_shared/sso-decrypt.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -12,20 +13,6 @@ const corsHeaders = {
 const LOCATION_ID_RE = /^[a-zA-Z0-9]{5,50}$/;
 const BATCH_SIZE = 5;
 const DELAY_MS = 600;
-
-function decryptSsoPayload(ssoPayload: string): string | null {
-  const ssoKey = Deno.env.get("GHL_SSO_KEY");
-  if (!ssoKey) return null;
-  try {
-    const bytes = CryptoJS.AES.decrypt(ssoPayload, ssoKey);
-    const decryptedString = bytes.toString(CryptoJS.enc.Utf8);
-    if (!decryptedString) return null;
-    const decryptedData = JSON.parse(decryptedString);
-    return decryptedData.activeLocation ?? decryptedData.locationId ?? decryptedData.location_id ?? null;
-  } catch {
-    return null;
-  }
-}
 
 async function resolveCredentials(
   authClient: ReturnType<typeof createClient>,

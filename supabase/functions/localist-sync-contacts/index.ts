@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import CryptoJS from "npm:crypto-js";
 import { refreshGhlToken, isTokenExpired } from "../_shared/ghl-refresh-token.ts";
+import { decryptSsoPayload } from "../_shared/sso-decrypt.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -174,29 +175,6 @@ async function discoverFieldIdsFromContact(
 function toTitleCase(value: string | null | undefined): string {
   if (!value) return "";
   return value.toLowerCase().replace(/(?:^|\s)\S/g, (ch) => ch.toUpperCase());
-}
-
-/**
- * Decrypt the SSO payload from GHL Custom Page handshake.
- * Returns the locationId or null on failure.
- */
-function decryptSsoPayload(ssoPayload: string): string | null {
-  const ssoKey = Deno.env.get("GHL_SSO_KEY");
-  if (!ssoKey) {
-    console.error("GHL_SSO_KEY not configured");
-    return null;
-  }
-  try {
-    const bytes = CryptoJS.AES.decrypt(ssoPayload, ssoKey);
-    const decryptedString = bytes.toString(CryptoJS.enc.Utf8);
-    if (!decryptedString) return null;
-    const decryptedData = JSON.parse(decryptedString);
-    // GHL SSO payloads use "activeLocation" — fall back to other known names
-    return decryptedData.activeLocation ?? decryptedData.locationId ?? decryptedData.location_id ?? null;
-  } catch (err) {
-    console.error("SSO decryption failed:", err);
-    return null;
-  }
 }
 
 serve(async (req) => {
