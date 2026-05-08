@@ -14,6 +14,7 @@ import SearchTab from "@/components/dashboard/SearchTab";
 import CsvUploadTab from "@/components/dashboard/CsvUploadTab";
 import LocalistControlPanel from "@/components/dashboard/LocalistControlPanel";
 import SyncProgressDialog, { SyncStep } from "@/components/dashboard/SyncProgressDialog";
+import ProfileSetupModal from "@/components/dashboard/ProfileSetupModal";
 import { Skeleton } from "@/components/ui/skeleton";
 import Footer from "@/components/Footer";
 import { TIERS, type TierKey } from "@/lib/stripe-tiers";
@@ -471,6 +472,7 @@ const { data, error } = await supabase.functions.invoke("localist-sync-contacts"
 
   return (
     <div className="min-h-screen bg-background">
+      <ProfileSetupModal />
       {/* Header */}
       <nav className="fixed top-0 left-0 right-0 z-50 border-b bg-background/80 backdrop-blur-md">
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
