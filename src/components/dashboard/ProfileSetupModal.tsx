@@ -42,7 +42,10 @@ export default function ProfileSetupModal() {
 
     setSaving(true);
     try {
-      const payload: Record<string, unknown> = { id: user!.id, email: user!.email };
+      const payload: { id: string; email: string; full_name?: string; rep_number?: string } = {
+        id: user!.id,
+        email: user!.email ?? "",
+      };
       if (needsName) payload.full_name = nameValue;
       if (needsRepNumber) payload.rep_number = repValue;
 
