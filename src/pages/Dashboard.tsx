@@ -14,6 +14,7 @@ import SearchTab from "@/components/dashboard/SearchTab";
 import CsvUploadTab from "@/components/dashboard/CsvUploadTab";
 import LocalistControlPanel from "@/components/dashboard/LocalistControlPanel";
 import SyncProgressDialog, { SyncStep } from "@/components/dashboard/SyncProgressDialog";
+import ProfileSetupModal from "@/components/dashboard/ProfileSetupModal";
 import { Skeleton } from "@/components/ui/skeleton";
 import Footer from "@/components/Footer";
 import { TIERS, type TierKey } from "@/lib/stripe-tiers";
