@@ -239,7 +239,7 @@ const { data, error } = await supabase.functions.invoke("localist-sync-contacts"
 
       while (pushRemaining > 0 && pushRounds < MAX_ROUNDS) {
         const { data: pushData, error: pushErr } = await supabase.functions.invoke("localist-push-counties", {
-          body: { limit: 100 },
+          body: ssoPayload ? { limit: 100, sso_payload: ssoPayload } : { limit: 100 },
         });
 
         if (pushErr || !pushData) {
