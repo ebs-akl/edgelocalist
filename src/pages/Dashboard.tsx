@@ -286,7 +286,7 @@ const { data, error } = await supabase.functions.invoke("localist-sync-contacts"
       updateStep("done", { status: "active" });
 
       const { data: statsData } = await supabase.functions.invoke("localist-sync-contacts", {
-        body: { stats_only: true },
+        body: ssoPayload ? { stats_only: true, sso_payload: ssoPayload } : { stats_only: true },
       });
       const totalCount = statsData?.count ?? synced;
 
