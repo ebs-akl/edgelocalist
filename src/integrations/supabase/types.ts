@@ -575,6 +575,30 @@ export type Database = {
         }
         Relationships: []
       }
+      localist_trial_emails: {
+        Row: {
+          id: string
+          rep_id: string
+          resend_id: string | null
+          sent_at: string
+          step: number
+        }
+        Insert: {
+          id?: string
+          rep_id: string
+          resend_id?: string | null
+          sent_at?: string
+          step: number
+        }
+        Update: {
+          id?: string
+          rep_id?: string
+          resend_id?: string | null
+          sent_at?: string
+          step?: number
+        }
+        Relationships: []
+      }
       meal_plans: {
         Row: {
           created_at: string
