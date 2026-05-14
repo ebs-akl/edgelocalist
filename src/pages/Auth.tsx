@@ -79,6 +79,10 @@ export default function Auth() {
               rep_number: repNumber.trim(),
             })
             .eq("id", data.user.id);
+          // Fire welcome email (step 1 of trial sequence) — non-blocking
+          supabase.functions.invoke("localist-send-trial-email", {
+            body: { rep_id: data.user.id, step: 1 },
+          }).catch((e) => console.warn("welcome email failed:", e));
         }
         toast({
           title: "Account created!",
