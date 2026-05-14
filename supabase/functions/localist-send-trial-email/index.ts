@@ -15,7 +15,7 @@ const LOGO_URL = "https://edgelocalist.lovable.app/lovable-uploads/localist-fina
 const APP_NAME = "AKL LocaList";
 const SUPPORT_EMAIL = "support@edgedms.com";
 const APP_URL = "https://localist.edgedms.com";
-const CRAVE_URL = "https://crave.app";
+const CRAVE_URL = "https://crave.automatedknifelife.com";
 
 function craveBlock(): string {
   return `
@@ -49,20 +49,30 @@ function getEmailContent(step: 1 | 2 | 3, firstName: string): EmailContent {
   switch (step) {
     case 1:
       return {
-        subject: `Welcome to ${APP_NAME} — let's map your territory`,
-        preheader: "Step 1: Connect your CRM and your contact map comes alive in seconds.",
-        heading: `Welcome aboard, ${firstName}! 🗺️`,
+        subject: `Welcome to your 7-day free trial of ${APP_NAME}`,
+        preheader: "Your GPS for Profit is ready — let's populate your map.",
+        heading: `Welcome to ${APP_NAME}, ${firstName}! 🗺️`,
         body: `
-          <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:${MUTED};">
-            You just unlocked the fastest way to turn your contact list into a route plan. Here's what you can do today:
+          <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:${TEXT};">
+            Welcome to your 7-day free trial of ${APP_NAME}! We are thrilled to have you on board.
           </p>
-          <ul style="margin:0 0 18px;padding-left:20px;font-size:15px;line-height:1.7;color:${TEXT};">
-            <li><strong>Auto-import your CRM contacts</strong> — connect once and we pull in every customer, address, and tag.</li>
-            <li><strong>See them on a live map</strong> — every contact pinned, color-coded by category (RLT, BIZ, REG).</li>
-            <li><strong>Drop-in mode in 1 tap</strong> — when you're between appointments, find every nearby contact in 5–50 mile radius.</li>
-          </ul>
-          <p style="margin:0 0 8px;font-size:15px;line-height:1.6;color:${MUTED};">
-            <strong>Your 7-day trial is active</strong> — no charges until day 7. Let's get you set up.
+          <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:${MUTED};">
+            You now hold the ultimate <strong>"GPS for Profit"</strong> right in your pocket. No more wasting gas, zig-zagging across town, or sitting in a coffee shop feeling defeated when a 2:00 PM appointment cancels. With LocaList, you will be able to instantly search a <strong>5, 10, 25, or 50-mile radius</strong> to find nearby past customers, turning a dead hour into a highly profitable drop-by service call!
+          </p>
+          <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:${MUTED};">
+            But before you can start rescuing your no-shows and optimizing your daily routes, we need to populate your map.
+          </p>
+          <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:${MUTED};">
+            We've made this incredibly simple. Watch this quick training video to see exactly how to export your customer list directly from VectorConnect and upload it straight into LocaList:
+          </p>
+          <p style="margin:0 0 18px;font-size:15px;line-height:1.6;text-align:center;">
+            📹 <a href="https://video.edgedms.com/video/exploring-the-localist-app-2sut" target="_blank" style="color:${PRIMARY};font-weight:600;text-decoration:none;">Watch the LocaList Training Video →</a>
+          </p>
+          <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:${MUTED};">
+            Once you drop in your customer CSV file, the system automatically batches and encrypts your data, placing color-coded opportunity pins across your map so you can instantly spot your highest-value targets.
+          </p>
+          <p style="margin:0 0 8px;font-size:15px;line-height:1.6;color:${TEXT};">
+            <strong>Your 7-day trial is officially ticking.</strong> Watch the video, get your contacts loaded today, and let's turn your next cancelled demo into a $500 service call!
           </p>
         `,
         ctaText: "Open My Dashboard",
