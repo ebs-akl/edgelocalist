@@ -254,6 +254,30 @@ export type Database = {
         }
         Relationships: []
       }
+      cutco_products: {
+        Row: {
+          created_at: string
+          id: string
+          keywords: string[]
+          name: string
+          url: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          keywords?: string[]
+          name: string
+          url: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          keywords?: string[]
+          name?: string
+          url?: string
+        }
+        Relationships: []
+      }
       ghl_locations: {
         Row: {
           created_at: string | null
