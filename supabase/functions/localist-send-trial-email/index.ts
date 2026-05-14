@@ -187,35 +187,44 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "Missing RESEND_API_KEY" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    const { rep_id, step } = await req.json();
-    if (!rep_id || ![1, 2, 3].includes(step)) {
-      return new Response(JSON.stringify({ error: "Invalid rep_id or step" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    const { rep_id, step, test_email, test_name } = await req.json();
+    if (![1, 2, 3].includes(step)) {
+      return new Response(JSON.stringify({ error: "Invalid step" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     const admin = createClient(SUPABASE_URL, SERVICE_ROLE);
 
-    // Idempotency check
-    const { data: existing } = await admin
-      .from("localist_trial_emails")
-      .select("id")
-      .eq("rep_id", rep_id)
-      .eq("step", step)
-      .maybeSingle();
-    if (existing) {
-      return new Response(JSON.stringify({ skipped: true, reason: "already_sent" }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-    }
+    let recipientEmail: string;
+    let firstName: string;
 
-    // Load rep
-    const { data: rep, error: repErr } = await admin
-      .from("localist_reps")
-      .select("email, full_name")
-      .eq("id", rep_id)
-      .maybeSingle();
-    if (repErr || !rep?.email) {
-      return new Response(JSON.stringify({ error: "Rep not found" }), { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    if (test_email) {
+      // Test send: skip idempotency + rep lookup
+      recipientEmail = test_email;
+      firstName = (test_name || test_email).split(" ")[0].split("@")[0];
+    } else {
+      if (!rep_id) {
+        return new Response(JSON.stringify({ error: "Missing rep_id" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+      const { data: existing } = await admin
+        .from("localist_trial_emails")
+        .select("id")
+        .eq("rep_id", rep_id)
+        .eq("step", step)
+        .maybeSingle();
+      if (existing) {
+        return new Response(JSON.stringify({ skipped: true, reason: "already_sent" }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+      const { data: rep, error: repErr } = await admin
+        .from("localist_reps")
+        .select("email, full_name")
+        .eq("id", rep_id)
+        .maybeSingle();
+      if (repErr || !rep?.email) {
+        return new Response(JSON.stringify({ error: "Rep not found" }), { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+      recipientEmail = rep.email;
+      firstName = (rep.full_name || rep.email).split(" ")[0].split("@")[0];
     }
-
-    const firstName = (rep.full_name || rep.email).split(" ")[0].split("@")[0];
     const content = getEmailContent(step as 1 | 2 | 3, firstName);
     const html = buildHtml(content);
 
