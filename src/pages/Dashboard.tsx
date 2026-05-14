@@ -163,6 +163,17 @@ const { data, error } = await supabase.functions.invoke("localist-sync-contacts"
       await new Promise((r) => setTimeout(r, 400));
       updateStep("save", { status: "done", detail: "Contacts merged and updated" });
 
+      // Fire "map is live" email (step 2 of trial sequence) when first sync completes with contacts.
+      // Idempotency is handled server-side, so safe to invoke on every successful sync.
+      if (synced > 0) {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user?.id) {
+          supabase.functions.invoke("localist-send-trial-email", {
+            body: { rep_id: user.id, step: 2 },
+          }).catch((e) => console.warn("map-live email failed:", e));
+        }
+      }
+
       // Step 4: Geocode contacts without coordinates
       updateStep("geocode", { status: "active", detail: "Finding coordinates for your contacts..." });
 
