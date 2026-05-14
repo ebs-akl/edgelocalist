@@ -233,8 +233,8 @@ Deno.serve(async (req) => {
       headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
       body: JSON.stringify({
         from: `${APP_NAME} <hello@the.automatedknifelife.com>`,
-        to: [rep.email],
-        subject: content.subject,
+        to: [recipientEmail],
+        subject: test_email ? `[TEST] ${content.subject}` : content.subject,
         html,
       }),
     });
@@ -244,8 +244,10 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "Failed to send", details: resendResult }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    await admin.from("localist_trial_emails").insert({ rep_id, step, resend_id: resendResult.id });
-    console.log(`✅ Sent trial step ${step} to ${rep.email} (${resendResult.id})`);
+    if (!test_email) {
+      await admin.from("localist_trial_emails").insert({ rep_id, step, resend_id: resendResult.id });
+    }
+    console.log(`✅ Sent trial step ${step} to ${recipientEmail} (${resendResult.id})`);
 
     return new Response(JSON.stringify({ success: true, id: resendResult.id }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (err) {
