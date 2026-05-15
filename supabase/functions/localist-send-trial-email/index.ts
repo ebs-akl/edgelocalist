@@ -172,7 +172,7 @@ function buildHtml(c: EmailContent): string {
             <td style="padding:36px 32px 8px;">
               <h1 style="margin:0 0 18px;font-size:22px;font-weight:700;color:${TEXT};">${c.heading}</h1>
               ${c.body}
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+              ${c.ctaText && c.ctaUrl ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0">
                 <tr>
                   <td align="center" style="padding:14px 0 8px;">
                     <a href="${c.ctaUrl}" target="_blank" style="display:inline-block;background-color:${PRIMARY};color:#ffffff;text-decoration:none;font-size:15px;font-weight:600;padding:14px 36px;border-radius:8px;letter-spacing:0.3px;">
@@ -180,7 +180,7 @@ function buildHtml(c: EmailContent): string {
                     </a>
                   </td>
                 </tr>
-              </table>
+              </table>` : ''}
               ${craveBlock()}
             </td>
           </tr>
