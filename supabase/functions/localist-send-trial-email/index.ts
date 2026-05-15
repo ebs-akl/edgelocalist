@@ -23,12 +23,12 @@ function craveBlock(): string {
       <tr>
         <td style="padding: 20px 24px;">
           <p style="margin: 0 0 6px; font-size: 12px; font-weight: 700; color: #b45309; letter-spacing: 1px; text-transform: uppercase;">Free Bonus for Reps</p>
-          <h3 style="margin: 0 0 8px; font-size: 18px; font-weight: 700; color: ${TEXT};">Get the Crave app — free for life</h3>
+          <h3 style="margin: 0 0 8px; font-size: 18px; font-weight: 700; color: ${TEXT};">Get Crave: Your Recipe Hub — free for life</h3>
           <p style="margin: 0 0 14px; font-size: 14px; line-height: 1.5; color: ${MUTED};">
-            Crave is the pocket-sized prospecting partner built for Cutco reps. Capture leads, log every visit, and never lose a follow-up while you're walking the field. Use code <strong style="color:${TEXT}">LOCALIST</strong> at sign-up.
+            Crave is your personal recipe vault and weekly meal planner. Paste any recipe URL and Crave instantly strips the ads and life stories — leaving just the ingredients and instructions. Save your favorite demo recipes, filter by tag, and plan the week's meals in one tap. The perfect prep tool for your next in-home demo.
           </p>
           <a href="${CRAVE_URL}" target="_blank" style="display: inline-block; background-color: #b45309; color: #ffffff; text-decoration: none; font-size: 14px; font-weight: 600; padding: 10px 22px; border-radius: 8px;">
-            Download Crave Free →
+            Open Crave Free →
           </a>
         </td>
       </tr>
