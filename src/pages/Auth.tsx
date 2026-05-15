@@ -147,8 +147,18 @@ export default function Auth() {
   const buttonClasses = "h-12 text-base font-semibold uppercase tracking-wide w-full";
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <div className="w-full flex items-center justify-center bg-background px-6 py-12 min-h-screen">
+    <div className="min-h-screen flex flex-col md:flex-row">
+      {/* Left panel — GIF background (desktop only) */}
+      <div className="hidden md:block md:w-1/2 relative overflow-hidden">
+        <img
+          src="/images/auth-bg.png"
+          alt=""
+          className="absolute inset-0 w-full h-full object-cover"
+        />
+      </div>
+
+      {/* Right panel — form */}
+      <div className="w-full md:w-1/2 flex items-center justify-center bg-background px-6 py-12 min-h-screen">
         <div className="w-full max-w-md space-y-6">
           {/* Logo */}
           <div className="flex justify-center">
