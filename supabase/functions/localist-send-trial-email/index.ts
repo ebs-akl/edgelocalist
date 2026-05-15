@@ -124,27 +124,25 @@ function getEmailContent(step: 1 | 2 | 3, firstName: string): EmailContent {
       };
     case 3:
       return {
-        subject: `Your trial wraps in 2 days — keep your territory`,
-        preheader: "Day 5: Group SMS, route stacking, and the upgrades that pay for themselves on the first stop.",
-        heading: `${firstName}, you've built something worth keeping. 🚀`,
+        subject: `Nice work, ${firstName}. Your map is loaded. 📍`,
+        preheader: "One tap. Pre-filled text. Turn nearby pins into drop-by service calls.",
+        heading: `Nice work, ${firstName}. Your map is loaded. 📍`,
         body: `
+          <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:${TEXT};">
+            Now the fun part. LocaList makes rescuing your no-shows and reaching out to nearby customers completely frictionless.
+          </p>
           <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:${MUTED};">
-            You're 2 days from the end of your free trial. Before it converts, here's what most reps say tipped them over the edge:
+            When you spot a high-value pin in your area, just tap the contact card and hit <strong>"Text"</strong>.
           </p>
-          <ul style="margin:0 0 18px;padding-left:20px;font-size:15px;line-height:1.7;color:${TEXT};">
-            <li><strong>Group SMS</strong> — tag 30 nearby contacts, blast a personalized "I'm in your area" with merge fields, get 3–5 stops out of it.</li>
-            <li><strong>County-level segmentation</strong> — your contacts get auto-tagged by county so you can route by ZIP, school district, or city.</li>
-            <li><strong>Real-time CRM sync</strong> — anything you change in the field shows up in your CRM instantly. No double entry.</li>
-          </ul>
-          <p style="margin:0 0 18px;font-size:15px;line-height:1.6;color:${MUTED};">
-            At <strong>$9/month</strong>, one extra service call pays for the year. No contracts — cancel any time from your dashboard.
+          <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:${MUTED};">
+            This one-tap action instantly opens your phone's native messaging app with a pre-filled introduction ready to go. No typing out numbers, no fumbling for words. Just tap, send, and turn that "I'm in the area" text into a profitable in-person drop-by.
           </p>
-          <p style="margin:0 0 8px;font-size:14px;line-height:1.6;color:${MUTED};">
-            Want to keep going? You don't need to do anything — your trial converts automatically on day 7. Want to add territory automation tools? Tap below.
+          <p style="margin:0 0 8px;font-size:15px;line-height:1.6;color:${TEXT};">
+            <strong>Pro tip:</strong> Pair your drop-by text with a 20-minute window — it's the highest-converting timing to secure a quick service call.
           </p>
         `,
-        ctaText: "Manage My Subscription",
-        ctaUrl: `${APP_URL}/settings`,
+        ctaText: "Try the One-Tap Text",
+        ctaUrl: `${APP_URL}/dashboard`,
       };
   }
 }
