@@ -25,7 +25,7 @@ function craveBlock(): string {
           <p style="margin: 0 0 6px; font-size: 12px; font-weight: 700; color: #b45309; letter-spacing: 1px; text-transform: uppercase;">Free Bonus for Reps</p>
           <h3 style="margin: 0 0 8px; font-size: 18px; font-weight: 700; color: ${TEXT};">Get Crave: Your Recipe Hub — free for life</h3>
           <p style="margin: 0 0 14px; font-size: 14px; line-height: 1.5; color: ${MUTED};">
-            Crave is your personal recipe vault and weekly meal planner. Paste any recipe URL and Crave instantly strips the ads and life stories — leaving just the ingredients and instructions. Save your favorite demo recipes, filter by tag, and plan the week's meals in one tap. The perfect prep tool for your next in-home demo.
+            Crave is your personal recipe vault and weekly meal planner. Paste any recipe URL and Crave instantly strips the ads and life stories — leaving just the ingredients and instructions. Save your favorite demo recipes, filter by tag, and plan the week's meals in one tap. <strong style="color:${TEXT}">Best of all, you can brand it as your own</strong> — add your photo, name, and contact info so every recipe you share with customers keeps you top-of-mind for their next service call or referral.
           </p>
           <a href="${CRAVE_URL}" target="_blank" style="display: inline-block; background-color: #b45309; color: #ffffff; text-decoration: none; font-size: 14px; font-weight: 600; padding: 10px 22px; border-radius: 8px;">
             Open Crave Free →
