@@ -80,27 +80,47 @@ function getEmailContent(step: 1 | 2 | 3, firstName: string): EmailContent {
       };
     case 2:
       return {
-        subject: `Your map is live — try the Drop-In SMS playbook`,
-        preheader: "Step 2: 18 proven SMS scripts that turn 'I'm in your neighborhood' into face-to-face meetings.",
-        heading: `Nice work, ${firstName}. Your map is loaded. 📍`,
+        subject: `${firstName}, your map is ready (Trial update inside!) 🚀`,
+        preheader: "2 days left in your trial — plus an exclusive $7 upgrade for Cutco reps.",
+        heading: `${firstName}, you've built something worth keeping.`,
         body: `
           <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:${MUTED};">
-            Now the fun part. ${APP_NAME} ships with an <strong>SMS Snippet Library</strong> — 18 battle-tested scripts that top reps use to convert "I'm in the area" into in-person stops.
+            You're 2 days from the end of your free trial. Before it converts, here's what most reps say tipped them over the edge:
           </p>
           <ul style="margin:0 0 18px;padding-left:20px;font-size:15px;line-height:1.7;color:${TEXT};">
-            <li><strong>💼 Business Gifting</strong> — The Coffee &amp; Catch-Up, The Artifact Drop</li>
-            <li><strong>🏠 Realtor / Lender</strong> — Top-Down Coffee Drop, The Show and Tell</li>
-            <li><strong>🔪 Neighborhood Stop-Ins</strong> — Forever Guarantee Audit, Unpacked Gear Audit</li>
+            <li><strong>Group SMS</strong> — tag 30 nearby contacts, blast a personalized "I'm in your area" with merge fields, get 3–5 stops out of it.</li>
+            <li><strong>County-level segmentation</strong> — your contacts get auto-tagged by county so you can route by ZIP, school district, or city.</li>
+            <li><strong>Real-time CRM sync</strong> — anything you change in the field shows up in your CRM instantly. No double entry.</li>
           </ul>
-          <p style="margin:0 0 18px;font-size:15px;line-height:1.6;color:${MUTED};">
-            Each snippet auto-fills the contact's first name and your name. Pick a contact on the map, tap "Send SMS," and you're booked.
+          <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:${MUTED};">
+            At <strong>$9/month</strong>, one extra service call pays for the year. No contracts — cancel any time from your dashboard.
+          </p>
+          <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:${MUTED};">
+            <strong>Want to keep going with just the map?</strong> You don't need to do anything — your LocaList trial converts automatically on day 7.
           </p>
           <p style="margin:0 0 8px;font-size:15px;line-height:1.6;color:${MUTED};">
-            Pro tip: pair the <strong>"Morning Gap"</strong> variant with a 20-minute window — it's the highest-converting timing in the library.
+            <strong>Want to automate your entire business?</strong> Since you are already seeing the power of managing your territory, we are offering an exclusive upgrade to the full <strong>Edge DMS Basic (Automated Knife Life Edition)</strong>. For just <strong>$7</strong>, you get a 7-day all-access pass to the ultimate CRM built specifically for Cutco reps. This unlocks our <strong>2-Way Texting, Missed Call Text-Back, automated Calendars, and the Social Planner</strong>.
           </p>
+          <p style="margin:18px 0 8px;font-size:15px;line-height:1.6;color:${TEXT};text-align:center;">
+            Tap below to manage your account or claim your $7 upgrade.
+          </p>
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:8px;">
+            <tr>
+              <td align="center" style="padding:8px 6px;">
+                <a href="${APP_URL}/settings" target="_blank" style="display:inline-block;background-color:${SECONDARY};color:#ffffff;text-decoration:none;font-size:14px;font-weight:600;padding:13px 24px;border-radius:8px;">
+                  Keep LocaList Only
+                </a>
+              </td>
+              <td align="center" style="padding:8px 6px;">
+                <a href="https://automatedknifelife.com/747-checkout" target="_blank" style="display:inline-block;background-color:${PRIMARY};color:#ffffff;text-decoration:none;font-size:14px;font-weight:600;padding:13px 24px;border-radius:8px;">
+                  Claim My $7 Edge DMS Trial →
+                </a>
+              </td>
+            </tr>
+          </table>
         `,
-        ctaText: "Try the SMS Snippets",
-        ctaUrl: `${APP_URL}/dashboard`,
+        ctaText: "",
+        ctaUrl: "",
       };
     case 3:
       return {
@@ -152,7 +172,7 @@ function buildHtml(c: EmailContent): string {
             <td style="padding:36px 32px 8px;">
               <h1 style="margin:0 0 18px;font-size:22px;font-weight:700;color:${TEXT};">${c.heading}</h1>
               ${c.body}
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+              ${c.ctaText && c.ctaUrl ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0">
                 <tr>
                   <td align="center" style="padding:14px 0 8px;">
                     <a href="${c.ctaUrl}" target="_blank" style="display:inline-block;background-color:${PRIMARY};color:#ffffff;text-decoration:none;font-size:15px;font-weight:600;padding:14px 36px;border-radius:8px;letter-spacing:0.3px;">
@@ -160,7 +180,7 @@ function buildHtml(c: EmailContent): string {
                     </a>
                   </td>
                 </tr>
-              </table>
+              </table>` : ''}
               ${craveBlock()}
             </td>
           </tr>
