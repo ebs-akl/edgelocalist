@@ -92,7 +92,12 @@ serve(async (req) => {
 
     if (!access_token || !locationId) {
       console.error("Invalid token response from GHL:", JSON.stringify(tokenData));
-      return new Response(JSON.stringify({ error: "Invalid response from provider" }), {
+      // Agency-level / Company install — GHL returns companyId but no locationId.
+      const isCompanyInstall = tokenData?.userType === "Company" || !!tokenData?.companyId;
+      const msg = isCompanyInstall
+        ? "This app was installed at the Agency level. Please install AKL LocaList from inside a specific Sub-Account (Settings → Integrations → Marketplace), not from the Agency view."
+        : "Invalid response from provider";
+      return new Response(JSON.stringify({ error: msg, error_description: msg }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
