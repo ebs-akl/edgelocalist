@@ -8,12 +8,47 @@ const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiO
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
+/**
+ * Storage adapter that prefers localStorage but falls back to sessionStorage,
+ * then an in-memory map if both are unavailable (private-mode mobile Chrome,
+ * aggressive storage partitioning on iOS/Android, etc.). Without this, mobile
+ * browsers that block localStorage cause auth tokens to silently disappear,
+ * producing `refresh_token_not_found` on the next page load.
+ */
+const memoryStore = new Map<string, string>();
+const safeStorage = {
+  getItem: (key: string): string | null => {
+    try {
+      const v = window.localStorage.getItem(key);
+      if (v !== null) return v;
+    } catch {}
+    try {
+      const v = window.sessionStorage.getItem(key);
+      if (v !== null) return v;
+    } catch {}
+    return memoryStore.get(key) ?? null;
+  },
+  setItem: (key: string, value: string): void => {
+    try { window.localStorage.setItem(key, value); } catch {}
+    try { window.sessionStorage.setItem(key, value); } catch {}
+    memoryStore.set(key, value);
+  },
+  removeItem: (key: string): void => {
+    try { window.localStorage.removeItem(key); } catch {}
+    try { window.sessionStorage.removeItem(key); } catch {}
+    memoryStore.delete(key);
+  },
+};
+
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: {
-    storage: localStorage,
+    storage: safeStorage,
+    storageKey: "sb-localist-auth",
     persistSession: true,
     autoRefreshToken: true,
-  }
+    detectSessionInUrl: true,
+    flowType: "pkce",
+  },
 });
 
 export const supabaseConfigured = Boolean(SUPABASE_URL && SUPABASE_PUBLISHABLE_KEY);

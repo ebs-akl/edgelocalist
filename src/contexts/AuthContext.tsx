@@ -204,9 +204,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       syncSessionState(_event, session);
     });
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      syncSessionState("INITIAL_SESSION", session);
-    });
+    supabase.auth.getSession()
+      .then(({ data: { session }, error }) => {
+        if (error) {
+          // Mobile Chrome on Android sometimes evicts/partitions storage,
+          // leaving a stale refresh token. Clear it so the user lands cleanly on /auth
+          // instead of getting stuck in a refresh-loop with refresh_token_not_found.
+          const msg = (error.message || "").toLowerCase();
+          if (msg.includes("refresh token") || msg.includes("refresh_token")) {
+            console.warn("[Auth] Stale refresh token detected, clearing session.");
+            supabase.auth.signOut().catch(() => {});
+          }
+          syncSessionState("INITIAL_SESSION", null);
+          return;
+        }
+        syncSessionState("INITIAL_SESSION", session);
+      })
+      .catch(() => syncSessionState("INITIAL_SESSION", null));
 
     return () => subscription.unsubscribe();
   }, [fetchRepProfile, checkSubscription]);
