@@ -162,24 +162,29 @@ export function useGhlSso() {
     const ALLOWED_ORIGIN_SUFFIXES = [
       "gohighlevel.com",
       "leadconnectorhq.com",
-            "msgsndr.com",
+      "msgsndr.com",
     ];
 
     const handleMessage = (event: MessageEvent) => {
       if (handshakeComplete.current) return;
 
-      // Origin allowlist — reject messages from untrusted parents
+      // Trust messages from our direct iframe parent (GHL embeds us, so
+      // window.parent IS GHL — even when the agency runs on a white-label
+      // custom domain that isn't on the public GHL suffix list).
+      // The payload itself is cryptographically verified server-side by
+      // localist-sso-verify, so the origin string isn't our security boundary.
+      const fromParent = event.source === window.parent || event.source === window.top;
       let originHost = "";
-      try { originHost = new URL(event.origin).hostname; } catch { return; }
+      try { originHost = new URL(event.origin).hostname; } catch {}
       const originAllowed = ALLOWED_ORIGIN_SUFFIXES.some(
         (suffix) => originHost === suffix || originHost.endsWith("." + suffix)
       );
-      if (!originAllowed) return;
+      if (!fromParent && !originAllowed) return;
 
       messageCount.current++;
       // Log ALL messages for debugging (first 5 only to avoid spam)
       if (messageCount.current <= 5) {
-        console.log(`📨 Message #${messageCount.current} from ${event.origin}:`,
+        console.log(`📨 Message #${messageCount.current} from ${event.origin} (parent=${fromParent}):`,
           typeof event.data === "string"
             ? event.data.substring(0, 100)
             : JSON.stringify(event.data)?.substring(0, 200)
