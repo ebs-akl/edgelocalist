@@ -182,8 +182,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // ── Auth listener ──
   useEffect(() => {
+    // Debug instrumentation — surfaces auth lifecycle in the browser console
+    // so we can trace login failures on user devices (especially mobile).
+    const ua = typeof navigator !== "undefined" ? navigator.userAgent : "n/a";
+    const probeStorage = () => {
+      try {
+        const ls = !!window.localStorage;
+        const ss = !!window.sessionStorage;
+        const ck = typeof navigator !== "undefined" ? navigator.cookieEnabled : false;
+        // Try a write/read roundtrip
+        let lsWorks = false;
+        try {
+          window.localStorage.setItem("__auth_probe__", "1");
+          lsWorks = window.localStorage.getItem("__auth_probe__") === "1";
+          window.localStorage.removeItem("__auth_probe__");
+        } catch {}
+        const token = (() => {
+          try { return window.localStorage.getItem("sb-localist-auth"); } catch { return null; }
+        })();
+        console.log("[Auth/Probe]", { ls, ss, cookies: ck, lsWorks, hasToken: !!token, ua });
+      } catch (e) {
+        console.warn("[Auth/Probe] failed", e);
+      }
+    };
+    probeStorage();
+
     const syncSessionState = (event: string, session: Session | null) => {
       const isTokenRefresh = event === "TOKEN_REFRESHED";
+      console.log("[Auth/Event]", event, {
+        hasSession: !!session,
+        userId: session?.user?.id ?? null,
+        email: session?.user?.email ?? null,
+        expiresAt: session?.expires_at ?? null,
+      });
       setState((s) => ({
         ...s,
         session,
@@ -204,23 +235,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       syncSessionState(_event, session);
     });
 
+    console.log("[Auth/Init] Calling getSession()...");
+    const t0 = Date.now();
     supabase.auth.getSession()
       .then(({ data: { session }, error }) => {
+        console.log("[Auth/Init] getSession() resolved in", Date.now() - t0, "ms", {
+          hasSession: !!session,
+          error: error?.message ?? null,
+        });
         if (error) {
           // Mobile Chrome on Android sometimes evicts/partitions storage,
           // leaving a stale refresh token. Clear it so the user lands cleanly on /auth
           // instead of getting stuck in a refresh-loop with refresh_token_not_found.
           const msg = (error.message || "").toLowerCase();
           if (msg.includes("refresh token") || msg.includes("refresh_token")) {
-            console.warn("[Auth] Stale refresh token detected, clearing session.");
+            console.warn("[Auth] Stale refresh token detected, clearing session.", error.message);
             supabase.auth.signOut().catch(() => {});
+          } else {
+            console.error("[Auth] getSession error:", error);
           }
           syncSessionState("INITIAL_SESSION", null);
           return;
         }
         syncSessionState("INITIAL_SESSION", session);
       })
-      .catch(() => syncSessionState("INITIAL_SESSION", null));
+      .catch((err) => {
+        console.error("[Auth/Init] getSession() threw", err);
+        syncSessionState("INITIAL_SESSION", null);
+      });
 
     return () => subscription.unsubscribe();
   }, [fetchRepProfile, checkSubscription]);
