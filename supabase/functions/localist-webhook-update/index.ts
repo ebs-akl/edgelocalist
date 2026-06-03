@@ -121,8 +121,8 @@ serve(async (req) => {
     if (upsertErr) {
       console.error("[ghl-webhook-update] Upsert error:", upsertErr);
       return new Response(
-        JSON.stringify({ error: upsertErr.message }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ error: "Contact update failed" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
@@ -135,8 +135,8 @@ serve(async (req) => {
   } catch (err) {
     console.error("[ghl-webhook-update] Error:", err);
     return new Response(
-      JSON.stringify({ error: err instanceof Error ? err.message : "Unknown error" }),
-      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      JSON.stringify({ error: "Webhook processing failed" }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 });
