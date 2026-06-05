@@ -11,6 +11,17 @@ Deno.serve(async (req) => {
   try {
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
     const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const INTERNAL_SECRET = Deno.env.get("INTERNAL_CRON_SECRET");
+
+    // Require shared secret for cron invocation
+    const provided = req.headers.get("x-internal-secret");
+    if (!INTERNAL_SECRET || provided !== INTERNAL_SECRET) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const admin = createClient(SUPABASE_URL, SERVICE_ROLE);
 
     // Find reps whose trial ends in 1-2 days and haven't received step 3 yet.
@@ -37,7 +48,10 @@ Deno.serve(async (req) => {
       }
       const resp = await fetch(`${SUPABASE_URL}/functions/v1/localist-send-trial-email`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "x-internal-secret": INTERNAL_SECRET,
+        },
         body: JSON.stringify({ rep_id: rep.id, step: 3 }),
       });
       results.push({ rep_id: rep.id, status: resp.ok ? "sent" : "failed" });

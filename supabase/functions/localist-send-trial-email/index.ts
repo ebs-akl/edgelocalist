@@ -211,14 +211,36 @@ Deno.serve(async (req) => {
     const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
     const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const INTERNAL_SECRET = Deno.env.get("INTERNAL_CRON_SECRET");
     if (!RESEND_API_KEY) {
       return new Response(JSON.stringify({ error: "Missing RESEND_API_KEY" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    // Authorize: either internal cron secret OR a valid authenticated user JWT
+    const provided = req.headers.get("x-internal-secret");
+    const isInternal = !!INTERNAL_SECRET && provided === INTERNAL_SECRET;
+    let isAuthedUser = false;
+    if (!isInternal) {
+      const authHeader = req.headers.get("Authorization") || "";
+      const token = authHeader.toLowerCase().startsWith("bearer ") ? authHeader.slice(7) : "";
+      if (token) {
+        const tmp = createClient(SUPABASE_URL, SERVICE_ROLE);
+        const { data: u } = await tmp.auth.getUser(token);
+        isAuthedUser = !!u?.user;
+      }
+    }
+    if (!isInternal && !isAuthedUser) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     const { rep_id, step, test_email, test_name } = await req.json();
     if (![1, 2, 3].includes(step)) {
       return new Response(JSON.stringify({ error: "Invalid step" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
+
 
     const admin = createClient(SUPABASE_URL, SERVICE_ROLE);
 
