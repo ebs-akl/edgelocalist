@@ -14,6 +14,111 @@ export type Database = {
   }
   public: {
     Tables: {
+      _cooky_migration_profiles_audit: {
+        Row: {
+          changed_at: string | null
+          changed_by_function: string
+          column_name: string
+          id: string
+          new_value: string | null
+          old_value: string | null
+          user_id: string
+        }
+        Insert: {
+          changed_at?: string | null
+          changed_by_function: string
+          column_name: string
+          id?: string
+          new_value?: string | null
+          old_value?: string | null
+          user_id: string
+        }
+        Update: {
+          changed_at?: string | null
+          changed_by_function?: string
+          column_name?: string
+          id?: string
+          new_value?: string | null
+          old_value?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      _cooky_migration_profiles_snapshot: {
+        Row: {
+          email: string | null
+          ghl_access_token: string | null
+          ghl_expires_at: string | null
+          ghl_location_id: string | null
+          ghl_refresh_token: string | null
+          snapshot_taken_at: string | null
+          subscription_tier: string | null
+          user_id: string | null
+        }
+        Insert: {
+          email?: string | null
+          ghl_access_token?: string | null
+          ghl_expires_at?: string | null
+          ghl_location_id?: string | null
+          ghl_refresh_token?: string | null
+          snapshot_taken_at?: string | null
+          subscription_tier?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          email?: string | null
+          ghl_access_token?: string | null
+          ghl_expires_at?: string | null
+          ghl_location_id?: string | null
+          ghl_refresh_token?: string | null
+          snapshot_taken_at?: string | null
+          subscription_tier?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      agency_oauth_tokens: {
+        Row: {
+          access_token: string
+          company_id: string
+          created_at: string
+          expires_at: string
+          id: string
+          provider: string
+          raw: Json | null
+          refresh_token: string
+          scope: string | null
+          updated_at: string
+          user_type: string | null
+        }
+        Insert: {
+          access_token: string
+          company_id: string
+          created_at?: string
+          expires_at: string
+          id?: string
+          provider?: string
+          raw?: Json | null
+          refresh_token: string
+          scope?: string | null
+          updated_at?: string
+          user_type?: string | null
+        }
+        Update: {
+          access_token?: string
+          company_id?: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          provider?: string
+          raw?: Json | null
+          refresh_token?: string
+          scope?: string | null
+          updated_at?: string
+          user_type?: string | null
+        }
+        Relationships: []
+      }
       api_rate_limits: {
         Row: {
           attempt_count: number | null
@@ -661,7 +766,7 @@ export type Database = {
           billing_state: string | null
           billing_zip: string | null
           cpo_total: number | null
-          created_at: string | null
+          created_at: string
           customer_type: string | null
           engraving_details: string | null
           event_name: string | null
@@ -719,7 +824,7 @@ export type Database = {
           billing_state?: string | null
           billing_zip?: string | null
           cpo_total?: number | null
-          created_at?: string | null
+          created_at?: string
           customer_type?: string | null
           engraving_details?: string | null
           event_name?: string | null
@@ -777,7 +882,7 @@ export type Database = {
           billing_state?: string | null
           billing_zip?: string | null
           cpo_total?: number | null
-          created_at?: string | null
+          created_at?: string
           customer_type?: string | null
           engraving_details?: string | null
           event_name?: string | null
@@ -899,36 +1004,6 @@ export type Database = {
         }
         Relationships: []
       }
-      pro_users: {
-        Row: {
-          created_at: string | null
-          email: string
-          id: string
-          is_pro: boolean | null
-          stripe_customer_id: string | null
-          updated_at: string | null
-          user_id: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          email: string
-          id?: string
-          is_pro?: boolean | null
-          stripe_customer_id?: string | null
-          updated_at?: string | null
-          user_id?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          email?: string
-          id?: string
-          is_pro?: boolean | null
-          stripe_customer_id?: string | null
-          updated_at?: string | null
-          user_id?: string | null
-        }
-        Relationships: []
-      }
       product_directory: {
         Row: {
           base_url: string | null
@@ -985,10 +1060,15 @@ export type Database = {
       }
       profiles: {
         Row: {
+          access_revoked: boolean
           created_at: string | null
+          email: string | null
           first_name: string | null
           full_name: string | null
+          ghl_access_token: string | null
+          ghl_expires_at: string | null
           ghl_location_id: string | null
+          ghl_refresh_token: string | null
           id: string
           last_name: string | null
           password_changed_at: string | null
@@ -998,10 +1078,15 @@ export type Database = {
           vector_rep_number: number | null
         }
         Insert: {
+          access_revoked?: boolean
           created_at?: string | null
+          email?: string | null
           first_name?: string | null
           full_name?: string | null
+          ghl_access_token?: string | null
+          ghl_expires_at?: string | null
           ghl_location_id?: string | null
+          ghl_refresh_token?: string | null
           id?: string
           last_name?: string | null
           password_changed_at?: string | null
@@ -1011,10 +1096,15 @@ export type Database = {
           vector_rep_number?: number | null
         }
         Update: {
+          access_revoked?: boolean
           created_at?: string | null
+          email?: string | null
           first_name?: string | null
           full_name?: string | null
+          ghl_access_token?: string | null
+          ghl_expires_at?: string | null
           ghl_location_id?: string | null
+          ghl_refresh_token?: string | null
           id?: string
           last_name?: string | null
           password_changed_at?: string | null
@@ -1057,19 +1147,25 @@ export type Database = {
           created_at: string | null
           id: string
           image_url: string | null
+          recipe: Json | null
           recipe_url: string | null
+          url: string | null
         }
         Insert: {
           created_at?: string | null
           id?: string
           image_url?: string | null
+          recipe?: Json | null
           recipe_url?: string | null
+          url?: string | null
         }
         Update: {
           created_at?: string | null
           id?: string
           image_url?: string | null
+          recipe?: Json | null
           recipe_url?: string | null
+          url?: string | null
         }
         Relationships: []
       }
@@ -1316,7 +1412,7 @@ export type Database = {
           api_key?: string | null
           created_at?: string | null
           gemini_api_key?: string | null
-          id: string
+          id?: string
           inbound_email?: string | null
           processed_count?: number | null
           push_notifications_enabled?: boolean | null
