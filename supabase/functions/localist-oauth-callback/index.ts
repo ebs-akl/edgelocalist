@@ -33,9 +33,13 @@ serve(async (req) => {
   }
 
   try {
-    const body = await req.json() as { code?: string; redirect_uri?: string };
+    const body = await req.json() as { code?: string; redirect_uri?: string; user_type?: string };
     const code = body.code;
     const redirect_uri = body.redirect_uri || "https://edgelocalist.app/callback";
+    // Default to Location to preserve existing per-sub-account installs;
+    // Agency-install callbacks pass user_type: "Company" so we can mint a
+    // company-scoped token and stash it in agency_oauth_tokens.
+    const userType = body.user_type === "Company" ? "Company" : "Location";
 
     // Input validation
     if (!code || typeof code !== "string" || code.length > 2048) {
@@ -49,8 +53,6 @@ serve(async (req) => {
       });
     }
 
-    // Exchanging authorization code for tokens
-
     // Exchange code for tokens
     const tokenRes = await fetch("https://services.leadconnectorhq.com/oauth/token", {
       method: "POST",
@@ -63,7 +65,7 @@ serve(async (req) => {
         client_secret: GHL_CLIENT_SECRET,
         grant_type: "authorization_code",
         code,
-        user_type: "Location",
+        user_type: userType,
         redirect_uri,
       }),
     });
@@ -88,18 +90,61 @@ serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-    const { access_token, refresh_token, locationId } = tokenData;
+    const { access_token, refresh_token, locationId, companyId } = tokenData;
 
-    if (!access_token || !locationId) {
+    if (!access_token) {
       console.error("Invalid token response from GHL:", JSON.stringify(tokenData));
-      // Agency-level / Company install — GHL returns companyId but no locationId.
-      const isCompanyInstall = tokenData?.userType === "Company" || !!tokenData?.companyId;
-      const msg = isCompanyInstall
-        ? "This app was installed at the Agency level. Please install AKL LocaList from inside a specific Sub-Account (Settings → Integrations → Marketplace), not from the Agency view."
-        : "Invalid response from provider";
-      return new Response(JSON.stringify({ error: msg, error_description: msg }), {
+      return new Response(JSON.stringify({ error: "Invalid response from provider" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+    // ── Agency-level (Company) install ──
+    // Stash the company-scoped token in the shared agency_oauth_tokens table.
+    // Per-sub-account access still resolves via the existing per-location
+    // install flow (or can be minted on demand via GHL's locationToken API).
+    const isCompanyInstall =
+      userType === "Company" ||
+      tokenData?.userType === "Company" ||
+      (!locationId && !!companyId);
+
+    if (isCompanyInstall) {
+      if (!companyId) {
+        return new Response(JSON.stringify({ error: "Agency install missing companyId" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const agencyExpiresAt = new Date(
+        Date.now() + (tokenData.expires_in ?? 86400) * 1000
+      ).toISOString();
+      const { error: agencyErr } = await supabaseAdmin.from("agency_oauth_tokens").upsert({
+        provider: "ghl",
+        company_id: companyId,
+        access_token,
+        refresh_token: refresh_token ?? "",
+        expires_at: agencyExpiresAt,
+        scope: tokenData.scope ?? null,
+        user_type: "Company",
+        raw: tokenData,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: "provider,company_id" });
+      if (agencyErr) {
+        console.error("agency_oauth_tokens upsert error:", agencyErr);
+        return new Response(JSON.stringify({ error: "Failed to store agency token" }), {
+          status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      return new Response(JSON.stringify({ success: true, companyId, mode: "agency" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (!locationId) {
+      return new Response(JSON.stringify({ error: "Location install missing locationId" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
