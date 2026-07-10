@@ -8,9 +8,10 @@ const corsHeaders = {
 };
 
 const REP_ID = "2da6ce66-ef87-49c3-8014-1a258e58780f";
-const BATCH_SIZE = 10;
-const DELAY_MS = 400;
-const MAX_PER_CALL = 500;
+const BATCH_SIZE = 15;
+const DELAY_MS = 250;
+const MAX_PER_CALL = 200;
+
 
 function stripApt(a: string) {
   return a.replace(/\s*(apt|unit|suite|ste|#|bldg|floor|fl)\s*[a-z0-9-]+/gi, "").trim();
