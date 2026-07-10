@@ -48,21 +48,30 @@ serve(async (req) => {
   const MAPBOX = Deno.env.get("MAPBOX_ACCESS_TOKEN")!;
   const supabase = createClient(SUPABASE_URL, KEY);
 
-  const { data: contacts } = await supabase
+  let afterId = "";
+  try { const b = await req.json(); if (typeof b.after_id === "string") afterId = b.after_id; } catch { /* ok */ }
+
+  const supabase = createClient(SUPABASE_URL, KEY);
+
+  let q = supabase
     .from("localist_contacts")
     .select("id, address, city, state, zip")
     .eq("rep_id", REP_ID)
     .is("latitude", null)
     .not("address", "is", null).not("address", "eq", "")
     .not("city", "is", null).not("state", "is", null).not("zip", "is", null)
+    .order("id", { ascending: true })
     .limit(MAX_PER_CALL);
+  if (afterId) q = q.gt("id", afterId);
+  const { data: contacts } = await q;
 
   if (!contacts?.length) {
     const { count } = await supabase.from("localist_contacts").select("id", { count: "exact", head: true })
       .eq("rep_id", REP_ID).is("latitude", null);
-    return new Response(JSON.stringify({ geocoded: 0, remaining_null_lat: count ?? 0 }),
+    return new Response(JSON.stringify({ geocoded: 0, remaining_null_lat: count ?? 0, done: true }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
+
 
   let geocoded = 0, missed = 0;
   for (let i = 0; i < contacts.length; i += BATCH_SIZE) {
