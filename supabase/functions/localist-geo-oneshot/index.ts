@@ -51,7 +51,8 @@ serve(async (req) => {
   let afterId = "";
   try { const b = await req.json(); if (typeof b.after_id === "string") afterId = b.after_id; } catch { /* ok */ }
 
-  const supabase = createClient(SUPABASE_URL, KEY);
+
+
 
   let q = supabase
     .from("localist_contacts")
