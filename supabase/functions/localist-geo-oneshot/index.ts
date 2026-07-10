@@ -94,6 +94,8 @@ serve(async (req) => {
   const { count } = await supabase.from("localist_contacts").select("id", { count: "exact", head: true })
     .eq("rep_id", REP_ID).is("latitude", null);
 
-  return new Response(JSON.stringify({ geocoded, missed, remaining_null_lat: count ?? 0 }),
+  const lastId = contacts[contacts.length - 1].id;
+  return new Response(JSON.stringify({ geocoded, missed, remaining_null_lat: count ?? 0, last_id: lastId, processed: contacts.length }),
     { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+
 });
