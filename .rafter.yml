@@ -1,0 +1,24 @@
+# Rafter configuration — documented false positives
+ignore:
+  - rule: R-9D881
+    paths:
+      - .env
+    reason: >
+      VITE_SUPABASE_PUBLISHABLE_KEY is the Supabase anon (publishable) JWT,
+      designed for browser use and gated by RLS. VITE_MAPBOX_ACCESS_TOKEN is a
+      Mapbox `pk.*` publishable token restricted by URL allowlist in the Mapbox
+      dashboard. Neither is a secret; both are safe to ship to the client.
+  - rule: R-FC93C
+    paths:
+      - src/integrations/supabase/client.ts
+    reason: >
+      Hardcoded Supabase publishable anon key, intentionally shipped to the
+      browser per Supabase's client SDK design. Access is enforced by RLS.
+  - rule: R-276AC
+    paths:
+      - bun.lock
+      - package-lock.json
+    reason: >
+      Advisory lists fixed version 4.18.0 for lodash, which does not exist
+      (lodash has not shipped past 4.17.21). Cannot upgrade. Current pinned
+      version is 4.17.21.
