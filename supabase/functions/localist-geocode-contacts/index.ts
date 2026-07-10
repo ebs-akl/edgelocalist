@@ -106,27 +106,24 @@ serve(async (req) => {
     repId = rep.id;
   } else {
     const authHeader = req.headers.get("Authorization");
-    const token = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : "";
-    // Admin path: service role token + explicit rep_id in body
-    if (token && token === SUPABASE_SERVICE_ROLE_KEY && typeof body.rep_id === "string") {
-      repId = body.rep_id as string;
-    } else {
-      if (!token) {
-        return new Response(JSON.stringify({ error: "Authorization required" }), {
-          status: 401,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-      if (authError || !user) {
-        return new Response(JSON.stringify({ error: "Invalid authorization" }), {
-          status: 401,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      repId = user.id;
+    if (!authHeader?.startsWith("Bearer ")) {
+      return new Response(JSON.stringify({ error: "Authorization required" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
+    const { data: { user }, error: authError } = await supabase.auth.getUser(
+      authHeader.replace("Bearer ", "")
+    );
+    if (authError || !user) {
+      return new Response(JSON.stringify({ error: "Invalid authorization" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    repId = user.id;
   }
+
 
 
   if (!repId) {
