@@ -700,6 +700,19 @@ export default function SearchTab({ repName, recentSearches, onSearch, contactCo
                   </Button>
                 </>
               )}
+              {totalCount > 0 && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-8 gap-1.5 text-xs font-semibold"
+                  onClick={handleExport}
+                  disabled={exporting}
+                  title="Export search results to CSV"
+                >
+                  {exporting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+                  Export CSV
+                </Button>
+              )}
               {totalCount > 0 && viewMode === "list" && (
                 <>
                   <Select
