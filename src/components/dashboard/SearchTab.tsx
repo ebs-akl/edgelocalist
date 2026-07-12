@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "@/hooks/use-toast";
-import { MapPin, Loader2, Phone, MessageSquare, Map, ExternalLink, ChevronUp, ChevronDown, Filter, Trash2, Send, ArrowUpDown, Tag, List, ChevronLeft, ChevronRight } from "lucide-react";
+import { MapPin, Loader2, Phone, MessageSquare, Map, ExternalLink, ChevronUp, ChevronDown, Filter, Trash2, Send, ArrowUpDown, Tag, List, ChevronLeft, ChevronRight, Download } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -354,6 +354,106 @@ export default function SearchTab({ repName, recentSearches, onSearch, contactCo
     }
   };
 
+  const [exporting, setExporting] = useState(false);
+
+  const handleExport = useCallback(async () => {
+    if (!lastSearchRef.current || !effectiveRepId || totalCount === 0) return;
+    setExporting(true);
+    try {
+      const { center, address: lastAddr } = lastSearchRef.current as any;
+      const pageSizeExp = 100;
+      const totalPagesExp = Math.ceil(totalCount / pageSizeExp);
+      const all: NearbyContact[] = [];
+
+      for (let p = 1; p <= totalPagesExp; p++) {
+        let pageRows: NearbyContact[] = [];
+        if (isGhlMode) {
+          const { data, error } = await supabase.functions.invoke("localist-nearby-search", {
+            body: lastAddr && !center
+              ? { address: lastAddr, radius_miles: radius, page: p, limit: pageSizeExp }
+              : { center_lat: center.lat, center_lng: center.lng, radius_miles: radius, page: p, limit: pageSizeExp },
+          });
+          if (error) throw error;
+          pageRows = (data?.paginatedContacts as NearbyContact[]) ?? [];
+        } else {
+          const { data, error } = await supabase.rpc("nearby_contacts_page_auth" as any, {
+            rep: effectiveRepId,
+            center_lat: center.lat,
+            center_lng: center.lng,
+            radius_miles: radius,
+            p_limit: pageSizeExp,
+            p_offset: (p - 1) * pageSizeExp,
+          });
+          if (error) throw error;
+          pageRows = (data as NearbyContact[]) ?? [];
+        }
+        all.push(...pageRows);
+        if (pageRows.length < pageSizeExp) break;
+      }
+
+      // Apply the same category filter that's active in the UI
+      const rows = all.filter((c) => {
+        if (categoryFilters.size === 0) return true;
+        const isRlt = c.rlt?.toUpperCase() === "Y";
+        const isBiz = c.biz?.toUpperCase() === "Y";
+        const isReg = !isRlt && !isBiz;
+        return (categoryFilters.has("RLT") && isRlt) ||
+               (categoryFilters.has("BIZ") && isBiz) ||
+               (categoryFilters.has("REG") && isReg);
+      });
+
+      const headers = [
+        "First Name","Last Name","Phone","Address","City","State","Zip",
+        "Distance (mi)","Lifetime Value","Order Count","Gift Count",
+        "Last Order Date","Last Service Date","RLT","BIZ","CAT","County",
+      ];
+      const escape = (v: unknown) => {
+        const s = v == null ? "" : String(v);
+        return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+      };
+      const csv = [
+        headers.join(","),
+        ...rows.map((c) => [
+          toTitleCase(c.first_name),
+          toTitleCase(c.last_name),
+          c.phone ?? "",
+          toTitleCase(c.address),
+          toTitleCase(c.city),
+          c.state ?? "",
+          c.zip ?? "",
+          c.distance_miles?.toFixed(2) ?? "",
+          c.lifetime_value ?? "",
+          c.order_count ?? "",
+          c.gift_count ?? "",
+          c.last_order_date ?? "",
+          c.last_service_date ?? "",
+          c.rlt ?? "",
+          c.biz ?? "",
+          c.cat ?? "",
+          c.county ?? "",
+        ].map(escape).join(",")),
+      ].join("\n");
+
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const label = lastSearchRef.current.label.replace(/[^a-z0-9]+/gi, "_").slice(0, 40) || "search";
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `localist_${label}_${radius}mi_${new Date().toISOString().slice(0,10)}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      toast({ title: `Exported ${rows.length} contact${rows.length !== 1 ? "s" : ""}` });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Export failed.";
+      toast({ title: "Export failed", description: message, variant: "destructive" });
+    } finally {
+      setExporting(false);
+    }
+  }, [effectiveRepId, totalCount, radius, isGhlMode, categoryFilters]);
+
   const filtered = results
     .filter((c) => {
       const q = filter.toLowerCase();
@@ -599,6 +699,19 @@ export default function SearchTab({ repName, recentSearches, onSearch, contactCo
                     Tag ({selectedContacts.length})
                   </Button>
                 </>
+              )}
+              {totalCount > 0 && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-8 gap-1.5 text-xs font-semibold"
+                  onClick={handleExport}
+                  disabled={exporting}
+                  title="Export search results to CSV"
+                >
+                  {exporting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+                  Export CSV
+                </Button>
               )}
               {totalCount > 0 && viewMode === "list" && (
                 <>
