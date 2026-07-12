@@ -127,7 +127,7 @@ serve(async (req) => {
       });
     }
 
-    const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    const supabaseAdmin = supabaseAdminEarly;
 
     // ── Agency-level (Company) install ──
     // Stash the company-scoped token in the shared agency_oauth_tokens table.
