@@ -4,6 +4,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Loader2 } from "lucide-react";
 import { useRef, type ReactNode } from "react";
 import CheckoutRedirect from "./CheckoutRedirect";
+import { isRunningInGhlIframe } from "@/lib/is-ghl-iframe";
 
 const VALID_TIERS = new Set(["LOCALIST", "SNACK PACK", "EDGE BASIC"]);
 
@@ -11,12 +12,11 @@ interface ProtectedRouteProps {
   children: ReactNode;
 }
 
-function isInIframe(): boolean {
-  try {
-    return window.self !== window.top;
-  } catch {
-    return true;
-  }
+// Only bypass the subscription/auth gate when we're inside a legitimate
+// GHL-hosted iframe (non-preview host). A generic `window.self !== window.top`
+// check let ANY page embed the app in an iframe and skip billing enforcement.
+function isTrustedGhlEmbed(): boolean {
+  return isRunningInGhlIframe();
 }
 
 export default function ProtectedRoute({ children }: ProtectedRouteProps) {
@@ -30,13 +30,13 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
 
   // Only gate on loading during initial page load, not background refreshes
   if (loading || (isAuthenticated && loadingSubscription && !verifiedOnce.current)) {
-    if (isInIframe()) {
+    if (isTrustedGhlEmbed()) {
       return (
         <div className="min-h-screen bg-background flex items-center justify-center">
           <div className="text-center space-y-3">
             <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
             <p className="text-sm text-muted-foreground font-medium">
-              Establishing Secure Connection to HighLevel...
+              Establishing Secure Connection…
             </p>
           </div>
         </div>
@@ -54,15 +54,14 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
     );
   }
 
-  // Strict iframe guard: never redirect to /auth when in an iframe
   if (!isAuthenticated) {
-    if (isInIframe()) {
+    if (isTrustedGhlEmbed()) {
       return (
         <div className="min-h-screen bg-background flex items-center justify-center">
           <div className="text-center space-y-3">
             <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
             <p className="text-sm text-muted-foreground font-medium">
-              Establishing Secure Connection to HighLevel...
+              Establishing Secure Connection…
             </p>
           </div>
         </div>
@@ -71,8 +70,10 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
     return <Navigate to="/auth" replace />;
   }
 
-  // Subscription gate: if no valid tier OR no payment method on file, send to Stripe checkout
-  if (!loadingSubscription && !isInIframe()) {
+  // Subscription gate: enforce for everyone except legitimate GHL-embedded sessions.
+  // Any authenticated user loading the app outside a real GHL iframe must have a
+  // valid tier + payment method on file.
+  if (!loadingSubscription && !isTrustedGhlEmbed()) {
     const hasValidTier = subscription.tier && VALID_TIERS.has(subscription.tier);
     if (!hasValidTier || !subscription.paymentMethodOnFile) {
       return <CheckoutRedirect />;

@@ -241,6 +241,15 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "Invalid step" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
+    // `test_email` is an operator-only escape hatch. Restrict it to callers
+    // presenting the internal cron secret to prevent open email relay abuse
+    // (spam / phishing to arbitrary addresses).
+    if (test_email && !isInternal) {
+      return new Response(JSON.stringify({ error: "test_email requires internal secret" }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     const admin = createClient(SUPABASE_URL, SERVICE_ROLE);
 
