@@ -94,24 +94,9 @@ Deno.serve(async (req) => {
 
     const candidateKeys = getCandidateKeys();
 
-    // ── Safe diagnostic: log fingerprint of each key (no full values) ──
-    for (const { name, key } of candidateKeys) {
-      try {
-        const hashBuf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(key));
-        const sha = Array.from(new Uint8Array(hashBuf))
-          .slice(0, 6)
-          .map((b) => b.toString(16).padStart(2, "0"))
-          .join("");
-        const first4 = key.substring(0, 4);
-        const last4 = key.substring(Math.max(0, key.length - 4));
-        const ws = /\s/.test(key);
-        console.log(
-          `Key ${name}: len=${key.length} first=${first4} last=${last4} sha256=${sha} ws=${ws}`
-        );
-      } catch (e) {
-        console.log(`Key ${name}: fingerprint failed ${e instanceof Error ? e.message : String(e)}`);
-      }
-    }
+    // NOTE: Do not log any material derived from the SSO keys themselves
+    // (length, prefix/suffix, or hash) — such fingerprints materially reduce
+    // the effective entropy of the shared secret if logs are ever exposed.
 
     if (candidateKeys.length === 0) {
       console.error("No GHL SSO keys configured (checked: GHL_SSO_KEY_LOCALIST, GHL_SSO_KEY_ALOMAR, GHL_SSO_KEY_COOKY, GHL_SSO_KEY, VITE_GHL_SHARED_SECRET)");
