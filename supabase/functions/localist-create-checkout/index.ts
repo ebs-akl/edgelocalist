@@ -42,8 +42,19 @@ serve(async (req) => {
     if (!user.email) throw new Error("User not authenticated or email not available");
     logStep("User authenticated", { email: user.email });
 
+    const ALLOWED_PRICE_IDS = new Set<string>([
+      "price_1T5hH9AecJc70Cb5oJxNOmJJ", // LOCALIST
+      "price_1T5hHTAecJc70Cb5QhH0FRzX", // SNACK PACK
+      "price_1SW5i4AecJc70Cb5GBytGbCf", // EDGE BASIC
+    ]);
+
     const { priceId } = await req.json();
-    if (!priceId) throw new Error("priceId is required");
+    if (!priceId || typeof priceId !== "string" || !ALLOWED_PRICE_IDS.has(priceId)) {
+      return new Response(JSON.stringify({ error: "Invalid plan selected" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 400,
+      });
+    }
     logStep("Price requested", { priceId });
 
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
