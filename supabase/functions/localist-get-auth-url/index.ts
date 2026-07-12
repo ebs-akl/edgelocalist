@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -12,9 +13,11 @@ serve(async (req) => {
   }
 
   const GHL_CLIENT_ID = Deno.env.get("GHL_CLIENT_ID_LOCALIST");
+  const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
+  const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
-  if (!GHL_CLIENT_ID) {
-    return new Response(JSON.stringify({ error: "GHL_CLIENT_ID_LOCALIST not configured" }), {
+  if (!GHL_CLIENT_ID || !SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+    return new Response(JSON.stringify({ error: "Server not configured" }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
@@ -45,11 +48,38 @@ serve(async (req) => {
     });
   }
 
+  // ── CSRF: generate & persist one-time state token (10 minute expiry) ──
+  const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+  const state = crypto.randomUUID();
+  const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+
+  // Best-effort tie to authenticated user (may be anonymous for fresh installs)
+  let userId: string | null = null;
+  const authHeader = req.headers.get("Authorization");
+  if (authHeader?.startsWith("Bearer ")) {
+    const { data } = await admin.auth.getUser(authHeader.replace("Bearer ", ""));
+    if (data?.user) userId = data.user.id;
+  }
+
+  const { error: stateErr } = await admin.from("oauth_states").insert({
+    state,
+    user_id: userId,
+    expires_at: expiresAt,
+  });
+  if (stateErr) {
+    console.error("Failed to persist oauth state:", stateErr);
+    return new Response(JSON.stringify({ error: "Failed to initialize OAuth" }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
   const params = new URLSearchParams({
     response_type: "code",
     client_id: GHL_CLIENT_ID,
     redirect_uri,
     scope: "contacts.readonly contacts.write users.readonly locations.readonly conversations/message.write locations/customFields.readonly locations/customFields.write",
+    state,
   });
 
   const url = `https://marketplace.leadconnectorhq.com/oauth/chooselocation?${params}`;
