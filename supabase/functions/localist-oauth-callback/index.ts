@@ -175,7 +175,7 @@ serve(async (req) => {
       });
     }
 
-    const supabaseAdmin = supabaseAdminEarly;
+    // supabaseAdmin already initialized above from supabaseAdminEarly
 
     // Calculate expiry timestamp
     const expiresAt = tokenData.expires_in
