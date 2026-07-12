@@ -33,9 +33,10 @@ serve(async (req) => {
   }
 
   try {
-    const body = await req.json() as { code?: string; redirect_uri?: string; user_type?: string };
+    const body = await req.json() as { code?: string; redirect_uri?: string; user_type?: string; state?: string };
     const code = body.code;
     const redirect_uri = body.redirect_uri || "https://edgelocalist.app/callback";
+    const state = body.state;
     // Default to Location to preserve existing per-sub-account installs;
     // Agency-install callbacks pass user_type: "Company" so we can mint a
     // company-scoped token and stash it in agency_oauth_tokens.
@@ -52,6 +53,32 @@ serve(async (req) => {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
+    // ── CSRF protection: validate & consume `state` token ──
+    const supabaseAdminEarly = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    if (!state || typeof state !== "string" || state.length < 16 || state.length > 128) {
+      return new Response(JSON.stringify({ error: "Missing or invalid state token" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const { data: stateRow } = await supabaseAdminEarly
+      .from("oauth_states")
+      .select("id, expires_at")
+      .eq("state", state)
+      .maybeSingle();
+    if (!stateRow) {
+      return new Response(JSON.stringify({ error: "Invalid or expired state" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    if (stateRow.expires_at && new Date(stateRow.expires_at as string).getTime() < Date.now()) {
+      await supabaseAdminEarly.from("oauth_states").delete().eq("id", stateRow.id);
+      return new Response(JSON.stringify({ error: "State token expired" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    // Consume state (one-time use)
+    await supabaseAdminEarly.from("oauth_states").delete().eq("id", stateRow.id);
 
     // Exchange code for tokens
     const tokenRes = await fetch("https://services.leadconnectorhq.com/oauth/token", {
