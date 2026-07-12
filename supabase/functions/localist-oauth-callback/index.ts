@@ -175,7 +175,7 @@ serve(async (req) => {
       });
     }
 
-    const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    const supabaseAdmin = supabaseAdminEarly;
 
     // Calculate expiry timestamp
     const expiresAt = tokenData.expires_in
@@ -209,25 +209,25 @@ serve(async (req) => {
 
     let saveError;
     if (existingRow) {
-      // Location already claimed — only the owner or the same auth user can re-authorize
-      if (authUserId && existingRow.id !== authUserId) {
-        // Different authenticated user trying to claim an already-owned location
+      // Location already claimed — require the caller to prove ownership.
+      // Unauthenticated re-installs are rejected to prevent token hijack.
+      if (!authUserId) {
+        return new Response(JSON.stringify({ error: "Sign in required to re-authorize this location" }), {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      if (existingRow.id !== authUserId) {
         return new Response(JSON.stringify({ error: "This location is already connected to another account" }), {
           status: 403,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      // Update existing row (same owner or unauthenticated re-install)
       const { error } = await supabaseAdmin
         .from("localist_reps")
         .update(tokenPayload)
         .eq("id", existingRow.id);
       saveError = error;
-
-      // If authenticated user matches, also ensure their row is updated
-      if (authUserId && existingRow.id === authUserId) {
-        // Already updated above via existingRow.id
-      }
     } else {
       // New location — use authenticated user's ID if available, otherwise generate UUID
       const repId = authUserId ?? crypto.randomUUID();
