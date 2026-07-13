@@ -1,39 +1,42 @@
-## Triage of 23 Rafter error findings
+## Goal
 
-### False positives (3 findings) — no code change, document in `.rafter.yml`
-- **R-9D881 ×2 (`.env:1`, `.env:3`)** — `VITE_SUPABASE_PUBLISHABLE_KEY` and `VITE_MAPBOX_ACCESS_TOKEN` are **publishable** client-side tokens. The Supabase anon key is designed for browser use and gated by RLS; the Mapbox `pk.*` token is a public token restricted by URL allowlist in the Mapbox dashboard. Neither is a secret. Rotation is a no-op for security.
-- **R-FC93C ×1 (`src/integrations/supabase/client.ts:6`)** — same Supabase publishable anon key, hardcoded intentionally per Lovable's generated client. Not a secret.
+Let the user select every contact matching the current search, not just the 50 shown on the current page. Actions (Group Text, Tag, Export) then operate on the full set.
 
-Action: add these three paths/rules to `.rafter.yml` with the rationale above, and mark the findings ignored in Rafter.
+## Current behavior
 
-### Real findings — single dependency-bump batch (20 findings, 10 packages)
+- Search results are paginated at 50/page. `results` state only holds the current page.
+- The "Select all" checkbox in the list header only selects the 50 rows on screen.
+- `selectedContacts` is computed as `filtered.filter(...)`, so even if extra IDs were held in state, downstream actions couldn't see contacts from other pages.
 
-All remaining findings are transitive npm CVEs. Fix by bumping direct deps and refreshing the lockfile so transitive resolutions pick up patched versions. No app code changes required.
+## Proposed behavior
 
-| Package | Current | Target | Findings resolved |
-|---|---|---|---|
-| minimatch | 3.1.2 | ≥3.1.4 (via glob bump) | R-FA68A ×3 |
-| @babel/plugin-transform-modules-systemjs | 7.29.0 | ≥7.29.4 (via babel bump) | R-661F1 ×2 |
-| @remix-run/router | 1.23.0 | ≥1.23.2 (via react-router-dom bump) | R-F05F1 ×2 |
-| lodash | 4.17.21 | ≥4.18.0 | R-276AC ×2 |
-| picomatch | 2.3.1 / 4.0.3 | ≥2.3.2 / ≥4.0.4 | R-17F85 ×3 |
-| serialize-javascript | 6.0.2 | ≥7.0.3 (via terser bump) | R-40A69 ×2 |
-| ws | 8.19.0 | ≥8.21.0 | R-63B93 ×2 |
-| fast-uri | 3.1.0 | ≥3.1.2 | R-BAD5A ×2 |
-| glob | 10.4.5 | ≥10.5.0 | R-840FD ×1 |
-| rollup | 4.24.0 | ≥4.59.0 (via vite bump) | R-28376 ×1 |
+When the header checkbox is clicked and there is more than one page of results:
 
-### Execution steps (build mode)
-1. Run `bun update` to refresh transitive versions inside current major-line constraints, then targeted `bun add -d vite@latest rollup@latest` and `bun add react-router-dom@latest` if the plain update doesn't reach the fixed versions.
-2. Add `overrides` block in `package.json` for anything still stuck below the fixed version (lodash, ws, fast-uri, picomatch, serialize-javascript, minimatch, glob, @remix-run/router, @babel/plugin-transform-modules-systemjs) pinning `>=` the fixed versions listed above. Overrides are the reliable way to force transitive bumps.
-3. Regenerate lockfile: `bun install` (also refresh `package-lock.json` if kept — the scanner reads both).
-4. Verify: `bun run build` + `bunx vitest run` to confirm nothing regressed. Re-run the dependency scan; expect all 20 CVE findings cleared.
-5. Update `.rafter.yml` with the three publishable-key exceptions and their rationale.
+1. Toggle selects/deselects the current page (existing behavior).
+2. A new inline banner appears above the results:
+   `All 50 on this page are selected. Select all 312 contacts across all pages.`
+   - Clicking the link fetches every matching contact (same all-pages loop the CSV export already uses), stores them in a new `allSelectedContacts` cache, and marks all their IDs as selected.
+   - Banner then shows: `All 312 contacts are selected. Clear selection.`
+3. `selectedContacts` used by Group Text / Tag / Export is sourced from a merged pool: current page's `filtered` rows plus the `allSelectedContacts` cache, deduped by id, filtered by `selectedIds`.
+4. Any manual deselect (unchecking a row or the header) clears the "all pages" mode and returns to per-page selection.
+5. Changing the search, radius, or filters clears both `selectedIds` and `allSelectedContacts`.
 
-### Assumptions
-- Bumping vite/react-router-dom/babel/glob/terser within the current majors is safe (Vite 5.x → 5.latest, react-router-dom 6.x → 6.latest). Flag: `@remix-run/router 1.23.2` requires `react-router-dom ≥ 6.30.x` — still within v6, no breaking change expected.
-- No public API contract or DB schema changes.
-- `.env` values aren't rotated because they aren't secrets; if you disagree, say so and I'll rotate the Mapbox token (Supabase anon key rotation would require a project-wide key roll and is not recommended).
+## UX details
 
-### Not fixed / needs your call
-- None. All 23 findings are either resolved by the bump batch or classified as false positives above.
+- Banner styling matches existing muted info banners in SearchTab (small text, primary-colored action link).
+- While fetching all pages, show a spinner in the banner and disable the link.
+- Show toast on failure; keep the current-page selection intact.
+- Works in GHL mode only (matches existing selection scope). No change to CSV mode.
+
+## Technical notes
+
+- New state in `SearchTab.tsx`:
+  - `allSelectedContacts: NearbyContact[]` — cache of full result set when "select across pages" is active.
+  - `fetchingAll: boolean` — loading flag for banner.
+- Extract the multi-page fetch loop already inside `handleExport` (lines ~360–395) into a reusable `fetchAllMatchingContacts()` helper so both Export and Select-All use one code path.
+- Update `selectedContacts` derivation to merge `filtered` and `allSelectedContacts` before filtering by `selectedIds`.
+- Reset new state in the same effects that already reset `selectedIds` on new searches/filter changes.
+
+## Files to change
+
+- `src/components/dashboard/SearchTab.tsx` (only file — pure UI/state, no backend or schema changes).
