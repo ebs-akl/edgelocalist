@@ -840,7 +840,9 @@ export default function SearchTab({ repName, recentSearches, onSearch, contactCo
               ) : (
                 <>
                   <span className="text-muted-foreground">
-                    All <strong>{filteredIds.length}</strong> on this page are selected.
+                    {allSelected
+                      ? <>All <strong>{filteredIds.length}</strong> on this page are selected.</>
+                      : <><strong>{selectedIds.size}</strong> selected on this page.</>}
                   </span>
                   <button
                     type="button"
