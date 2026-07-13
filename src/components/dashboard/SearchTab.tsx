@@ -185,6 +185,8 @@ export default function SearchTab({ repName, recentSearches, onSearch, contactCo
     if (pageNum === 1) {
       setSearched(false);
       setSelectedIds(new Set());
+      setAllSelectedContacts([]);
+      setAllPagesMode(false);
     }
     try {
       if (pageNum === 1) onSearch(addr);
