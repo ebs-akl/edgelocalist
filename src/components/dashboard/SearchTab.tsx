@@ -879,11 +879,10 @@ export default function SearchTab({ repName, recentSearches, onSearch, contactCo
               <div className={`hidden sm:grid gap-2 bg-muted/50 px-4 py-2 text-xs font-medium text-muted-foreground uppercase tracking-wide items-center ${isGhlMode ? "grid-cols-[24px_1fr_80px_80px_80px_85px_160px]" : "grid-cols-[1fr_80px_80px_80px_85px_160px]"}`}>
                 {isGhlMode && (
                   <Checkbox
-                    checked={allSelected}
+                    checked={allSelected ? true : (someSelected ? "indeterminate" : false)}
                     onCheckedChange={toggleSelectAll}
                     className="border-muted-foreground"
                     aria-label="Select all"
-                    data-state={someSelected && !allSelected ? "indeterminate" : undefined}
                   />
                 )}
                 <span>Name / City</span>
