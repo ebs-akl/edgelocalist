@@ -821,6 +821,42 @@ export default function SearchTab({ repName, recentSearches, onSearch, contactCo
             </div>
           </div>
 
+          {/* Select-all-across-pages banner */}
+          {isGhlMode && viewMode === "list" && totalCount > PAGE_SIZE && (allPagesMode || allSelected) && (
+            <div className="rounded-md border bg-muted/40 px-3 py-2 text-xs flex items-center justify-center gap-2 flex-wrap">
+              {allPagesMode ? (
+                <>
+                  <span className="text-foreground">
+                    All <strong>{selectedIds.size}</strong> contact{selectedIds.size !== 1 ? "s" : ""} across every page are selected.
+                  </span>
+                  <button
+                    type="button"
+                    onClick={clearAllSelection}
+                    className="text-primary font-semibold hover:underline"
+                  >
+                    Clear selection
+                  </button>
+                </>
+              ) : (
+                <>
+                  <span className="text-muted-foreground">
+                    All <strong>{filteredIds.length}</strong> on this page are selected.
+                  </span>
+                  <button
+                    type="button"
+                    onClick={selectAllAcrossPages}
+                    disabled={fetchingAll}
+                    className="text-primary font-semibold hover:underline inline-flex items-center gap-1 disabled:opacity-60"
+                  >
+                    {fetchingAll && <Loader2 className="h-3 w-3 animate-spin" />}
+                    Select all {totalCount} contacts across all pages
+                  </button>
+                </>
+              )}
+            </div>
+          )}
+
+
           {/* Map View */}
           {viewMode === "map" && totalCount > 0 && (
             <ContactMapView
