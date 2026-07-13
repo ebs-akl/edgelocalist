@@ -63,6 +63,9 @@ export default function SearchTab({ repName, recentSearches, onSearch, contactCo
   const [contactToDelete, setContactToDelete] = useState<NearbyContact | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [allSelectedContacts, setAllSelectedContacts] = useState<NearbyContact[]>([]);
+  const [allPagesMode, setAllPagesMode] = useState(false);
+  const [fetchingAll, setFetchingAll] = useState(false);
   const [groupSmsOpen, setGroupSmsOpen] = useState(false);
   const [tagModalOpen, setTagModalOpen] = useState(false);
   const [locating, setLocating] = useState(false);
