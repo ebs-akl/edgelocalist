@@ -521,6 +521,8 @@ export default function SearchTab({ repName, recentSearches, onSearch, contactCo
         filteredIds.forEach((id) => next.delete(id));
         return next;
       });
+      setAllPagesMode(false);
+      setAllSelectedContacts([]);
     } else {
       setSelectedIds((prev) => new Set([...prev, ...filteredIds]));
     }
@@ -529,13 +531,58 @@ export default function SearchTab({ repName, recentSearches, onSearch, contactCo
   const toggleContact = (id: string) => {
     setSelectedIds((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
+      if (next.has(id)) {
+        next.delete(id);
+        // Manual deselect exits all-pages mode
+        setAllPagesMode(false);
+        setAllSelectedContacts([]);
+      } else {
+        next.add(id);
+      }
       return next;
     });
   };
 
-  const selectedContacts = filtered.filter((c) => c.id && selectedIds.has(c.id as string));
+  const selectAllAcrossPages = useCallback(async () => {
+    if (fetchingAll) return;
+    setFetchingAll(true);
+    try {
+      const all = await fetchAllMatchingContacts();
+      const rows = applyCategoryFilter(all);
+      setAllSelectedContacts(rows);
+      setSelectedIds(new Set(rows.map((c) => c.id as string).filter(Boolean)));
+      setAllPagesMode(true);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Could not load all results.";
+      toast({ title: "Select all failed", description: message, variant: "destructive" });
+    } finally {
+      setFetchingAll(false);
+    }
+  }, [fetchingAll, fetchAllMatchingContacts, applyCategoryFilter]);
+
+  const clearAllSelection = () => {
+    setSelectedIds(new Set());
+    setAllSelectedContacts([]);
+    setAllPagesMode(false);
+  };
+
+  // Merge current page rows with the all-pages cache, dedupe by id, then filter to selected.
+  const selectedContacts = (() => {
+    const seen = new Set<string>();
+    const merged: NearbyContact[] = [];
+    for (const c of [...filtered, ...allSelectedContacts]) {
+      const cid = c.id as string;
+      if (!cid || seen.has(cid)) continue;
+      if (selectedIds.has(cid)) {
+        seen.add(cid);
+        merged.push(c);
+      }
+    }
+    return merged;
+  })();
+
+  const totalMatchingCount = applyCategoryFilter(allSelectedContacts).length || totalCount;
+
 
   // Pagination helpers
   const renderPageNumbers = () => {
