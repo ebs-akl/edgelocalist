@@ -63,6 +63,9 @@ export default function SearchTab({ repName, recentSearches, onSearch, contactCo
   const [contactToDelete, setContactToDelete] = useState<NearbyContact | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [allSelectedContacts, setAllSelectedContacts] = useState<NearbyContact[]>([]);
+  const [allPagesMode, setAllPagesMode] = useState(false);
+  const [fetchingAll, setFetchingAll] = useState(false);
   const [groupSmsOpen, setGroupSmsOpen] = useState(false);
   const [tagModalOpen, setTagModalOpen] = useState(false);
   const [locating, setLocating] = useState(false);
@@ -87,6 +90,8 @@ export default function SearchTab({ repName, recentSearches, onSearch, contactCo
       return next;
     });
     setSelectedIds(new Set());
+    setAllSelectedContacts([]);
+    setAllPagesMode(false);
   };
 
   const COORD_REGEX = /^(-?\d+(\.\d+)?)[,\s]+(-?\d+(\.\d+)?)$/;
@@ -112,6 +117,8 @@ export default function SearchTab({ repName, recentSearches, onSearch, contactCo
     if (pageNum === 1) {
       setSearched(false);
       setSelectedIds(new Set());
+      setAllSelectedContacts([]);
+      setAllPagesMode(false);
       setCategoryFilters(new Set());
     }
     try {
@@ -178,6 +185,8 @@ export default function SearchTab({ repName, recentSearches, onSearch, contactCo
     if (pageNum === 1) {
       setSearched(false);
       setSelectedIds(new Set());
+      setAllSelectedContacts([]);
+      setAllPagesMode(false);
     }
     try {
       if (pageNum === 1) onSearch(addr);
@@ -356,51 +365,60 @@ export default function SearchTab({ repName, recentSearches, onSearch, contactCo
 
   const [exporting, setExporting] = useState(false);
 
+  // Fetch every contact matching the current search (across all pages).
+  const fetchAllMatchingContacts = useCallback(async (): Promise<NearbyContact[]> => {
+    if (!lastSearchRef.current || !effectiveRepId || totalCount === 0) return [];
+    const { center, address: lastAddr } = lastSearchRef.current as any;
+    const pageSizeExp = 100;
+    const totalPagesExp = Math.ceil(totalCount / pageSizeExp);
+    const all: NearbyContact[] = [];
+    for (let p = 1; p <= totalPagesExp; p++) {
+      let pageRows: NearbyContact[] = [];
+      if (isGhlMode) {
+        const { data, error } = await supabase.functions.invoke("localist-nearby-search", {
+          body: lastAddr && !center
+            ? { address: lastAddr, radius_miles: radius, page: p, limit: pageSizeExp }
+            : { center_lat: center.lat, center_lng: center.lng, radius_miles: radius, page: p, limit: pageSizeExp },
+        });
+        if (error) throw error;
+        pageRows = (data?.paginatedContacts as NearbyContact[]) ?? [];
+      } else {
+        const { data, error } = await supabase.rpc("nearby_contacts_page_auth" as any, {
+          rep: effectiveRepId,
+          center_lat: center.lat,
+          center_lng: center.lng,
+          radius_miles: radius,
+          p_limit: pageSizeExp,
+          p_offset: (p - 1) * pageSizeExp,
+        });
+        if (error) throw error;
+        pageRows = (data as NearbyContact[]) ?? [];
+      }
+      all.push(...pageRows);
+      if (pageRows.length < pageSizeExp) break;
+    }
+    return all;
+  }, [effectiveRepId, totalCount, radius, isGhlMode]);
+
+  const applyCategoryFilter = useCallback((rows: NearbyContact[]) => {
+    return rows.filter((c) => {
+      if (categoryFilters.size === 0) return true;
+      const isRlt = c.rlt?.toUpperCase() === "Y";
+      const isBiz = c.biz?.toUpperCase() === "Y";
+      const isReg = !isRlt && !isBiz;
+      return (categoryFilters.has("RLT") && isRlt) ||
+             (categoryFilters.has("BIZ") && isBiz) ||
+             (categoryFilters.has("REG") && isReg);
+    });
+  }, [categoryFilters]);
+
+
   const handleExport = useCallback(async () => {
     if (!lastSearchRef.current || !effectiveRepId || totalCount === 0) return;
     setExporting(true);
     try {
-      const { center, address: lastAddr } = lastSearchRef.current as any;
-      const pageSizeExp = 100;
-      const totalPagesExp = Math.ceil(totalCount / pageSizeExp);
-      const all: NearbyContact[] = [];
-
-      for (let p = 1; p <= totalPagesExp; p++) {
-        let pageRows: NearbyContact[] = [];
-        if (isGhlMode) {
-          const { data, error } = await supabase.functions.invoke("localist-nearby-search", {
-            body: lastAddr && !center
-              ? { address: lastAddr, radius_miles: radius, page: p, limit: pageSizeExp }
-              : { center_lat: center.lat, center_lng: center.lng, radius_miles: radius, page: p, limit: pageSizeExp },
-          });
-          if (error) throw error;
-          pageRows = (data?.paginatedContacts as NearbyContact[]) ?? [];
-        } else {
-          const { data, error } = await supabase.rpc("nearby_contacts_page_auth" as any, {
-            rep: effectiveRepId,
-            center_lat: center.lat,
-            center_lng: center.lng,
-            radius_miles: radius,
-            p_limit: pageSizeExp,
-            p_offset: (p - 1) * pageSizeExp,
-          });
-          if (error) throw error;
-          pageRows = (data as NearbyContact[]) ?? [];
-        }
-        all.push(...pageRows);
-        if (pageRows.length < pageSizeExp) break;
-      }
-
-      // Apply the same category filter that's active in the UI
-      const rows = all.filter((c) => {
-        if (categoryFilters.size === 0) return true;
-        const isRlt = c.rlt?.toUpperCase() === "Y";
-        const isBiz = c.biz?.toUpperCase() === "Y";
-        const isReg = !isRlt && !isBiz;
-        return (categoryFilters.has("RLT") && isRlt) ||
-               (categoryFilters.has("BIZ") && isBiz) ||
-               (categoryFilters.has("REG") && isReg);
-      });
+      const all = await fetchAllMatchingContacts();
+      const rows = applyCategoryFilter(all);
 
       const headers = [
         "First Name","Last Name","Phone","Address","City","State","Zip",
@@ -452,7 +470,8 @@ export default function SearchTab({ repName, recentSearches, onSearch, contactCo
     } finally {
       setExporting(false);
     }
-  }, [effectiveRepId, totalCount, radius, isGhlMode, categoryFilters]);
+  }, [effectiveRepId, totalCount, radius, fetchAllMatchingContacts, applyCategoryFilter]);
+
 
   const filtered = results
     .filter((c) => {
@@ -502,6 +521,8 @@ export default function SearchTab({ repName, recentSearches, onSearch, contactCo
         filteredIds.forEach((id) => next.delete(id));
         return next;
       });
+      setAllPagesMode(false);
+      setAllSelectedContacts([]);
     } else {
       setSelectedIds((prev) => new Set([...prev, ...filteredIds]));
     }
@@ -510,13 +531,58 @@ export default function SearchTab({ repName, recentSearches, onSearch, contactCo
   const toggleContact = (id: string) => {
     setSelectedIds((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
+      if (next.has(id)) {
+        next.delete(id);
+        // Manual deselect exits all-pages mode
+        setAllPagesMode(false);
+        setAllSelectedContacts([]);
+      } else {
+        next.add(id);
+      }
       return next;
     });
   };
 
-  const selectedContacts = filtered.filter((c) => c.id && selectedIds.has(c.id as string));
+  const selectAllAcrossPages = useCallback(async () => {
+    if (fetchingAll) return;
+    setFetchingAll(true);
+    try {
+      const all = await fetchAllMatchingContacts();
+      const rows = applyCategoryFilter(all);
+      setAllSelectedContacts(rows);
+      setSelectedIds(new Set(rows.map((c) => c.id as string).filter(Boolean)));
+      setAllPagesMode(true);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Could not load all results.";
+      toast({ title: "Select all failed", description: message, variant: "destructive" });
+    } finally {
+      setFetchingAll(false);
+    }
+  }, [fetchingAll, fetchAllMatchingContacts, applyCategoryFilter]);
+
+  const clearAllSelection = () => {
+    setSelectedIds(new Set());
+    setAllSelectedContacts([]);
+    setAllPagesMode(false);
+  };
+
+  // Merge current page rows with the all-pages cache, dedupe by id, then filter to selected.
+  const selectedContacts = (() => {
+    const seen = new Set<string>();
+    const merged: NearbyContact[] = [];
+    for (const c of [...filtered, ...allSelectedContacts]) {
+      const cid = c.id as string;
+      if (!cid || seen.has(cid)) continue;
+      if (selectedIds.has(cid)) {
+        seen.add(cid);
+        merged.push(c);
+      }
+    }
+    return merged;
+  })();
+
+  
+
 
   // Pagination helpers
   const renderPageNumbers = () => {
@@ -754,6 +820,42 @@ export default function SearchTab({ repName, recentSearches, onSearch, contactCo
               )}
             </div>
           </div>
+
+          {/* Select-all-across-pages banner */}
+          {isGhlMode && viewMode === "list" && totalCount > PAGE_SIZE && (allPagesMode || allSelected) && (
+            <div className="rounded-md border bg-muted/40 px-3 py-2 text-xs flex items-center justify-center gap-2 flex-wrap">
+              {allPagesMode ? (
+                <>
+                  <span className="text-foreground">
+                    All <strong>{selectedIds.size}</strong> contact{selectedIds.size !== 1 ? "s" : ""} across every page are selected.
+                  </span>
+                  <button
+                    type="button"
+                    onClick={clearAllSelection}
+                    className="text-primary font-semibold hover:underline"
+                  >
+                    Clear selection
+                  </button>
+                </>
+              ) : (
+                <>
+                  <span className="text-muted-foreground">
+                    All <strong>{filteredIds.length}</strong> on this page are selected.
+                  </span>
+                  <button
+                    type="button"
+                    onClick={selectAllAcrossPages}
+                    disabled={fetchingAll}
+                    className="text-primary font-semibold hover:underline inline-flex items-center gap-1 disabled:opacity-60"
+                  >
+                    {fetchingAll && <Loader2 className="h-3 w-3 animate-spin" />}
+                    Select all {totalCount} contacts across all pages
+                  </button>
+                </>
+              )}
+            </div>
+          )}
+
 
           {/* Map View */}
           {viewMode === "map" && totalCount > 0 && (
