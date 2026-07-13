@@ -822,7 +822,7 @@ export default function SearchTab({ repName, recentSearches, onSearch, contactCo
           </div>
 
           {/* Select-all-across-pages banner */}
-          {isGhlMode && viewMode === "list" && totalCount > PAGE_SIZE && (allPagesMode || allSelected) && (
+          {isGhlMode && viewMode === "list" && totalCount > PAGE_SIZE && (allPagesMode || selectedIds.size > 0) && (
             <div className="rounded-md border bg-muted/40 px-3 py-2 text-xs flex items-center justify-center gap-2 flex-wrap">
               {allPagesMode ? (
                 <>
