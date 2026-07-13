@@ -417,47 +417,8 @@ export default function SearchTab({ repName, recentSearches, onSearch, contactCo
     if (!lastSearchRef.current || !effectiveRepId || totalCount === 0) return;
     setExporting(true);
     try {
-      const { center, address: lastAddr } = lastSearchRef.current as any;
-      const pageSizeExp = 100;
-      const totalPagesExp = Math.ceil(totalCount / pageSizeExp);
-      const all: NearbyContact[] = [];
-
-      for (let p = 1; p <= totalPagesExp; p++) {
-        let pageRows: NearbyContact[] = [];
-        if (isGhlMode) {
-          const { data, error } = await supabase.functions.invoke("localist-nearby-search", {
-            body: lastAddr && !center
-              ? { address: lastAddr, radius_miles: radius, page: p, limit: pageSizeExp }
-              : { center_lat: center.lat, center_lng: center.lng, radius_miles: radius, page: p, limit: pageSizeExp },
-          });
-          if (error) throw error;
-          pageRows = (data?.paginatedContacts as NearbyContact[]) ?? [];
-        } else {
-          const { data, error } = await supabase.rpc("nearby_contacts_page_auth" as any, {
-            rep: effectiveRepId,
-            center_lat: center.lat,
-            center_lng: center.lng,
-            radius_miles: radius,
-            p_limit: pageSizeExp,
-            p_offset: (p - 1) * pageSizeExp,
-          });
-          if (error) throw error;
-          pageRows = (data as NearbyContact[]) ?? [];
-        }
-        all.push(...pageRows);
-        if (pageRows.length < pageSizeExp) break;
-      }
-
-      // Apply the same category filter that's active in the UI
-      const rows = all.filter((c) => {
-        if (categoryFilters.size === 0) return true;
-        const isRlt = c.rlt?.toUpperCase() === "Y";
-        const isBiz = c.biz?.toUpperCase() === "Y";
-        const isReg = !isRlt && !isBiz;
-        return (categoryFilters.has("RLT") && isRlt) ||
-               (categoryFilters.has("BIZ") && isBiz) ||
-               (categoryFilters.has("REG") && isReg);
-      });
+      const all = await fetchAllMatchingContacts();
+      const rows = applyCategoryFilter(all);
 
       const headers = [
         "First Name","Last Name","Phone","Address","City","State","Zip",
@@ -509,7 +470,8 @@ export default function SearchTab({ repName, recentSearches, onSearch, contactCo
     } finally {
       setExporting(false);
     }
-  }, [effectiveRepId, totalCount, radius, isGhlMode, categoryFilters]);
+  }, [effectiveRepId, totalCount, radius, fetchAllMatchingContacts, applyCategoryFilter]);
+
 
   const filtered = results
     .filter((c) => {
