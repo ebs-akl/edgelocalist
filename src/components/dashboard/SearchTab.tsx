@@ -581,7 +581,7 @@ export default function SearchTab({ repName, recentSearches, onSearch, contactCo
     return merged;
   })();
 
-  const totalMatchingCount = applyCategoryFilter(allSelectedContacts).length || totalCount;
+  
 
 
   // Pagination helpers
