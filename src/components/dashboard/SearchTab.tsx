@@ -90,6 +90,8 @@ export default function SearchTab({ repName, recentSearches, onSearch, contactCo
       return next;
     });
     setSelectedIds(new Set());
+    setAllSelectedContacts([]);
+    setAllPagesMode(false);
   };
 
   const COORD_REGEX = /^(-?\d+(\.\d+)?)[,\s]+(-?\d+(\.\d+)?)$/;
