@@ -11,6 +11,7 @@ import Settings from "./pages/Settings";
 import GhlCallback from "./pages/GhlCallback";
 import Faq from "./pages/Faq";
 import UserGuide from "./pages/UserGuide";
+import Changelog from "./pages/Changelog";
 import Legal from "./pages/Legal";
 import NotFound from "./pages/NotFound";
 import ResetPassword from "./pages/ResetPassword";
@@ -101,6 +102,7 @@ const App = () => {
               <Route path="/legal" element={<Legal />} />
               <Route path="/faq" element={<Faq />} />
               <Route path="/guide" element={<UserGuide />} />
+              <Route path="/changelog" element={<Changelog />} />
               <Route path="/ghl-callback" element={<GhlCallback />} />
               <Route path="/localist-setup" element={<GhlCallback />} />
               <Route path="/callback" element={<GhlCallback />} />
