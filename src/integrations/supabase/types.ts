@@ -14,66 +14,24 @@ export type Database = {
   }
   public: {
     Tables: {
-      _cooky_migration_profiles_audit: {
+      admin_settings: {
         Row: {
-          changed_at: string | null
-          changed_by_function: string
-          column_name: string
-          id: string
-          new_value: string | null
-          old_value: string | null
-          user_id: string
+          key: string
+          updated_at: string
+          updated_by: string | null
+          value: string
         }
         Insert: {
-          changed_at?: string | null
-          changed_by_function: string
-          column_name: string
-          id?: string
-          new_value?: string | null
-          old_value?: string | null
-          user_id: string
+          key: string
+          updated_at?: string
+          updated_by?: string | null
+          value: string
         }
         Update: {
-          changed_at?: string | null
-          changed_by_function?: string
-          column_name?: string
-          id?: string
-          new_value?: string | null
-          old_value?: string | null
-          user_id?: string
-        }
-        Relationships: []
-      }
-      _cooky_migration_profiles_snapshot: {
-        Row: {
-          email: string | null
-          ghl_access_token: string | null
-          ghl_expires_at: string | null
-          ghl_location_id: string | null
-          ghl_refresh_token: string | null
-          snapshot_taken_at: string | null
-          subscription_tier: string | null
-          user_id: string | null
-        }
-        Insert: {
-          email?: string | null
-          ghl_access_token?: string | null
-          ghl_expires_at?: string | null
-          ghl_location_id?: string | null
-          ghl_refresh_token?: string | null
-          snapshot_taken_at?: string | null
-          subscription_tier?: string | null
-          user_id?: string | null
-        }
-        Update: {
-          email?: string | null
-          ghl_access_token?: string | null
-          ghl_expires_at?: string | null
-          ghl_location_id?: string | null
-          ghl_refresh_token?: string | null
-          snapshot_taken_at?: string | null
-          subscription_tier?: string | null
-          user_id?: string | null
+          key?: string
+          updated_at?: string
+          updated_by?: string | null
+          value?: string
         }
         Relationships: []
       }
