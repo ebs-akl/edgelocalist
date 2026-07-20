@@ -36,12 +36,31 @@ serve(async (req) => {
   const { redirect_uri } = body;
 
   // Validate redirect_uri against allowlist
-  const ALLOWED_REDIRECTS = [
+  const ALLOWED_REDIRECTS = new Set([
     "https://edgelocalist.app/callback",
     "https://edgelocalist.lovable.app/callback",
-  ];
+    "https://localist.edgedms.com/callback",
+    "https://the.automatedknifelife.com/callback",
+  ]);
 
-  if (!redirect_uri || !ALLOWED_REDIRECTS.includes(redirect_uri)) {
+  const isAllowed = (uri: string | undefined) => {
+    if (!uri) return false;
+    if (ALLOWED_REDIRECTS.has(uri)) return true;
+    try {
+      const u = new URL(uri);
+      // Allow any Lovable preview/published subdomain on /callback
+      if (
+        u.protocol === "https:" &&
+        u.pathname === "/callback" &&
+        (u.hostname.endsWith(".lovable.app") || u.hostname.endsWith(".lovableproject.com"))
+      ) {
+        return true;
+      }
+    } catch { /* ignore */ }
+    return false;
+  };
+
+  if (!isAllowed(redirect_uri)) {
     return new Response(JSON.stringify({ error: "Invalid redirect_uri" }), {
       status: 400,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
