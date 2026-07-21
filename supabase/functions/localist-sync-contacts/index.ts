@@ -201,13 +201,17 @@ serve(async (req) => {
   // ── Resolve location_id: SSO payload or Bearer auth (no raw location_id) ──
   let locationId: string | null = null;
 
+  let companyId: string | null = null;
+
   if (typeof body.sso_payload === "string" && body.sso_payload) {
-    locationId = decryptSsoPayload(body.sso_payload);
-    if (!locationId) {
+    const decoded = decryptSsoPayloadFull(body.sso_payload);
+    if (!decoded) {
       return new Response(JSON.stringify({ error: "Cryptographic verification failed" }), {
         status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+    locationId = decoded.locationId;
+    companyId = decoded.companyId;
   } else {
     // Require Bearer auth for non-SSO mode
     const authHeader = req.headers.get("Authorization");
@@ -239,12 +243,25 @@ serve(async (req) => {
     });
   }
 
-  // Look up rep by location_id, then fallback to any rep with a token
+  // Look up rep by location_id
   let { data: rep } = await supabase
     .from("localist_reps")
     .select("id, ghl_access_token, ghl_refresh_token, ghl_expires_at, ghl_location_id")
     .eq("ghl_location_id", locationId)
     .maybeSingle();
+
+  // Agency-install fallback: no per-location token stored yet.
+  // Mint one on demand from the agency (Company-scoped) token.
+  if (rep && !rep.ghl_access_token) {
+    const minted = await mintLocationTokenFromAgency(supabase, rep.id, locationId, companyId);
+    if (minted) {
+      rep = {
+        ...rep,
+        ghl_access_token: minted,
+        ghl_expires_at: new Date(Date.now() + 23 * 60 * 60 * 1000).toISOString(),
+      };
+    }
+  }
 
   if (!rep?.ghl_access_token) {
     return new Response(JSON.stringify({ error: "No CRM connection found for this location. Please connect GoHighLevel first." }), {
