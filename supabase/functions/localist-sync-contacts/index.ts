@@ -404,7 +404,7 @@ serve(async (req) => {
   try {
     // Paginate through all GHL contacts using cursor-based pagination
     const allContacts: Record<string, unknown>[] = [];
-    const limit = 100;
+    const limit = 50;
     let startAfter: string | undefined;
     let startAfterId: string | undefined;
     let pageNum = 0;
