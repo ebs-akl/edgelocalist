@@ -54,31 +54,35 @@ serve(async (req) => {
       });
     }
 
-    // ── CSRF protection: validate & consume `state` token ──
+    // ── CSRF protection: validate & consume `state` token when provided ──
+    // Marketplace-initiated installs (agency listing / chooselocation directly)
+    // don't carry our state param, so we only enforce it when present.
     const supabaseAdminEarly = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-    if (!state || typeof state !== "string" || state.length < 16 || state.length > 128) {
-      return new Response(JSON.stringify({ error: "Missing or invalid state token" }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-    const { data: stateRow } = await supabaseAdminEarly
-      .from("oauth_states")
-      .select("id, expires_at")
-      .eq("state", state)
-      .maybeSingle();
-    if (!stateRow) {
-      return new Response(JSON.stringify({ error: "Invalid or expired state" }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-    if (stateRow.expires_at && new Date(stateRow.expires_at as string).getTime() < Date.now()) {
+    if (state !== undefined && state !== null && state !== "") {
+      if (typeof state !== "string" || state.length < 16 || state.length > 128) {
+        return new Response(JSON.stringify({ error: "Invalid state token" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const { data: stateRow } = await supabaseAdminEarly
+        .from("oauth_states")
+        .select("id, expires_at")
+        .eq("state", state)
+        .maybeSingle();
+      if (!stateRow) {
+        return new Response(JSON.stringify({ error: "Invalid or expired state" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      if (stateRow.expires_at && new Date(stateRow.expires_at as string).getTime() < Date.now()) {
+        await supabaseAdminEarly.from("oauth_states").delete().eq("id", stateRow.id);
+        return new Response(JSON.stringify({ error: "State token expired" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      // Consume state (one-time use)
       await supabaseAdminEarly.from("oauth_states").delete().eq("id", stateRow.id);
-      return new Response(JSON.stringify({ error: "State token expired" }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
     }
-    // Consume state (one-time use)
-    await supabaseAdminEarly.from("oauth_states").delete().eq("id", stateRow.id);
 
     // Exchange code for tokens
     const tokenRes = await fetch("https://services.leadconnectorhq.com/oauth/token", {
