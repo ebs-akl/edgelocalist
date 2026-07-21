@@ -2,7 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import CryptoJS from "npm:crypto-js";
 import { refreshGhlToken, isTokenExpired } from "../_shared/ghl-refresh-token.ts";
-import { decryptSsoPayload, decryptSsoPayloadFull } from "../_shared/sso-decrypt.ts";
+import { decryptSsoPayloadFull } from "../_shared/sso-decrypt.ts";
 import { mintLocationTokenFromAgency } from "../_shared/ghl-location-token.ts";
 
 const corsHeaders = {
