@@ -25,17 +25,12 @@ export default function GhlCallback() {
         setStatus("error");
         return;
       }
-      if (!state) {
-        setErrorMsg("Missing security token. Please restart the connection from your dashboard.");
-        setStatus("error");
-        return;
-      }
-
       try {
-        const redirectUri = "https://edgelocalist.app/callback";
+        // Use the actual callback origin so it matches what GHL received.
+        const redirectUri = `${window.location.origin}/callback`;
 
         const { data, error } = await supabase.functions.invoke("localist-oauth-callback", {
-          body: { code, redirect_uri: redirectUri, state },
+          body: { code, redirect_uri: redirectUri, state: state ?? undefined },
         });
 
         if (error) {
