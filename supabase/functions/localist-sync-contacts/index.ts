@@ -83,11 +83,13 @@ async function fetchCrmContactsPage(
 
       const errText = await ghlRes.text();
       const retryAfter = Number.parseInt(ghlRes.headers.get("retry-after") ?? "", 10);
-      const canRetry = ghlRes.status === 429 || ghlRes.status >= 500;
+      // GHL sometimes returns 400 with body { error: "Bad Request", message: "Request Timeout after 30000ms" }
+      const isUpstreamTimeout = ghlRes.status === 400 && /timeout|timed out/i.test(errText);
+      const canRetry = ghlRes.status === 429 || ghlRes.status >= 500 || isUpstreamTimeout;
       console.error(`CRM API error page ${pageNum} attempt ${attempt} (status ${ghlRes.status}):`, errText);
 
       if (canRetry && attempt < maxAttempts) {
-        await sleep(Number.isFinite(retryAfter) ? retryAfter * 1000 : attempt * 2500);
+        await sleep(Number.isFinite(retryAfter) ? retryAfter * 1000 : attempt * 3000);
         continue;
       }
 
@@ -96,6 +98,9 @@ async function fetchCrmContactsPage(
       }
       if (ghlRes.status === 429) {
         throw new Error("CRM rate limit reached while fetching contacts.");
+      }
+      if (isUpstreamTimeout) {
+        throw new Error("The CRM took too long to return contacts. Please wait a minute and try again.");
       }
       throw new Error(`CRM contact fetch failed with status ${ghlRes.status}`);
     } catch (err) {
@@ -399,7 +404,7 @@ serve(async (req) => {
   try {
     // Paginate through all GHL contacts using cursor-based pagination
     const allContacts: Record<string, unknown>[] = [];
-    const limit = 100;
+    const limit = 50;
     let startAfter: string | undefined;
     let startAfterId: string | undefined;
     let pageNum = 0;
@@ -420,7 +425,7 @@ serve(async (req) => {
       startAfter = meta.startAfter;
       startAfterId = meta.startAfterId;
       pageNum++;
-      if (pageNum > 150) break;
+      if (pageNum > 400) break;
     }
 
     console.log(`Fetched ${allContacts.length} contacts from GHL`);
