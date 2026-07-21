@@ -60,7 +60,10 @@ async function fetchCrmContactsPage(
   url: string,
   accessToken: string,
   pageNum: number
-): Promise<Record<string, unknown>> {
+): Promise<{
+  contacts?: Record<string, unknown>[];
+  meta?: { startAfter?: string; startAfterId?: string };
+}> {
   const maxAttempts = 3;
   let lastErr: unknown = null;
 
