@@ -425,7 +425,7 @@ serve(async (req) => {
       startAfter = meta.startAfter;
       startAfterId = meta.startAfterId;
       pageNum++;
-      if (pageNum > 150) break;
+      if (pageNum > 400) break;
     }
 
     console.log(`Fetched ${allContacts.length} contacts from GHL`);
