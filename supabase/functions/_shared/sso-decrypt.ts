@@ -40,7 +40,9 @@ function getPayloadVariants(payload: string): string[] {
   return Array.from(variants);
 }
 
-export function decryptSsoPayload(ssoPayload: string): string | null {
+export function decryptSsoPayloadFull(
+  ssoPayload: string
+): { locationId: string; companyId: string | null } | null {
   const keys = getCandidateKeys();
   if (keys.length === 0) {
     console.error("No GHL SSO keys configured");
@@ -55,9 +57,14 @@ export function decryptSsoPayload(ssoPayload: string): string | null {
         if (decrypted && decrypted.trim().startsWith("{")) {
           const data = JSON.parse(decrypted);
           const loc = data.activeLocation ?? data.locationId ?? data.location_id ?? null;
+          const co =
+            data.companyId ??
+            data.company_id ??
+            (data.company && typeof data.company === "object" ? data.company.id : null) ??
+            null;
           if (loc) {
             console.log(`✅ SSO decrypted with ${name}, locationId=${loc}`);
-            return loc;
+            return { locationId: String(loc), companyId: co ? String(co) : null };
           }
         }
       } catch { /* try next */ }
@@ -65,4 +72,8 @@ export function decryptSsoPayload(ssoPayload: string): string | null {
   }
   console.error("SSO decryption failed across all candidate keys");
   return null;
+}
+
+export function decryptSsoPayload(ssoPayload: string): string | null {
+  return decryptSsoPayloadFull(ssoPayload)?.locationId ?? null;
 }
