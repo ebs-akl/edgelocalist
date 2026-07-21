@@ -25,6 +25,90 @@ const LAST_SERVICE_FIELD_KEY = "contact.last_service";
 
 const LOCATION_ID_RE = /^[a-zA-Z0-9]{5,50}$/;
 
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+function getErrorMessage(err: unknown): string {
+  if (err instanceof Error) return err.message;
+  if (typeof err === "string") return err;
+  return "Unknown error";
+}
+
+function isTimeoutError(err: unknown): boolean {
+  const message = getErrorMessage(err).toLowerCase();
+  const name = err instanceof Error ? err.name.toLowerCase() : "";
+  return name.includes("timeout") || name.includes("abort") || message.includes("timed out") || message.includes("timeout");
+}
+
+function getSyncErrorResponse(err: unknown): { message: string; status: number } {
+  const message = getErrorMessage(err);
+  if (isTimeoutError(err) || /timed out|timeout/i.test(message)) {
+    return {
+      message: "The CRM took too long to return contacts. Please wait a minute and try again.",
+      status: 504,
+    };
+  }
+  if (/rate limit|too many requests/i.test(message)) {
+    return {
+      message: "The CRM is rate limiting contact sync right now. Please wait a minute and try again.",
+      status: 429,
+    };
+  }
+  return { message: message || "Sync failed", status: 500 };
+}
+
+async function fetchCrmContactsPage(
+  url: string,
+  accessToken: string,
+  pageNum: number
+): Promise<Record<string, unknown>> {
+  const maxAttempts = 3;
+  let lastErr: unknown = null;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      const ghlRes = await fetch(url, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          Version: "2021-07-28",
+        },
+        signal: AbortSignal.timeout(45000),
+      });
+
+      if (ghlRes.ok) {
+        return await ghlRes.json();
+      }
+
+      const errText = await ghlRes.text();
+      const retryAfter = Number.parseInt(ghlRes.headers.get("retry-after") ?? "", 10);
+      const canRetry = ghlRes.status === 429 || ghlRes.status >= 500;
+      console.error(`CRM API error page ${pageNum} attempt ${attempt} (status ${ghlRes.status}):`, errText);
+
+      if (canRetry && attempt < maxAttempts) {
+        await sleep(Number.isFinite(retryAfter) ? retryAfter * 1000 : attempt * 2500);
+        continue;
+      }
+
+      if (ghlRes.status === 401 || ghlRes.status === 403) {
+        throw new Error("CRM authorization failed. Please reconnect your CRM account.");
+      }
+      if (ghlRes.status === 429) {
+        throw new Error("CRM rate limit reached while fetching contacts.");
+      }
+      throw new Error(`CRM contact fetch failed with status ${ghlRes.status}`);
+    } catch (err) {
+      lastErr = err;
+      console.error(`CRM contact fetch page ${pageNum} attempt ${attempt} failed:`, err);
+      if (attempt < maxAttempts && isTimeoutError(err)) {
+        await sleep(attempt * 2500);
+        continue;
+      }
+      throw err;
+    }
+  }
+
+  throw lastErr ?? new Error("CRM contact fetch failed");
+}
+
 function getCustomFieldById(contact: Record<string, unknown>, fieldId: string): string | null {
   const fields = contact.customFields as Array<{ id: string; value: string }> ?? [];
   return fields.find((f) => f.id === fieldId)?.value ?? null;
@@ -324,23 +408,7 @@ serve(async (req) => {
       if (startAfter) url.searchParams.set("startAfter", startAfter);
       if (startAfterId) url.searchParams.set("startAfterId", startAfterId);
 
-      const ghlRes = await fetch(url.toString(), {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          Version: "2021-07-28",
-        },
-        signal: AbortSignal.timeout(20000),
-      });
-
-      if (!ghlRes.ok) {
-        const errText = await ghlRes.text();
-        console.error(`GHL API error page ${pageNum} (status ${ghlRes.status}):`, errText);
-        return new Response(JSON.stringify({ error: "Failed to fetch contacts from CRM" }), {
-          status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-
-      const ghlData = await ghlRes.json();
+      const ghlData = await fetchCrmContactsPage(url.toString(), accessToken, pageNum);
       const contacts: Record<string, unknown>[] = ghlData.contacts ?? [];
       allContacts.push(...contacts);
 
@@ -484,8 +552,9 @@ serve(async (req) => {
     });
   } catch (err) {
     console.error("ghl-sync-contacts error:", err);
-    return new Response(JSON.stringify({ error: "Sync failed" }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    const { message, status } = getSyncErrorResponse(err);
+    return new Response(JSON.stringify({ error: message }), {
+      status, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 });
