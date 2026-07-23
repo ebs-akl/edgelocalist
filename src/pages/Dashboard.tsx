@@ -148,7 +148,7 @@ export default function Dashboard() {
       let chunkNum = 0;
 
       while (hasMore) {
-        const chunkBody: Record<string, unknown> = { page_limit: 20 };
+        const chunkBody: Record<string, unknown> = {};
         if (ssoPayload) chunkBody.sso_payload = ssoPayload;
         if (startAfter) chunkBody.start_after = startAfter;
         if (startAfterId) chunkBody.start_after_id = startAfterId;
@@ -210,11 +210,11 @@ export default function Dashboard() {
       let totalGeocoded = 0;
       let remaining = 1; // Start with 1 to enter loop
       let geocodeRounds = 0;
-      const MAX_ROUNDS = 60; // Supports up to ~6,000 contacts per step
+      const MAX_ROUNDS = 120; // Supports up to ~12,000 contacts per step
 
       while (remaining > 0 && geocodeRounds < MAX_ROUNDS) {
         const { data: geoData, error: geoErr } = await supabase.functions.invoke("localist-geocode-contacts", {
-          body: ssoPayload ? { limit: 50, sso_payload: ssoPayload } : { limit: 50 },
+          body: ssoPayload ? { limit: 100, sso_payload: ssoPayload } : { limit: 100 },
         });
 
         if (geoErr || !geoData) break;
@@ -247,7 +247,7 @@ export default function Dashboard() {
 
       while (countyRemaining > 0 && countyRounds < MAX_ROUNDS) {
         const { data: countyData, error: countyErr } = await supabase.functions.invoke("localist-geocode-contacts", {
-          body: ssoPayload ? { backfill_county: true, limit: 50, sso_payload: ssoPayload } : { backfill_county: true, limit: 50 },
+          body: ssoPayload ? { backfill_county: true, limit: 100, sso_payload: ssoPayload } : { backfill_county: true, limit: 100 },
         });
 
         if (countyErr || !countyData) break;
@@ -330,20 +330,8 @@ export default function Dashboard() {
       });
       const totalCount = statsData?.count ?? 0;
 
-      // Count contacts with coordinates
-      let searchable = 0;
-      if (isGhlMode) {
-        const { data: finalStats } = await supabase.functions.invoke("localist-sync-contacts", {
-          body: { stats_only: true },
-        });
-        searchable = finalStats?.searchable ?? 0;
-      } else if (user) {
-        const { count } = await supabase
-          .from("localist_contacts")
-          .select("id", { count: "exact", head: true })
-          .not("latitude", "is", null);
-        searchable = count ?? 0;
-      }
+      // Read searchable count directly from statsData (already contains it — avoids a second call)
+      const searchable = statsData?.searchable ?? 0;
 
       updateStep("done", { status: "done", detail: `${searchable.toLocaleString()} contacts ready for nearby search` });
 
