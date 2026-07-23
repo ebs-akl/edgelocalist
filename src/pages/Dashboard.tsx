@@ -328,7 +328,7 @@ export default function Dashboard() {
       const { data: statsData } = await supabase.functions.invoke("localist-sync-contacts", {
         body: ssoPayload ? { stats_only: true, sso_payload: ssoPayload } : { stats_only: true },
       });
-      const totalCount = statsData?.count ?? synced;
+      const totalCount = statsData?.count ?? 0;
 
       // Count contacts with coordinates
       let searchable = 0;
