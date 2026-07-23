@@ -181,6 +181,16 @@ export default function Dashboard() {
         fieldIds = data?.field_ids ?? null;
         chunkNum++;
 
+        // Edge function signaled a GHL timeout on this page — retry same page silently
+        if (data?.retry === true) {
+          updateStep("fetch", {
+            status: "active",
+            label: "Fetching your contacts from CRM...",
+            detail: `${totalSynced.toLocaleString()} contacts received so far (GHL is slow, retrying...)`,
+          });
+          continue;
+        }
+
         // Update the fetch step label to show progress
         updateStep("fetch", {
           status: hasMore ? "active" : "done",
