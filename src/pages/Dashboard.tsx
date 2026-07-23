@@ -285,7 +285,7 @@ export default function Dashboard() {
 
         if (pushErr || !pushData) {
           // Try to extract a meaningful error message
-          let pushMsg = "County sync failed";
+          let pushMsg = "County push skipped";
           try {
             if (pushErr && typeof pushErr === "object" && "context" in pushErr) {
               const ctx = (pushErr as any).context;
@@ -297,8 +297,7 @@ export default function Dashboard() {
               pushMsg = pushErr.message;
             }
           } catch { /* fallback */ }
-          console.error("[push-counties] error:", pushMsg);
-          updateStep("geocode", { status: "error", detail: pushMsg });
+          console.warn("[push-counties] skipped:", pushMsg);
           break;
         }
 
@@ -329,7 +328,7 @@ export default function Dashboard() {
       const { data: statsData } = await supabase.functions.invoke("localist-sync-contacts", {
         body: ssoPayload ? { stats_only: true, sso_payload: ssoPayload } : { stats_only: true },
       });
-      const totalCount = statsData?.count ?? synced;
+      const totalCount = statsData?.count ?? 0;
 
       // Count contacts with coordinates
       let searchable = 0;
