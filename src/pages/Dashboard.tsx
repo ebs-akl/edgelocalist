@@ -159,13 +159,18 @@ export default function Dashboard() {
         });
 
         if (error) {
-          let detail = error.message;
+          let detail = error.message ?? "Sync failed";
           try {
             if ((error as any).context && typeof (error as any).context.json === "function") {
               const body = await (error as any).context.json();
               detail = body?.error ?? detail;
             }
-          } catch { /* fallback */ }
+          } catch { /* no body — likely a timeout */ }
+          // HTTP 546 = Supabase wall-clock timeout (function ran > 150s)
+          // Surface a clear retry message instead of the raw status text
+          if (detail.includes("non-2xx") || detail.includes("546") || detail === "Edge Function returned a non-2xx status code") {
+            detail = "The sync timed out fetching contacts from GoHighLevel. Your contacts are being saved in the background — please click Refresh GHL Contacts again to continue.";
+          }
           throw new Error(detail);
         }
 
