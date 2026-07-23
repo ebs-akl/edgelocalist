@@ -340,12 +340,12 @@ export default function Dashboard() {
       // Step 4d: Push geocoded coordinates back to GHL custom_lat / custom_lng fields
       // This makes future syncs read coords FROM GHL instead of relying on Mapbox
       let coordsPushed = 0;
-      let pushRemaining = 1;
-      let pushRounds = 0;
+      let coordsRemaining = 1;
+      let coordsRounds = 0;
       let latFieldId: string | null = null;
       let lngFieldId: string | null = null;
 
-      while (pushRemaining > 0 && pushRounds < MAX_ROUNDS) {
+      while (coordsRemaining > 0 && coordsRounds < MAX_ROUNDS) {
         const pushBody: Record<string, unknown> = { mode: "push_only", limit: 50 };
         if (ssoPayload) pushBody.sso_payload = ssoPayload;
         if (latFieldId) pushBody.lat_field_id = latFieldId;
@@ -366,19 +366,19 @@ export default function Dashboard() {
         if (pushData.lng_field_id) lngFieldId = pushData.lng_field_id;
 
         coordsPushed += pushData.pushed_to_ghl ?? 0;
-        pushRemaining = pushData.remaining_push ?? 0;
-        pushRounds++;
+        coordsRemaining = pushData.remaining_push ?? 0;
+        coordsRounds++;
 
         if (pushData.ghl_push_skipped) break; // Field IDs not found — skip silently
 
         if (coordsPushed > 0) {
           updateStep("geocode", {
-            status: pushRemaining > 0 ? "active" : "done",
-            detail: `${coordsPushed.toLocaleString()} coordinates synced to GHL${pushRemaining > 0 ? `, ${pushRemaining.toLocaleString()} remaining...` : ""}`,
+            status: coordsRemaining > 0 ? "active" : "done",
+            detail: `${coordsPushed.toLocaleString()} coordinates synced to GHL${coordsRemaining > 0 ? `, ${coordsRemaining.toLocaleString()} remaining...` : ""}`,
           });
         }
 
-        if ((pushData.pushed_to_ghl ?? 0) === 0 && pushRemaining <= 0) break;
+        if ((pushData.pushed_to_ghl ?? 0) === 0 && coordsRemaining <= 0) break;
       }
 
       if (coordsPushed > 0) {
