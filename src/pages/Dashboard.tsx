@@ -140,23 +140,53 @@ export default function Dashboard() {
       updateStep("connect", { status: "done", detail: "Secure connection established" });
       updateStep("fetch", { status: "active", label: "Fetching your contacts from CRM..." });
 
-const { data, error } = await supabase.functions.invoke("localist-sync-contacts", {
-        body: ssoPayload ? { sso_payload: ssoPayload } : {},
-      });
+      let totalSynced = 0;
+      let hasMore = true;
+      let startAfter: string | null = null;
+      let startAfterId: string | null = null;
+      let fieldIds: Record<string, unknown> | null = null;
+      let chunkNum = 0;
 
-      if (error) {
-        let detail = error.message;
-        try {
-          if ((error as any).context && typeof (error as any).context.json === "function") {
-            const body = await (error as any).context.json();
-            detail = body?.error ?? detail;
-          }
-        } catch { /* fallback */ }
-        throw new Error(detail);
+      while (hasMore) {
+        const chunkBody: Record<string, unknown> = { page_limit: 20 };
+        if (ssoPayload) chunkBody.sso_payload = ssoPayload;
+        if (startAfter) chunkBody.start_after = startAfter;
+        if (startAfterId) chunkBody.start_after_id = startAfterId;
+        if (fieldIds) chunkBody.field_ids = fieldIds;
+
+        const { data, error } = await supabase.functions.invoke("localist-sync-contacts", {
+          body: chunkBody,
+        });
+
+        if (error) {
+          let detail = error.message;
+          try {
+            if ((error as any).context && typeof (error as any).context.json === "function") {
+              const body = await (error as any).context.json();
+              detail = body?.error ?? detail;
+            }
+          } catch { /* fallback */ }
+          throw new Error(detail);
+        }
+
+        totalSynced += data?.synced ?? 0;
+        hasMore = data?.has_more ?? false;
+        startAfter = data?.start_after ?? null;
+        startAfterId = data?.start_after_id ?? null;
+        fieldIds = data?.field_ids ?? null;
+        chunkNum++;
+
+        // Update the fetch step label to show progress
+        updateStep("fetch", {
+          status: hasMore ? "active" : "done",
+          label: hasMore ? "Fetching your contacts from CRM..." : "Fetching your contacts from CRM...",
+          detail: hasMore
+            ? `${totalSynced.toLocaleString()} contacts received so far...`
+            : `${totalSynced.toLocaleString()} contacts received`,
+        });
       }
 
-      const synced = data?.synced ?? 0;
-      updateStep("fetch", { status: "done", detail: `${synced.toLocaleString()} contacts received` });
+      const synced = totalSynced;
 
       // Step 3: saving
       updateStep("save", { status: "active" });
