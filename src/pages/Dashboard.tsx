@@ -140,7 +140,7 @@ export default function Dashboard() {
       updateStep("connect", { status: "done", detail: "Secure connection established" });
       updateStep("fetch", { status: "active", label: "Fetching your contacts from CRM..." });
 
-let totalSynced = 0;
+      let totalSynced = 0;
       let hasMore = true;
       let startAfter: string | null = null;
       let startAfterId: string | null = null;
