@@ -498,6 +498,7 @@ export type Database = {
           cat: string | null
           city: string | null
           contact_id: string | null
+          coords_pushed_to_ghl: string | null
           county: string | null
           county_pushed: boolean | null
           first_name: string | null
@@ -528,6 +529,7 @@ export type Database = {
           cat?: string | null
           city?: string | null
           contact_id?: string | null
+          coords_pushed_to_ghl?: string | null
           county?: string | null
           county_pushed?: boolean | null
           first_name?: string | null
@@ -558,6 +560,7 @@ export type Database = {
           cat?: string | null
           city?: string | null
           contact_id?: string | null
+          coords_pushed_to_ghl?: string | null
           county?: string | null
           county_pushed?: boolean | null
           first_name?: string | null
@@ -1567,6 +1570,7 @@ export type Database = {
             }
             Returns: string
           }
+      bulk_update_geocode: { Args: { p_updates: Json[] }; Returns: number }
       cleanup_old_rate_limits: { Args: never; Returns: undefined }
       disablelongtransactions: { Args: never; Returns: string }
       dropgeometrycolumn:

@@ -337,6 +337,57 @@ export default function Dashboard() {
         });
       }
 
+      // Step 4d: Push geocoded coordinates back to GHL custom_lat / custom_lng fields
+      // This makes future syncs read coords FROM GHL instead of relying on Mapbox
+      let coordsPushed = 0;
+      let coordsRemaining = 1;
+      let coordsRounds = 0;
+      let latFieldId: string | null = null;
+      let lngFieldId: string | null = null;
+
+      while (coordsRemaining > 0 && coordsRounds < MAX_ROUNDS) {
+        const pushBody: Record<string, unknown> = { mode: "push_only", limit: 50 };
+        if (ssoPayload) pushBody.sso_payload = ssoPayload;
+        if (latFieldId) pushBody.lat_field_id = latFieldId;
+        if (lngFieldId) pushBody.lng_field_id = lngFieldId;
+
+        const { data: pushData, error: pushErr } = await supabase.functions.invoke(
+          "localist-push-coordinates",
+          { body: pushBody }
+        );
+
+        if (pushErr || !pushData) {
+          console.warn("[push-coordinates] skipped:", pushErr?.message);
+          break;
+        }
+
+        // Cache field IDs so we don't re-discover each round
+        if (pushData.lat_field_id) latFieldId = pushData.lat_field_id;
+        if (pushData.lng_field_id) lngFieldId = pushData.lng_field_id;
+
+        coordsPushed += pushData.pushed_to_ghl ?? 0;
+        coordsRemaining = pushData.remaining_push ?? 0;
+        coordsRounds++;
+
+        if (pushData.ghl_push_skipped) break; // Field IDs not found — skip silently
+
+        if (coordsPushed > 0) {
+          updateStep("geocode", {
+            status: coordsRemaining > 0 ? "active" : "done",
+            detail: `${coordsPushed.toLocaleString()} coordinates synced to GHL${coordsRemaining > 0 ? `, ${coordsRemaining.toLocaleString()} remaining...` : ""}`,
+          });
+        }
+
+        if ((pushData.pushed_to_ghl ?? 0) === 0 && coordsRemaining <= 0) break;
+      }
+
+      if (coordsPushed > 0) {
+        updateStep("geocode", {
+          status: "done",
+          detail: `Geocoded, counties populated, ${coordsPushed.toLocaleString()} coordinates written to GHL`,
+        });
+      }
+
       // Step 5: get final stats
       updateStep("done", { status: "active" });
 
