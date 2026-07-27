@@ -146,8 +146,10 @@ export default function Dashboard() {
       let startAfterId: string | null = null;
       let fieldIds: Record<string, unknown> | null = null;
       let chunkNum = 0;
+      const MAX_CHUNKS = 400;
+      const seenCursors = new Set<string>();
 
-      while (hasMore) {
+      while (hasMore && chunkNum < MAX_CHUNKS) {
         const chunkBody: Record<string, unknown> = {};
         if (ssoPayload) chunkBody.sso_payload = ssoPayload;
         if (startAfter) chunkBody.start_after = startAfter;
@@ -174,14 +176,11 @@ export default function Dashboard() {
           throw new Error(detail);
         }
 
-        totalSynced += data?.synced ?? 0;
-        hasMore = data?.has_more ?? false;
-        startAfter = data?.start_after ?? null;
-        startAfterId = data?.start_after_id ?? null;
-        fieldIds = data?.field_ids ?? null;
         chunkNum++;
+        fieldIds = data?.field_ids ?? fieldIds;
 
         // Edge function signaled a GHL timeout on this page — retry same page silently
+        // (no rows were processed, so don't advance the cursor or the counter)
         if (data?.retry === true) {
           updateStep("fetch", {
             status: "active",
@@ -191,15 +190,37 @@ export default function Dashboard() {
           continue;
         }
 
+        totalSynced += data?.synced ?? 0;
+        hasMore = data?.has_more ?? false;
+
+        const nextAfter = data?.start_after ?? null;
+        const nextAfterId = data?.start_after_id ?? null;
+
+        // Guard against a stuck/looping cursor: GHL sometimes returns the same
+        // page cursor repeatedly, which would re-fetch the same contacts forever
+        // and massively inflate the "received" count.
+        if (hasMore) {
+          const cursorKey = `${nextAfter ?? ""}|${nextAfterId ?? ""}`;
+          if (!nextAfterId || seenCursors.has(cursorKey)) {
+            hasMore = false;
+          } else {
+            seenCursors.add(cursorKey);
+          }
+        }
+
+        startAfter = nextAfter;
+        startAfterId = nextAfterId;
+
         // Update the fetch step label to show progress
         updateStep("fetch", {
           status: hasMore ? "active" : "done",
-          label: hasMore ? "Fetching your contacts from CRM..." : "Fetching your contacts from CRM...",
+          label: "Fetching your contacts from CRM...",
           detail: hasMore
             ? `${totalSynced.toLocaleString()} contacts received so far...`
             : `${totalSynced.toLocaleString()} contacts received`,
         });
       }
+
 
       const synced = totalSynced;
 
