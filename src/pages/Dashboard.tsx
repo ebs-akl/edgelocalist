@@ -50,13 +50,28 @@ export default function Dashboard() {
         body: { redirect_uri: redirectUri },
       });
       if (error || !data?.url) throw new Error(error?.message || "Failed to get install URL");
-      window.location.href = data.url;
+
+      // GHL blocks in-iframe navigation to the marketplace, so authorize in a
+      // popup and poll for it closing to refresh connection status.
+      const popup = window.open(data.url, "ghl_oauth", "width=600,height=700");
+      if (!popup) {
+        throw new Error("Popup blocked — please allow popups for this site and try again.");
+      }
+
+      const timer = window.setInterval(() => {
+        if (!popup.closed) return;
+        window.clearInterval(timer);
+        setInstallingGhl(false);
+        setCrmTokenMissing(false);
+        void fetchContactStats(true);
+      }, 500);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Failed to start install";
       toast({ title: "Install error", description: msg, variant: "destructive" });
       setInstallingGhl(false);
     }
   };
+
 
   // SSO payload sync no longer needed — auth session handles everything
 
