@@ -1026,10 +1026,7 @@ export type Database = {
           email: string | null
           first_name: string | null
           full_name: string | null
-          ghl_access_token: string | null
-          ghl_expires_at: string | null
           ghl_location_id: string | null
-          ghl_refresh_token: string | null
           id: string
           last_name: string | null
           password_changed_at: string | null
@@ -1044,10 +1041,7 @@ export type Database = {
           email?: string | null
           first_name?: string | null
           full_name?: string | null
-          ghl_access_token?: string | null
-          ghl_expires_at?: string | null
           ghl_location_id?: string | null
-          ghl_refresh_token?: string | null
           id?: string
           last_name?: string | null
           password_changed_at?: string | null
@@ -1062,10 +1056,7 @@ export type Database = {
           email?: string | null
           first_name?: string | null
           full_name?: string | null
-          ghl_access_token?: string | null
-          ghl_expires_at?: string | null
           ghl_location_id?: string | null
-          ghl_refresh_token?: string | null
           id?: string
           last_name?: string | null
           password_changed_at?: string | null

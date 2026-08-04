@@ -55,6 +55,16 @@ export default function GhlCallback() {
         }
 
         setStatus("success");
+
+        // Opened as an OAuth popup from the dashboard — tell the opener and
+        // close ourselves. The opener polls for `closed` and refreshes status.
+        if (window.opener && window.opener !== window) {
+          try {
+            window.opener.postMessage({ type: "ghl_oauth_complete" }, window.location.origin);
+          } catch { /* ignore */ }
+          window.setTimeout(() => window.close(), 1200);
+        }
+
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : "Connection failed";
         setErrorMsg(msg);
