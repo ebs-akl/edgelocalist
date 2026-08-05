@@ -107,6 +107,28 @@ export default function SearchTab({ repName, recentSearches, onSearch, contactCo
 
   const effectiveRepId = user?.id ?? ghlRepId ?? null;
 
+  // Supabase FunctionsHttpError only says "non-2xx"; dig out the real message.
+  const describeError = async (err: unknown): Promise<string> => {
+    const anyErr = err as any;
+    const res: Response | undefined = anyErr?.context;
+    if (res && typeof res.text === "function") {
+      try {
+        const raw = await res.clone().text();
+        try {
+          const parsed = JSON.parse(raw);
+          if (parsed?.error) return `${parsed.error} (status ${res.status})`;
+        } catch {
+          if (raw) return `${raw.slice(0, 200)} (status ${res.status})`;
+        }
+      } catch {
+        /* ignore */
+      }
+      if (res.status === 401) return "Your session expired. Please sign out and back in.";
+      return `Server returned status ${res.status}.`;
+    }
+    return err instanceof Error ? err.message : "Search failed.";
+  };
+
   const runRadiusQuery = useCallback(async (center: { lat: number; lng: number }, label: string, pageNum: number = 1) => {
     if (!effectiveRepId) return;
     if (contactCount === 0) {
