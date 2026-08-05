@@ -1,42 +1,40 @@
-## Goal
+# Fix: ZIP/address search returns "no customers found"
 
-Let the user select every contact matching the current search, not just the 50 shown on the current page. Actions (Group Text, Tag, Export) then operate on the full set.
+## What's actually wrong
 
-## Current behavior
+The data is fine. For your account there are 8,245 contacts, 5,603 of them geocoded, and a direct database check around the Canton, OH area returns **526 contacts within 5 miles** and **2,183 within 25 miles**. So the contacts, coordinates, and radius math all work.
 
-- Search results are paginated at 50/page. `results` state only holds the current page.
-- The "Select all" checkbox in the list header only selects the 50 rows on screen.
-- `selectedContacts` is computed as `filtered.filter(...)`, so even if extra IDs were held in state, downstream actions couldn't see contacts from other pages.
+The break is in the search path. When you type a ZIP code or address, the app sends the search to the server function `localist-nearby-search`, which geocodes the ZIP (that step succeeds — the logs show it resolving to the right coordinates) and then asks the database for nearby contacts.
 
-## Proposed behavior
+During the recent security hardening, the two database search functions the server calls (`nearby_contacts_page` and `nearby_map_markers`) had an extra ownership check bolted on that compares the requested rep against the *logged-in browser user*. The server function is not a browser user — it runs with a backend service identity — so that check can never pass, and the query silently returns zero rows. No error, no crash: just "no customers found" for every ZIP, at every radius.
 
-When the header checkbox is clicked and there is more than one page of results:
+The GPS / "current location" path in standalone mode uses different functions (`..._auth`) that were left intact, which is why the failure looks inconsistent.
 
-1. Toggle selects/deselects the current page (existing behavior).
-2. A new inline banner appears above the results:
-   `All 50 on this page are selected. Select all 312 contacts across all pages.`
-   - Clicking the link fetches every matching contact (same all-pages loop the CSV export already uses), stores them in a new `allSelectedContacts` cache, and marks all their IDs as selected.
-   - Banner then shows: `All 312 contacts are selected. Clear selection.`
-3. `selectedContacts` used by Group Text / Tag / Export is sourced from a merged pool: current page's `filtered` rows plus the `allSelectedContacts` cache, deduped by id, filtered by `selectedIds`.
-4. Any manual deselect (unchecking a row or the header) clears the "all pages" mode and returns to per-page selection.
-5. Changing the search, radius, or filters clears both `selectedIds` and `allSelectedContacts`.
+## The fix
 
-## UX details
+1. Add two backend-only search functions that keep the ownership rules where they belong (the server already verifies who the caller is before calling them):
+   - `nearby_contacts_page_service(rep, center_lat, center_lng, radius_miles, p_limit, p_offset)`
+   - `nearby_map_markers_service(rep, center_lat, center_lng, radius_miles)`
 
-- Banner styling matches existing muted info banners in SearchTab (small text, primary-colored action link).
-- While fetching all pages, show a spinner in the banner and disable the link.
-- Show toast on failure; keep the current-page selection intact.
-- Works in GHL mode only (matches existing selection scope). No change to CSV mode.
+   Both mirror the existing `nearby_contacts_service` pattern: `SECURITY DEFINER`, filtered strictly by the `rep` passed in, `EXECUTE` granted **only** to `service_role` (revoked from `anon` and `authenticated`), so the browser can never call them directly with someone else's rep id.
 
-## Technical notes
+2. Point `supabase/functions/localist-nearby-search/index.ts` at the new `_service` functions instead of `nearby_contacts_page` / `nearby_map_markers`. Its existing auth remains unchanged — it still resolves the rep from either the verified GHL SSO payload or the Bearer token, and only ever passes that resolved rep id.
 
-- New state in `SearchTab.tsx`:
-  - `allSelectedContacts: NearbyContact[]` — cache of full result set when "select across pages" is active.
-  - `fetchingAll: boolean` — loading flag for banner.
-- Extract the multi-page fetch loop already inside `handleExport` (lines ~360–395) into a reusable `fetchAllMatchingContacts()` helper so both Export and Select-All use one code path.
-- Update `selectedContacts` derivation to merge `filtered` and `allSelectedContacts` before filtering by `selectedIds`.
-- Reset new state in the same effects that already reset `selectedIds` on new searches/filter changes.
+3. Add result-count logging to the function (`rep`, center, radius, rows returned) so a zero-result search is diagnosable from logs instead of invisible.
 
-## Files to change
+4. Leave the browser-facing `nearby_contacts_page_auth` / `nearby_map_markers_auth` exactly as they are — their `auth.uid()` check is correct there.
 
-- `src/components/dashboard/SearchTab.tsx` (only file — pure UI/state, no backend or schema changes).
+## Verification
+
+- Run the ZIP search that's failing and confirm results come back at 5 / 10 / 25 miles.
+- Confirm the map view populates markers for the same search.
+- Confirm pagination past page 1 still works.
+- Re-check that a browser session cannot execute the new `_service` functions.
+
+## Note, separate from this bug
+
+Two accounts in the shared database have **zero** geocoded contacts (16,000 and 15,206 contacts, none with coordinates). Those reps will legitimately find nothing until geocoding runs for them. Not part of this fix, but worth queuing next.
+
+## Security impact
+
+No loosening. The ownership check moves from an ineffective place (inside a function the backend calls, where it can only ever fail) to the correct one: the edge function's verified caller identity, plus `service_role`-only execute grants on the new functions.
