@@ -190,7 +190,8 @@ export default function SearchTab({ repName, recentSearches, onSearch, contactCo
       setPage(pageNum);
       setSearched(true);
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Search failed.";
+      const message = await describeError(err);
+      console.error("[LocaList] search failed:", err, message);
       toast({ title: "Search error", description: message, variant: "destructive" });
     } finally {
       setLoading(false);
@@ -237,7 +238,8 @@ export default function SearchTab({ repName, recentSearches, onSearch, contactCo
       setPage(pageNum);
       setSearched(true);
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Search failed.";
+      const message = await describeError(err);
+      console.error("[LocaList] search failed:", err, message);
       toast({ title: "Search error", description: message, variant: "destructive" });
     } finally {
       setLoading(false);
