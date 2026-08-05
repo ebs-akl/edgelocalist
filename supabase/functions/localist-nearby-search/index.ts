@@ -155,9 +155,10 @@ serve(async (req) => {
   const limit = Math.min(100, Math.max(1, Number(body.limit) || 50));
   const offset = (page - 1) * limit;
 
-  // ── Run both queries in parallel ──
+  // ── Run both queries in parallel (service-role variants: caller identity
+  //    is already verified above, and these are service_role-only) ──
   const [pageResult, markersResult] = await Promise.all([
-    supabase.rpc("nearby_contacts_page", {
+    supabase.rpc("nearby_contacts_page_service", {
       rep: repId,
       center_lat: centerLat,
       center_lng: centerLng,
@@ -165,7 +166,7 @@ serve(async (req) => {
       p_limit: limit,
       p_offset: offset,
     }),
-    supabase.rpc("nearby_map_markers", {
+    supabase.rpc("nearby_map_markers_service", {
       rep: repId,
       center_lat: centerLat,
       center_lng: centerLng,
@@ -174,7 +175,7 @@ serve(async (req) => {
   ]);
 
   if (pageResult.error) {
-    console.error("nearby_contacts_page error:", pageResult.error);
+    console.error("nearby_contacts_page_service error:", pageResult.error);
     return new Response(JSON.stringify({ error: "Search failed" }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -182,13 +183,24 @@ serve(async (req) => {
   }
 
   if (markersResult.error) {
-    console.error("nearby_map_markers error:", markersResult.error);
+    console.error("nearby_map_markers_service error:", markersResult.error);
     // Non-fatal: return paginated contacts without markers
   }
 
   const paginatedContacts = pageResult.data ?? [];
   const totalCount = paginatedContacts.length > 0 ? Number(paginatedContacts[0].total_count) : 0;
   const mapMarkers = markersResult.data ?? [];
+
+  console.log("nearby-search result", JSON.stringify({
+    rep: repId,
+    center_lat: centerLat,
+    center_lng: centerLng,
+    radius_miles: radiusMiles,
+    page,
+    rows: paginatedContacts.length,
+    totalCount,
+    markers: mapMarkers.length,
+  }));
 
   return new Response(JSON.stringify({
     paginatedContacts,
