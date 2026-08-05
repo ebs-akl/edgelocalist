@@ -1844,6 +1844,40 @@ export type Database = {
           zip: string
         }[]
       }
+      nearby_contacts_page_service: {
+        Args: {
+          center_lat: number
+          center_lng: number
+          p_limit: number
+          p_offset: number
+          radius_miles: number
+          rep: string
+        }
+        Returns: {
+          address: string
+          biz: string
+          cat: string
+          city: string
+          contact_id: string
+          county: string
+          distance_miles: number
+          first_name: string
+          gift_count: number
+          id: string
+          last_name: string
+          last_order_date: string
+          last_service_date: string
+          latitude: number
+          lifetime_value: number
+          longitude: number
+          order_count: number
+          phone: string
+          rlt: string
+          state: string
+          total_count: number
+          zip: string
+        }[]
+      }
       nearby_contacts_service: {
         Args: {
           center_lat: number
@@ -1901,6 +1935,21 @@ export type Database = {
             }[]
           }
       nearby_map_markers_auth: {
+        Args: {
+          center_lat: number
+          center_lng: number
+          radius_miles: number
+          rep: string
+        }
+        Returns: {
+          distance_miles: number
+          id: string
+          latitude: number
+          lifetime_value: number
+          longitude: number
+        }[]
+      }
+      nearby_map_markers_service: {
         Args: {
           center_lat: number
           center_lng: number
