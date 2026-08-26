@@ -35,7 +35,7 @@ async function resolveCredentials(
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   const isAdminCall =
     !!serviceRoleKey &&
-    authHeader === `Bearer ${serviceRoleKey}` &&
+    (authHeader === `Bearer ${serviceRoleKey}` || apiKey === serviceRoleKey) &&
     typeof body.location_id === "string" &&
     LOCATION_ID_RE.test(body.location_id);
 
