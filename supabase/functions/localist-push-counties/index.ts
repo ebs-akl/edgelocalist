@@ -3,6 +3,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 import CryptoJS from "npm:crypto-js";
 import { refreshGhlToken, isTokenExpired } from "../_shared/ghl-refresh-token.ts";
 import { decryptSsoPayload } from "../_shared/sso-decrypt.ts";
+import { mintLocationTokenFromAgency } from "../_shared/ghl-location-token.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -23,57 +24,78 @@ async function resolveCredentials(
   | { accessToken: string; ghlLocationId: string; repId: string; refreshToken: string; expiresAt: string | null }
   | { error: string; status: number }
 > {
-  // SSO mode
+  // Resolve location_id and rep_id from SSO payload or Bearer auth
+  let locationId: string | null = null;
+  let repId: string | null = null;
+
   if (typeof body.sso_payload === "string" && body.sso_payload) {
-    const locationId = decryptSsoPayload(body.sso_payload);
+    locationId = decryptSsoPayload(body.sso_payload);
     if (!locationId || !LOCATION_ID_RE.test(locationId)) {
       return { error: "Invalid SSO payload", status: 401 };
     }
-    const { data: rep } = await dbClient
+    const { data: repRow } = await dbClient
       .from("localist_reps")
-      .select("id, ghl_access_token, ghl_refresh_token, ghl_expires_at, ghl_location_id")
+      .select("id, ghl_location_id")
       .eq("ghl_location_id", locationId)
       .maybeSingle();
-
-    if (!rep || !rep.ghl_access_token) {
-      return { error: "No GHL credentials found for location", status: 401 };
+    if (!repRow) {
+      return { error: "No CRM connection found for this location. Please connect GoHighLevel first.", status: 401 };
     }
-    return {
-      accessToken: rep.ghl_access_token,
-      ghlLocationId: rep.ghl_location_id,
-      repId: rep.id,
-      refreshToken: rep.ghl_refresh_token,
-      expiresAt: rep.ghl_expires_at,
-    };
+    repId = repRow.id;
+    locationId = repRow.ghl_location_id ?? locationId;
+  } else {
+    // Bearer token mode – validate against the LOCAL auth project
+    if (!authHeader?.startsWith("Bearer ")) {
+      return { error: "Authorization required", status: 401 };
+    }
+    const { data: { user }, error: authError } = await authClient.auth.getUser(
+      authHeader.replace("Bearer ", "")
+    );
+    if (authError || !user) {
+      return { error: "Invalid authorization", status: 401 };
+    }
+    repId = user.id;
+    const { data: repRow } = await dbClient
+      .from("localist_reps")
+      .select("ghl_location_id")
+      .eq("id", user.id)
+      .maybeSingle();
+    locationId = repRow?.ghl_location_id ?? null;
+    if (!locationId || !LOCATION_ID_RE.test(locationId)) {
+      return { error: "No CRM connection found. Please connect GoHighLevel first.", status: 401 };
+    }
   }
 
-  // Bearer token mode – validate against the LOCAL auth project
-  if (!authHeader?.startsWith("Bearer ")) {
-    return { error: "Authorization required", status: 401 };
-  }
-  const { data: { user }, error: authError } = await authClient.auth.getUser(
-    authHeader.replace("Bearer ", "")
-  );
-  if (authError || !user) {
-    return { error: "Invalid authorization", status: 401 };
-  }
-
-  // Look up rep in the shared DB
-  const { data: rep } = await dbClient
-    .from("localist_reps")
-    .select("id, ghl_access_token, ghl_refresh_token, ghl_expires_at, ghl_location_id")
-    .eq("id", user.id)
+  // Read the stored location-scoped GHL token (profile_oauth_tokens, service_role only)
+  let { data: tok } = await dbClient
+    .from("profile_oauth_tokens")
+    .select("ghl_access_token, ghl_refresh_token, ghl_expires_at")
+    .eq("user_id", repId)
     .maybeSingle();
 
-  if (!rep || !rep.ghl_access_token) {
-    return { error: "No GHL credentials found", status: 401 };
+  // Agency-install fallback: mint a fresh location token on demand when missing or expired
+  if (!tok?.ghl_access_token || isTokenExpired(tok?.ghl_expires_at ?? null)) {
+    const minted = await mintLocationTokenFromAgency(dbClient, repId, locationId, null);
+    if (minted) {
+      const { data: fresh } = await dbClient
+        .from("profile_oauth_tokens")
+        .select("ghl_access_token, ghl_refresh_token, ghl_expires_at")
+        .eq("user_id", repId)
+        .maybeSingle();
+      if (fresh) tok = fresh;
+    }
   }
+
+  if (!tok?.ghl_access_token) {
+    return { error: "No CRM connection found. Please connect GoHighLevel first.", status: 401 };
+  }
+
   return {
-    accessToken: rep.ghl_access_token,
-    ghlLocationId: rep.ghl_location_id,
-    repId: rep.id,
-    refreshToken: rep.ghl_refresh_token,
-    expiresAt: rep.ghl_expires_at,
+    accessToken: tok.ghl_access_token,
+    ghlLocationId: locationId,
+    repId,
+    refreshToken: tok.ghl_refresh_token ?? "",
+    expiresAt: tok.ghl_expires_at,
   };
 }
 

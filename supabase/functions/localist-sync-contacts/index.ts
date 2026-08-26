@@ -335,40 +335,54 @@ serve(async (req) => {
     });
   }
 
-  // Look up rep by location_id
-  let { data: rep } = await supabase
+  // Look up rep by location_id (localist_reps holds no tokens after security hardening)
+  const { data: rep } = await supabase
     .from("localist_reps")
-    .select("id, ghl_access_token, ghl_refresh_token, ghl_expires_at, ghl_location_id")
+    .select("id, ghl_location_id")
     .eq("ghl_location_id", locationId)
     .maybeSingle();
 
-  // Agency-install fallback: no per-location token stored yet.
-  // Mint one on demand from the agency (Company-scoped) token.
-  if (rep && !rep.ghl_access_token) {
-    const minted = await mintLocationTokenFromAgency(supabase, rep.id, locationId, companyId);
-    if (minted) {
-      rep = {
-        ...rep,
-        ghl_access_token: minted,
-        ghl_expires_at: new Date(Date.now() + 23 * 60 * 60 * 1000).toISOString(),
-      };
-    }
-  }
-
-  if (!rep?.ghl_access_token) {
+  if (!rep) {
     return new Response(JSON.stringify({ error: "No CRM connection found for this location. Please connect GoHighLevel first." }), {
       status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 
   const repId = rep.id;
-  let accessToken = rep.ghl_access_token!;
-  const ghlLocationId = rep.ghl_location_id!;
+  const ghlLocationId = rep.ghl_location_id ?? locationId;
 
-  // Auto-refresh expired token
-  if (isTokenExpired(rep.ghl_expires_at) && rep.ghl_refresh_token) {
+  // Read the stored location-scoped GHL token (profile_oauth_tokens, service_role only)
+  let { data: tok } = await supabase
+    .from("profile_oauth_tokens")
+    .select("ghl_access_token, ghl_refresh_token, ghl_expires_at")
+    .eq("user_id", repId)
+    .maybeSingle();
+
+  // Agency-install fallback: mint a fresh location token on demand when missing or expired
+  if (!tok?.ghl_access_token || isTokenExpired(tok?.ghl_expires_at ?? null)) {
+    const minted = await mintLocationTokenFromAgency(supabase, repId, locationId, companyId);
+    if (minted) {
+      const { data: fresh } = await supabase
+        .from("profile_oauth_tokens")
+        .select("ghl_access_token, ghl_refresh_token, ghl_expires_at")
+        .eq("user_id", repId)
+        .maybeSingle();
+      if (fresh) tok = fresh;
+    }
+  }
+
+  if (!tok?.ghl_access_token) {
+    return new Response(JSON.stringify({ error: "No CRM connection found for this location. Please connect GoHighLevel first." }), {
+      status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
+  let accessToken = tok.ghl_access_token;
+
+  // Auto-refresh expired token (fallback if mint was skipped or unavailable)
+  if (isTokenExpired(tok.ghl_expires_at) && tok.ghl_refresh_token) {
     console.log(`Token expired for rep ${repId}, attempting refresh...`);
-    const newToken = await refreshGhlToken(supabase, repId, rep.ghl_refresh_token);
+    const newToken = await refreshGhlToken(supabase, repId, tok.ghl_refresh_token);
     if (newToken) {
       accessToken = newToken;
     } else {

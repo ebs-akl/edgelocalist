@@ -117,12 +117,14 @@ export async function mintLocationTokenFromAgency(
         Date.now() + (data.expires_in ?? 86400) * 1000
       ).toISOString();
 
-      await supabase.from("localist_reps").update({
+      await supabase.from("profile_oauth_tokens").upsert({
+        user_id: repId,
         ghl_access_token: locAccess,
         ghl_refresh_token: data.refresh_token ?? null,
         ghl_expires_at: locExpiresAt,
         ghl_location_id: locationId,
-      }).eq("id", repId);
+        updated_at: new Date().toISOString(),
+      }, { onConflict: "user_id" });
 
       console.log(`✅ Minted location token for ${locationId} via agency ${row.company_id}`);
       return locAccess;
