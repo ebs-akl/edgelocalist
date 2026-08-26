@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.5"
+    PostgrestVersion: "14.17"
   }
   public: {
     Tables: {
@@ -239,6 +239,53 @@ export type Database = {
         }
         Relationships: []
       }
+      crave_leads: {
+        Row: {
+          consent: boolean
+          consent_at: string | null
+          created_at: string
+          email: string
+          first_name: string | null
+          id: string
+          rep_owner_user_id: string | null
+          rep_profile_id: string
+          source_page: string | null
+          updated_at: string
+        }
+        Insert: {
+          consent?: boolean
+          consent_at?: string | null
+          created_at?: string
+          email: string
+          first_name?: string | null
+          id?: string
+          rep_owner_user_id?: string | null
+          rep_profile_id: string
+          source_page?: string | null
+          updated_at?: string
+        }
+        Update: {
+          consent?: boolean
+          consent_at?: string | null
+          created_at?: string
+          email?: string
+          first_name?: string | null
+          id?: string
+          rep_owner_user_id?: string | null
+          rep_profile_id?: string
+          source_page?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crave_leads_rep_profile_id_fkey"
+            columns: ["rep_profile_id"]
+            isOneToOne: false
+            referencedRelation: "rep_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customers: {
         Row: {
           created_at: string
@@ -359,6 +406,54 @@ export type Database = {
           ghl_location_id?: string | null
           id?: string
           user_id?: string | null
+        }
+        Relationships: []
+      }
+      ghl_push_log: {
+        Row: {
+          contact_id: string | null
+          created_at: string
+          detail: string | null
+          email_type: string
+          id: string
+          location_id: string | null
+          opportunity_id: string | null
+          reason: string | null
+          reference: string | null
+          skipped: boolean
+          success: boolean
+          token_source: string | null
+          user_id: string
+        }
+        Insert: {
+          contact_id?: string | null
+          created_at?: string
+          detail?: string | null
+          email_type: string
+          id?: string
+          location_id?: string | null
+          opportunity_id?: string | null
+          reason?: string | null
+          reference?: string | null
+          skipped?: boolean
+          success?: boolean
+          token_source?: string | null
+          user_id: string
+        }
+        Update: {
+          contact_id?: string | null
+          created_at?: string
+          detail?: string | null
+          email_type?: string
+          id?: string
+          location_id?: string | null
+          opportunity_id?: string | null
+          reason?: string | null
+          reference?: string | null
+          skipped?: boolean
+          success?: boolean
+          token_source?: string | null
+          user_id?: string
         }
         Relationships: []
       }
@@ -592,10 +687,7 @@ export type Database = {
           created_at: string | null
           email: string | null
           full_name: string | null
-          ghl_access_token: string | null
-          ghl_expires_at: string | null
           ghl_location_id: string | null
-          ghl_refresh_token: string | null
           id: string
           location_id: string | null
           payment_method_on_file: boolean
@@ -609,10 +701,7 @@ export type Database = {
           created_at?: string | null
           email?: string | null
           full_name?: string | null
-          ghl_access_token?: string | null
-          ghl_expires_at?: string | null
           ghl_location_id?: string | null
-          ghl_refresh_token?: string | null
           id?: string
           location_id?: string | null
           payment_method_on_file?: boolean
@@ -626,10 +715,7 @@ export type Database = {
           created_at?: string | null
           email?: string | null
           full_name?: string | null
-          ghl_access_token?: string | null
-          ghl_expires_at?: string | null
           ghl_location_id?: string | null
-          ghl_refresh_token?: string | null
           id?: string
           location_id?: string | null
           payment_method_on_file?: boolean
@@ -1022,6 +1108,7 @@ export type Database = {
       profiles: {
         Row: {
           access_revoked: boolean
+          archived_at: string | null
           created_at: string | null
           email: string | null
           first_name: string | null
@@ -1037,6 +1124,7 @@ export type Database = {
         }
         Insert: {
           access_revoked?: boolean
+          archived_at?: string | null
           created_at?: string | null
           email?: string | null
           first_name?: string | null
@@ -1052,6 +1140,7 @@ export type Database = {
         }
         Update: {
           access_revoked?: boolean
+          archived_at?: string | null
           created_at?: string | null
           email?: string | null
           first_name?: string | null
@@ -1171,7 +1260,7 @@ export type Database = {
           billing_address: string | null
           billing_city: string | null
           billing_state: string | null
-          created_at: string | null
+          created_at: string
           credit_card_last4: string | null
           customer_email: string | null
           customer_name: string | null
@@ -1191,6 +1280,7 @@ export type Database = {
           service_order_id: string | null
           special_comments: string | null
           status: string | null
+          updated_at: string
           user_id: string | null
           zip: string | null
         }
@@ -1198,7 +1288,7 @@ export type Database = {
           billing_address?: string | null
           billing_city?: string | null
           billing_state?: string | null
-          created_at?: string | null
+          created_at?: string
           credit_card_last4?: string | null
           customer_email?: string | null
           customer_name?: string | null
@@ -1218,6 +1308,7 @@ export type Database = {
           service_order_id?: string | null
           special_comments?: string | null
           status?: string | null
+          updated_at?: string
           user_id?: string | null
           zip?: string | null
         }
@@ -1225,7 +1316,7 @@ export type Database = {
           billing_address?: string | null
           billing_city?: string | null
           billing_state?: string | null
-          created_at?: string | null
+          created_at?: string
           credit_card_last4?: string | null
           customer_email?: string | null
           customer_name?: string | null
@@ -1245,6 +1336,7 @@ export type Database = {
           service_order_id?: string | null
           special_comments?: string | null
           status?: string | null
+          updated_at?: string
           user_id?: string | null
           zip?: string | null
         }
@@ -1353,6 +1445,8 @@ export type Database = {
           gemini_api_key: string | null
           id: string
           inbound_email: string | null
+          last_inbound_at: string | null
+          last_processed_at: string | null
           processed_count: number | null
           push_notifications_enabled: boolean | null
           script_url: string | null
@@ -1366,6 +1460,8 @@ export type Database = {
           gemini_api_key?: string | null
           id?: string
           inbound_email?: string | null
+          last_inbound_at?: string | null
+          last_processed_at?: string | null
           processed_count?: number | null
           push_notifications_enabled?: boolean | null
           script_url?: string | null
@@ -1379,6 +1475,8 @@ export type Database = {
           gemini_api_key?: string | null
           id?: string
           inbound_email?: string | null
+          last_inbound_at?: string | null
+          last_processed_at?: string | null
           processed_count?: number | null
           push_notifications_enabled?: boolean | null
           script_url?: string | null
@@ -1563,6 +1661,7 @@ export type Database = {
           }
       bulk_update_geocode: { Args: { p_updates: Json[] }; Returns: number }
       cleanup_old_rate_limits: { Args: never; Returns: undefined }
+      count_ungeocoded: { Args: { p_rep_id: string }; Returns: number }
       disablelongtransactions: { Args: never; Returns: string }
       dropgeometrycolumn:
         | {
