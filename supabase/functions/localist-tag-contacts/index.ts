@@ -98,32 +98,27 @@ Deno.serve(async (req) => {
     });
   }
 
-  // Get rep with token
+  // Get rep (token is resolved from profile_oauth_tokens via the shared helper)
   let { data: rep } = await supabase
     .from("localist_reps")
-    .select("id, ghl_access_token, ghl_refresh_token, ghl_expires_at, ghl_location_id")
+    .select("id, ghl_location_id")
     .eq("ghl_location_id", locationId)
     .maybeSingle();
 
-  if (!rep?.ghl_access_token) {
+  if (!rep?.id) {
     return new Response(JSON.stringify({ error: "No CRM token found" }), {
       status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 
-  let accessToken = rep.ghl_access_token!;
-
-  // Refresh if expired
-  if (isTokenExpired(rep.ghl_expires_at) && rep.ghl_refresh_token) {
-    const newToken = await refreshGhlToken(supabase, rep.id, rep.ghl_refresh_token);
-    if (newToken) {
-      accessToken = newToken;
-    } else {
-      return new Response(JSON.stringify({ error: "Token expired. Please reconnect GoHighLevel." }), {
-        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+  const tok = await resolveGhlToken(supabase, rep.id, locationId);
+  if (!tok) {
+    return new Response(JSON.stringify({ error: "No CRM token found" }), {
+      status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
+
+  const accessToken = tok.accessToken;
 
   // ── Bulk tag via GHL API (batches of 500) ──
   const BULK_BATCH = 500;
