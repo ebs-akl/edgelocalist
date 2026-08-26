@@ -1,6 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import CryptoJS from "npm:crypto-js";
-import { refreshGhlToken, isTokenExpired } from "../_shared/ghl-refresh-token.ts";
+import { resolveGhlToken } from "../_shared/ghl-credentials.ts";
 import { decryptSsoPayload } from "../_shared/sso-decrypt.ts";
 
 const corsHeaders = {
