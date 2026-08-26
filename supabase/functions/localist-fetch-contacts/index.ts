@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import CryptoJS from "npm:crypto-js";
-import { refreshGhlToken, isTokenExpired } from "../_shared/ghl-refresh-token.ts";
+import { resolveGhlToken } from "../_shared/ghl-credentials.ts";
 import { decryptSsoPayload } from "../_shared/sso-decrypt.ts";
 
 const corsHeaders = {
@@ -84,38 +84,27 @@ serve(async (req) => {
   // Look up rep strictly by location_id (no cross-rep fallback for data isolation)
   const { data: rep } = await supabase
     .from("localist_reps")
-    .select("id, ghl_access_token, ghl_refresh_token, ghl_expires_at, ghl_location_id")
+    .select("id, ghl_location_id")
     .eq("ghl_location_id", locationId)
     .maybeSingle();
 
-  if (!rep?.ghl_access_token) {
-    return new Response(JSON.stringify({ error: "No CRM token found for this location." }), {
-      status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
-
-  if (!rep?.ghl_location_id) {
+  if (!rep?.id) {
     return new Response(JSON.stringify({ error: "No CRM token found for this location." }), {
       status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 
   const repId = rep.id;
-  let accessToken = rep.ghl_access_token!;
-  const ghlLocationId = rep.ghl_location_id;
+  const ghlLocationId = rep.ghl_location_id ?? locationId;
 
-  // Auto-refresh expired token
-  if (isTokenExpired(rep.ghl_expires_at) && rep.ghl_refresh_token) {
-    console.log(`Token expired for rep ${repId}, attempting refresh...`);
-    const newToken = await refreshGhlToken(supabase, repId, rep.ghl_refresh_token);
-    if (newToken) {
-      accessToken = newToken;
-    } else {
-      return new Response(JSON.stringify({ error: "CRM token expired and refresh failed. Please reconnect GoHighLevel." }), {
-        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+  // Resolve a usable GHL location token (profile_oauth_tokens + agency mint fallback)
+  const tok = await resolveGhlToken(supabase, repId, ghlLocationId);
+  if (!tok) {
+    return new Response(JSON.stringify({ error: "No CRM token found for this location." }), {
+      status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
+  const accessToken = tok.accessToken;
 
   // ── Fetch contacts from GoHighLevel API ──
   try {

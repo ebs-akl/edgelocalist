@@ -19,16 +19,38 @@ async function resolveCredentials(
   authClient: ReturnType<typeof createClient>,
   dbClient: ReturnType<typeof createClient>,
   authHeader: string | null,
+  apiKey: string | null,
   body: Record<string, unknown>
 ): Promise<
   | { accessToken: string; ghlLocationId: string; repId: string; refreshToken: string; expiresAt: string | null }
   | { error: string; status: number }
 > {
-  // Resolve location_id and rep_id from SSO payload or Bearer auth
+  // Resolve location_id and rep_id from an admin call, SSO payload, or Bearer auth
   let locationId: string | null = null;
   let repId: string | null = null;
 
-  if (typeof body.sso_payload === "string" && body.sso_payload) {
+  // Backend admin trigger: service_role key in Authorization + location_id in body.
+  // Lets server-side tooling (e.g. finishing an account setup) drive a county push
+  // without a user session — used only with the project's own service_role key.
+  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  const isAdminCall =
+    !!serviceRoleKey &&
+    (authHeader === `Bearer ${serviceRoleKey}` || apiKey === serviceRoleKey) &&
+    typeof body.location_id === "string" &&
+    LOCATION_ID_RE.test(body.location_id);
+
+  if (isAdminCall) {
+    const { data: repRow } = await dbClient
+      .from("localist_reps")
+      .select("id, ghl_location_id")
+      .eq("ghl_location_id", body.location_id as string)
+      .maybeSingle();
+    if (!repRow) {
+      return { error: "No CRM connection found for this location. Please connect GoHighLevel first.", status: 401 };
+    }
+    repId = repRow.id;
+    locationId = repRow.ghl_location_id ?? (body.location_id as string);
+  } else if (typeof body.sso_payload === "string" && body.sso_payload) {
     locationId = decryptSsoPayload(body.sso_payload);
     if (!locationId || !LOCATION_ID_RE.test(locationId)) {
       return { error: "Invalid SSO payload", status: 401 };
@@ -206,7 +228,8 @@ serve(async (req) => {
   try { body = await req.json(); } catch { /* ok */ }
 
   const authHeader = req.headers.get("Authorization");
-  const creds = await resolveCredentials(authClient, dbClient, authHeader, body);
+  const apiKey = req.headers.get("apikey");
+  const creds = await resolveCredentials(authClient, dbClient, authHeader, apiKey, body);
   if ("error" in creds) {
     return new Response(JSON.stringify({ error: creds.error }), {
       status: creds.status,

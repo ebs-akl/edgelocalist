@@ -1,6 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import CryptoJS from "npm:crypto-js";
 import { refreshGhlToken, isTokenExpired } from "../_shared/ghl-refresh-token.ts";
+import { resolveGhlToken } from "../_shared/ghl-credentials.ts";
 import { decryptSsoPayload } from "../_shared/sso-decrypt.ts";
 
 const corsHeaders = {
@@ -16,36 +17,40 @@ async function resolveCredentials(
   authHeader: string | null,
   body: Record<string, unknown>,
 ): Promise<{ accessToken: string; ghlLocationId: string; repId: string; refreshToken: string; expiresAt: string | null } | { error: string; status: number }> {
+  let repId: string | null = null;
+  let locationId: string | null = null;
+
   if (authHeader?.startsWith("Bearer ")) {
     const { data: { user }, error } = await supabase.auth.getUser(authHeader.replace("Bearer ", ""));
     if (error || !user) return { error: "Could not verify user", status: 401 };
-
+    repId = user.id;
     const { data: rep } = await supabase
       .from("localist_reps")
-      .select("ghl_access_token, ghl_location_id, ghl_refresh_token, ghl_expires_at")
+      .select("ghl_location_id")
       .eq("id", user.id)
       .maybeSingle();
-
-    if (!rep?.ghl_access_token || !rep?.ghl_location_id) return { error: "GHL not connected", status: 400 };
-    return { accessToken: rep.ghl_access_token, ghlLocationId: rep.ghl_location_id, repId: user.id, refreshToken: rep.ghl_refresh_token ?? "", expiresAt: rep.ghl_expires_at };
-  }
-
-  if (typeof body.sso_payload === "string" && body.sso_payload) {
-    const locationId = decryptSsoPayload(body.sso_payload);
-    if (!locationId) return { error: "Cryptographic verification failed", status: 401 };
-    if (!LOCATION_ID_RE.test(locationId)) return { error: "Invalid location_id", status: 400 };
-
+    locationId = rep?.ghl_location_id ?? null;
+  } else if (typeof body.sso_payload === "string" && body.sso_payload) {
+    const loc = decryptSsoPayload(body.sso_payload);
+    if (!loc) return { error: "Cryptographic verification failed", status: 401 };
+    if (!LOCATION_ID_RE.test(loc)) return { error: "Invalid location_id", status: 400 };
     const { data: rep } = await supabase
       .from("localist_reps")
-      .select("id, ghl_access_token, ghl_location_id, ghl_refresh_token, ghl_expires_at")
-      .eq("ghl_location_id", locationId)
+      .select("id, ghl_location_id")
+      .eq("ghl_location_id", loc)
       .maybeSingle();
-
-    if (!rep?.ghl_access_token) return { error: "No rep found for this location", status: 400 };
-    return { accessToken: rep.ghl_access_token, ghlLocationId: rep.ghl_location_id!, repId: rep.id, refreshToken: rep.ghl_refresh_token ?? "", expiresAt: rep.ghl_expires_at };
+    if (!rep?.id) return { error: "No rep found for this location", status: 400 };
+    repId = rep.id;
+    locationId = rep.ghl_location_id ?? loc;
+  } else {
+    return { error: "Missing authorization", status: 401 };
   }
 
-  return { error: "Missing authorization", status: 401 };
+  if (!locationId || !LOCATION_ID_RE.test(locationId)) return { error: "GHL not connected", status: 400 };
+
+  const tok = await resolveGhlToken(supabase, repId, locationId);
+  if (!tok) return { error: "GHL not connected", status: 400 };
+  return { accessToken: tok.accessToken, ghlLocationId: locationId, repId, refreshToken: tok.refreshToken, expiresAt: tok.expiresAt };
 }
 
 Deno.serve(async (req) => {
