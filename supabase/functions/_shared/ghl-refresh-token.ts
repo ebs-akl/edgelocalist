@@ -52,13 +52,14 @@ export async function refreshGhlToken(
     const expiresAt = new Date(Date.now() + expiresIn * 1000).toISOString();
 
     const { error: updateErr } = await supabase
-      .from("localist_reps")
+      .from("profile_oauth_tokens")
       .update({
         ghl_access_token: newAccessToken,
         ghl_refresh_token: newRefreshToken ?? refreshToken,
         ghl_expires_at: expiresAt,
+        updated_at: new Date().toISOString(),
       })
-      .eq("id", repId);
+      .eq("user_id", repId);
 
     if (updateErr) {
       console.error("Failed to save refreshed token:", updateErr);
