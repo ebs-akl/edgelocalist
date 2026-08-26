@@ -19,6 +19,7 @@ async function resolveCredentials(
   authClient: ReturnType<typeof createClient>,
   dbClient: ReturnType<typeof createClient>,
   authHeader: string | null,
+  apiKey: string | null,
   body: Record<string, unknown>
 ): Promise<
   | { accessToken: string; ghlLocationId: string; repId: string; refreshToken: string; expiresAt: string | null }
