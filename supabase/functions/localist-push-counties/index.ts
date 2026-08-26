@@ -228,7 +228,8 @@ serve(async (req) => {
   try { body = await req.json(); } catch { /* ok */ }
 
   const authHeader = req.headers.get("Authorization");
-  const creds = await resolveCredentials(authClient, dbClient, authHeader, body);
+  const apiKey = req.headers.get("apikey");
+  const creds = await resolveCredentials(authClient, dbClient, authHeader, apiKey, body);
   if ("error" in creds) {
     return new Response(JSON.stringify({ error: creds.error }), {
       status: creds.status,
