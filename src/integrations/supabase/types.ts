@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.17"
+    PostgrestVersion: "14.5"
   }
   public: {
     Tables: {
@@ -406,6 +406,36 @@ export type Database = {
           ghl_location_id?: string | null
           id?: string
           user_id?: string | null
+        }
+        Relationships: []
+      }
+      ghl_oauth_tokens: {
+        Row: {
+          access_token: string
+          company_id: string | null
+          expires_at: string
+          location_id: string
+          refresh_token: string
+          scope: string | null
+          updated_at: string
+        }
+        Insert: {
+          access_token: string
+          company_id?: string | null
+          expires_at: string
+          location_id: string
+          refresh_token: string
+          scope?: string | null
+          updated_at?: string
+        }
+        Update: {
+          access_token?: string
+          company_id?: string | null
+          expires_at?: string
+          location_id?: string
+          refresh_token?: string
+          scope?: string | null
+          updated_at?: string
         }
         Relationships: []
       }
