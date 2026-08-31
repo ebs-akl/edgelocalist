@@ -21,7 +21,14 @@ export default function ProfileSetupModal() {
 
   const needsName = !repProfile?.full_name?.trim();
   const needsRepNumber = !repProfile?.rep_number;
-  const open = !!user && !loadingProfile && !!repProfile && (needsName || needsRepNumber);
+  // Inside the CRM iframe the rep identity comes from the verified SSO session
+  // (location + auto-provisioned account), so don't block the dashboard on this.
+  const open =
+    !isRunningInGhlIframe() &&
+    !!user &&
+    !loadingProfile &&
+    !!repProfile &&
+    (needsName || needsRepNumber);
 
   useEffect(() => {
     if (repProfile?.full_name) setFullName(repProfile.full_name);
