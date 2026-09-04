@@ -15,30 +15,45 @@ async function refreshAgencyToken(
   companyId: string,
   refreshToken: string,
 ): Promise<{ ok: true } | { ok: false; status: number; error: string }> {
-  const clientId = Deno.env.get("GHL_CLIENT_ID_LOCALIST");
-  const clientSecret = Deno.env.get("GHL_CLIENT_SECRET_LOCALIST");
-  if (!clientId || !clientSecret) {
+  // The stored agency install may belong to either marketplace app, so try the
+  // LocaList credentials first and fall back to the shared/legacy pair.
+  const credentialPairs = [
+    [Deno.env.get("GHL_CLIENT_ID_LOCALIST"), Deno.env.get("GHL_CLIENT_SECRET_LOCALIST")],
+    [Deno.env.get("GHL_CLIENT_ID"), Deno.env.get("GHL_CLIENT_SECRET")],
+  ].filter(([id, secret]) => !!id && !!secret) as Array<[string, string]>;
+
+  if (credentialPairs.length === 0) {
     return { ok: false, status: 0, error: "GHL client credentials not configured" };
   }
   if (!refreshToken) {
     return { ok: false, status: 0, error: "No refresh token stored" };
   }
 
-  const res = await fetch("https://services.leadconnectorhq.com/oauth/token", {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({
-      client_id: clientId,
-      client_secret: clientSecret,
-      grant_type: "refresh_token",
-      refresh_token: refreshToken,
-      user_type: "Company",
-    }),
-  });
-
-  if (!res.ok) {
-    return { ok: false, status: res.status, error: (await res.text()).slice(0, 500) };
+  let res: Response | null = null;
+  let lastError = "";
+  for (const [clientId, clientSecret] of credentialPairs) {
+    const attempt = await fetch("https://services.leadconnectorhq.com/oauth/token", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        client_id: clientId,
+        client_secret: clientSecret,
+        grant_type: "refresh_token",
+        refresh_token: refreshToken,
+        user_type: "Company",
+      }),
+    });
+    if (attempt.ok) {
+      res = attempt;
+      break;
+    }
+    lastError = `${attempt.status}: ${(await attempt.text()).slice(0, 300)}`;
   }
+
+  if (!res) {
+    return { ok: false, status: 401, error: lastError || "All credential pairs rejected" };
+  }
+
 
   const data = await res.json();
   const access = data.access_token as string | undefined;
