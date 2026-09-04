@@ -72,10 +72,14 @@ Deno.serve(async (req) => {
   try {
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
     const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const JOB_SECRET = Deno.env.get("AGENCY_TOKEN_CRON_SECRET");
     const INTERNAL_SECRET = Deno.env.get("INTERNAL_CRON_SECRET");
 
     const provided = req.headers.get("x-internal-secret");
-    if (!INTERNAL_SECRET || provided !== INTERNAL_SECRET) {
+    const authorized =
+      (!!JOB_SECRET && provided === JOB_SECRET) ||
+      (!!INTERNAL_SECRET && provided === INTERNAL_SECRET);
+    if (!authorized) {
       return json({ error: "Unauthorized" }, 401);
     }
 
