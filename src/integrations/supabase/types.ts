@@ -1264,6 +1264,27 @@ export type Database = {
         }
         Relationships: []
       }
+      rep_forwarding_emails: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       rep_profiles: {
         Row: {
           created_at: string
@@ -1423,6 +1444,45 @@ export type Database = {
           proj4text?: string | null
           srid?: number
           srtext?: string | null
+        }
+        Relationships: []
+      }
+      unmatched_inbound: {
+        Row: {
+          attachment_count: number | null
+          id: string
+          received_at: string
+          recipient: string | null
+          resolved_at: string | null
+          resolved_user_id: string | null
+          sender: string | null
+          sender_normalized: string | null
+          slug: string | null
+          subject: string | null
+        }
+        Insert: {
+          attachment_count?: number | null
+          id?: string
+          received_at?: string
+          recipient?: string | null
+          resolved_at?: string | null
+          resolved_user_id?: string | null
+          sender?: string | null
+          sender_normalized?: string | null
+          slug?: string | null
+          subject?: string | null
+        }
+        Update: {
+          attachment_count?: number | null
+          id?: string
+          received_at?: string
+          recipient?: string | null
+          resolved_at?: string | null
+          resolved_user_id?: string | null
+          sender?: string | null
+          sender_normalized?: string | null
+          slug?: string | null
+          subject?: string | null
         }
         Relationships: []
       }
