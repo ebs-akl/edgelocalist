@@ -280,7 +280,7 @@ export default function ContactMapView({
             </div>
             <div style="display:flex;gap:6px;margin-top:4px;">
               <a href="tel:${phone}" style="font-size:12px;color:hsl(174,30%,42%);text-decoration:none;">📞 Call</a>
-              <a href="sms:${phone}?body=Hi ${encodeURIComponent(name.split(" ")[0])}, this is ${encodeURIComponent(repName)} from Cutco!" style="font-size:12px;color:hsl(174,30%,42%);text-decoration:none;">💬 Text</a>
+              <a href="sms:${phone}?body=Hi ${encodeURIComponent(name.split(" ")[0])}, this is ${encodeURIComponent(repName)}, your knife rep!" style="font-size:12px;color:hsl(174,30%,42%);text-decoration:none;">💬 Text</a>
               <a href="https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(address + ", " + city)}" target="_blank" style="font-size:12px;color:hsl(174,30%,42%);text-decoration:none;">🗺️ Dir</a>
             </div>
           </div>

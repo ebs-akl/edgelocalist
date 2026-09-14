@@ -5,7 +5,7 @@ EdgeLocalist — Frequently Asked Questions
 ========== STANDALONE VERSION ==========
 
 Q: What is EdgeLocalist?
-A: EdgeLocalist is a proximity-based contact search tool built for Cutco sales representatives. It lets you upload your customer list, geocode their addresses, and instantly find contacts near any location — so you can plan efficient routes and maximize your door-knocking time.
+A: EdgeLocalist is a proximity-based contact search tool built for independent knife-sales reps. It lets you upload your customer list, geocode their addresses, and instantly find contacts near any location — so you can plan efficient routes and maximize your door-knocking time.
 
 Q: How do I get started?
 A: Create an account at edgelocalist.app, log in, and navigate to the Contacts tab on your dashboard. From there, upload a CSV file containing your customer data. EdgeLocalist will automatically geocode the addresses and make them searchable.
@@ -26,7 +26,7 @@ Q: Can I re-upload my contacts?
 A: Absolutely. You can re-upload a new CSV at any time from the Contacts tab. The system will merge new data with existing records, matching by phone number to avoid duplicates.
 
 Q: What is my Rep Number?
-A: Your Rep Number is your 8-digit Cutco representative ID. It's used to link your contacts to your account and is required during initial setup.
+A: Your Rep Number is your 8-digit representative ID. It's used to link your contacts to your account and is required during initial setup.
 
 Q: How do I change my display name or account settings?
 A: Navigate to Settings from the top navigation bar or the Settings tab on your dashboard. From there you can update your display name and manage your account.

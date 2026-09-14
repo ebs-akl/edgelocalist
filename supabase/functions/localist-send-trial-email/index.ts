@@ -81,7 +81,7 @@ function getEmailContent(step: 1 | 2 | 3, firstName: string): EmailContent {
     case 2:
       return {
         subject: `${firstName}, your map is ready (Trial update inside!) 🚀`,
-        preheader: "2 days left in your trial — plus an exclusive $7 upgrade for Cutco reps.",
+        preheader: "2 days left in your trial — plus an exclusive $7 upgrade for reps.",
         heading: `${firstName}, you've built something worth keeping.`,
         body: `
           <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:${MUTED};">
@@ -99,7 +99,7 @@ function getEmailContent(step: 1 | 2 | 3, firstName: string): EmailContent {
             <strong>Want to keep going with just the map?</strong> You don't need to do anything — your LocaList trial converts automatically on day 7.
           </p>
           <p style="margin:0 0 8px;font-size:15px;line-height:1.6;color:${MUTED};">
-            <strong>Want to automate your entire business?</strong> Since you are already seeing the power of managing your territory, we are offering an exclusive upgrade to the full <strong>Edge DMS Basic (Automated Knife Life Edition)</strong>. For just <strong>$7</strong>, you get a 7-day all-access pass to the ultimate CRM built specifically for Cutco reps. This unlocks our <strong>2-Way Texting, Missed Call Text-Back, automated Calendars, and the Social Planner</strong>.
+            <strong>Want to automate your entire business?</strong> Since you are already seeing the power of managing your territory, we are offering an exclusive upgrade to the full <strong>Edge DMS Basic (Automated Knife Life Edition)</strong>. For just <strong>$7</strong>, you get a 7-day all-access pass to the ultimate CRM built specifically for independent knife reps. This unlocks our <strong>2-Way Texting, Missed Call Text-Back, automated Calendars, and the Social Planner</strong>.
           </p>
           <p style="margin:18px 0 8px;font-size:15px;line-height:1.6;color:${TEXT};text-align:center;">
             Tap below to manage your account or claim your $7 upgrade.

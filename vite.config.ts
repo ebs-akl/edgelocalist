@@ -25,7 +25,7 @@ export default defineConfig(({ mode }) => ({
       manifest: {
         name: "AKL LocaList",
         short_name: "LocaList",
-        description: "Your Cutco customers. Found in seconds.",
+        description: "Your customers. Found in seconds.",
         theme_color: "#1a1a2e",
         background_color: "#1a1a2e",
         display: "standalone",

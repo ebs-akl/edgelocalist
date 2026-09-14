@@ -427,7 +427,7 @@ export default function CsvUploadTab({ onUploaded, contactCount, lastSync }: Pro
         <div className="flex items-start gap-2 mt-3">
           <AlertCircle className="h-3.5 w-3.5 text-warning shrink-0 mt-0.5" />
           <p className="text-xs text-muted-foreground">
-            Matches standard Cutco VectorConnect export headers. PO Boxes are skipped; Address 2 is stored but Address 1 is used for geocoding.
+            Matches standard VectorConnect export headers. PO Boxes are skipped; Address 2 is stored but Address 1 is used for geocoding.
           </p>
         </div>
       </div>
