@@ -995,7 +995,7 @@ export default function SearchTab({ repName, recentSearches, onSearch, contactCo
                           <Phone className="h-4 w-4" />
                         </a>
                         <a
-                          href={`sms:${contact.phone}?body=Hi ${encodeURIComponent(toTitleCase(contact.first_name))}, this is ${encodeURIComponent(repName)} from Cutco — I'm in your area and wanted to reach out!`}
+                          href={`sms:${contact.phone}?body=Hi ${encodeURIComponent(toTitleCase(contact.first_name))}, this is ${encodeURIComponent(repName)}, your knife rep — I'm in your area and wanted to reach out!`}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="flex items-center justify-center h-9 w-9 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary transition-colors"

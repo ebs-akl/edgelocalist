@@ -1,6 +1,6 @@
 # EdgeLocalist
 
-**Proximity-based contact search for Cutco sales representatives.**
+**Proximity-based contact search for independent knife-sales reps.**
 
 EdgeLocalist helps you find customers near any location, plan efficient routes, and maximize your face-to-face selling time. Upload your contacts or sync them from Edge DMS, and search by address with configurable radius options.
 
@@ -11,7 +11,7 @@ EdgeLocalist helps you find customers near any location, plan efficient routes, 
 ### Core
 - **Nearby Search** — Find contacts within 5, 10, 25, or 50 miles of any address
 - **Interactive Map** — View results as color-coded pins (by lifetime value) on a Mapbox-powered map
-- **Contact Details** — Full customer profile with revenue metrics, order history, and Cutco-specific data
+- **Contact Details** — Full customer profile with revenue metrics, order history, and sales data
 - **Quick Actions** — One-tap call, text, and Google Maps directions from any contact card
 
 ### Standalone Mode

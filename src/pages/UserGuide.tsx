@@ -34,7 +34,7 @@ function StandaloneGuide() {
           Visit <strong>edgelocalist.app</strong> and click <strong>Start Free Trial</strong> or <strong>Log In</strong>. You can sign up with your email and a password, or use the <strong>Magic Link</strong> option to receive a one-click login link via email.
         </p>
         <p>
-          After signing in for the first time, you'll be asked to enter your <strong>8-digit Rep Number</strong> (your Cutco representative ID). This connects your contacts to your account and is required before you can access the dashboard.
+          After signing in for the first time, you'll be asked to enter your <strong>8-digit Rep Number</strong> (your 8-digit representative ID). This connects your contacts to your account and is required before you can access the dashboard.
         </p>
       </Section>
 
@@ -60,7 +60,7 @@ function StandaloneGuide() {
 
       <Section icon={MapPin} title="4. View Contact Details">
         <p>
-          Click any contact in the results list or tap a pin on the map to open the <strong>Contact Detail</strong> card. This shows the contact's full address, distance from your search center, lifetime value, last order date, and Cutco-specific metrics like gift count and order count.
+          Click any contact in the results list or tap a pin on the map to open the <strong>Contact Detail</strong> card. This shows the contact's full address, distance from your search center, lifetime value, last order date, and sales metrics like gift count and order count.
         </p>
       </Section>
 
@@ -129,7 +129,7 @@ function EdgeDmsGuide() {
 
       <Section icon={MapPin} title="4. Contact Details & Actions">
         <p>
-          Click any contact to open their detail card. You'll see their full address, distance, revenue metrics, last order date, and Cutco-specific data.
+          Click any contact to open their detail card. You'll see their full address, distance, revenue metrics, last order date, and sales data.
         </p>
         <p>Quick action buttons let you:</p>
         <ul className="list-disc list-inside space-y-1">

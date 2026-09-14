@@ -20,7 +20,7 @@ export default function ContactDetailModal({ contact, repName, isGhlMode, onClos
   const [lcCalling, setLcCalling] = useState(false);
 
   const smsBody = encodeURIComponent(
-    `Hi ${toTitleCase(contact.first_name)}, this is ${repName} from Cutco — I'm in your area and wanted to reach out!`
+    `Hi ${toTitleCase(contact.first_name)}, this is ${repName}, your knife rep — I'm in your area and wanted to reach out!`
   );
   const mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(
     `${contact.address}, ${contact.city}, ${contact.state} ${contact.zip}`
@@ -99,9 +99,9 @@ export default function ContactDetailModal({ contact, repName, isGhlMode, onClos
             </div>
           )}
 
-          {/* Cutco metrics */}
+          {/* Sales metrics */}
           <div className="rounded-lg border p-3 space-y-2">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Cutco Metrics</p>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Sales Metrics</p>
             <div className="grid grid-cols-2 gap-x-6 gap-y-1.5 text-sm">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Orders</span>

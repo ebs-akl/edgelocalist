@@ -52,7 +52,7 @@ export default function Auth() {
     }
     if (!isLogin) {
       if (!repNumber.trim() || !/^\d{8}$/.test(repNumber.trim())) {
-        toast({ title: "Rep Number Required", description: "Enter your 8-digit Cutco rep number.", variant: "destructive" });
+        toast({ title: "Rep Number Required", description: "Enter your 8-digit rep number.", variant: "destructive" });
         return;
       }
       const strength = validatePasswordStrength(password);
@@ -228,7 +228,7 @@ export default function Auth() {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="repNumber">
-                      Cutco Rep Number <span className="text-destructive">*</span>
+                      Rep Number <span className="text-destructive">*</span>
                     </Label>
                     <Input
                       id="repNumber"

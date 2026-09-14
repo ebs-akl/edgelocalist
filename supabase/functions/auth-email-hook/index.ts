@@ -66,7 +66,7 @@ function getEmailContent(type: string, confirmUrl: string, otpCode: string): { s
       return {
         subject: `You've been invited to ${APP_NAME}`,
         heading: "You're Invited! 📍",
-        body: "You've been invited to join Edge LocaList — the proximity-based contact search tool for Cutco reps. Click below to accept the invitation and set up your account.",
+        body: "You've been invited to join Edge LocaList — the proximity-based contact search tool for independent knife-sales reps. Click below to accept the invitation and set up your account.",
         buttonText: "Accept Invitation",
         showButton: true,
       };

@@ -11,7 +11,7 @@ Everything you need to know to get the most out of EdgeLocalist.
 ----------------------
 Visit edgelocalist.app and click "Start Free Trial" or "Log In." You can sign up with your email and a password, or use the Magic Link option to receive a one-click login link via email.
 
-After signing in for the first time, you'll be asked to enter your 8-digit Rep Number (your Cutco representative ID). This connects your contacts to your account and is required before you can access the dashboard.
+After signing in for the first time, you'll be asked to enter your 8-digit Rep Number (your 8-digit representative ID). This connects your contacts to your account and is required before you can access the dashboard.
 
 
 2. UPLOAD YOUR CONTACTS
@@ -34,7 +34,7 @@ Results appear as a scrollable list sorted by distance, and as color-coded pins 
 
 4. VIEW CONTACT DETAILS
 ------------------------
-Click any contact in the results list or tap a pin on the map to open the Contact Detail card. This shows the contact's full address, distance from your search center, lifetime value, last order date, and Cutco-specific metrics like gift count and order count.
+Click any contact in the results list or tap a pin on the map to open the Contact Detail card. This shows the contact's full address, distance from your search center, lifetime value, last order date, and sales metrics like gift count and order count.
 
 
 5. QUICK ACTIONS
@@ -87,7 +87,7 @@ Results are displayed as a sortable list and as color-coded pins on an interacti
 
 4. CONTACT DETAILS & ACTIONS
 -----------------------------
-Click any contact to open their detail card. You'll see their full address, distance, revenue metrics, last order date, and Cutco-specific data.
+Click any contact to open their detail card. You'll see their full address, distance, revenue metrics, last order date, and sales data.
 
 Quick action buttons let you:
 
