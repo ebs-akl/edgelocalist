@@ -1243,6 +1243,36 @@ export type Database = {
         }
         Relationships: []
       }
+      recipe_queue: {
+        Row: {
+          created_at: string | null
+          id: string
+          recipe_slug: string
+          recipe_url: string
+          rep_number: string
+          sent_at: string | null
+          status: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          recipe_slug: string
+          recipe_url: string
+          rep_number: string
+          sent_at?: string | null
+          status?: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          recipe_slug?: string
+          recipe_url?: string
+          rep_number?: string
+          sent_at?: string | null
+          status?: string
+        }
+        Relationships: []
+      }
       recipes: {
         Row: {
           data: Json
