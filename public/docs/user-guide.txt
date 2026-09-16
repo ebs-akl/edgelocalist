@@ -9,123 +9,180 @@ Everything you need to know to get the most out of EdgeLocalist.
 
 1. CREATE YOUR ACCOUNT
 ----------------------
-Visit edgelocalist.app and click "Start Free Trial" or "Log In." You can sign up with your email and a password, or use the Magic Link option to receive a one-click login link via email.
+Visit edgelocalist.app and click "Start Free Trial" or "Log In." You can sign up with your email and a password, or use the Magic Link option to receive a one-click login link via email. Forgot your password? Use the reset link on the sign-in form and you'll get an email to set a new one.
 
-After signing in for the first time, you'll be asked to enter your 8-digit Rep Number (your 8-digit representative ID). This connects your contacts to your account and is required before you can access the dashboard.
+After signing in for the first time, you'll be asked for your full name and your 8-digit Rep Number (your 8-digit representative ID). This connects your contacts to your account and is required before you can reach the dashboard. Your rep number can only be set once — after it's saved it's locked, so double-check it before saving.
+
+Tick "Keep me signed in" on the login screen to stay logged in. If you leave it unticked, you'll be signed out automatically after 15 minutes of inactivity for security.
 
 
-2. UPLOAD YOUR CONTACTS
+2. PLANS & FREE TRIAL
+---------------------
+Your trial requires a card on file. Until an active plan and a valid payment method are in place, the dashboard sends you to secure Stripe checkout instead of opening.
+
+  - AKL LocaList — $9 / month
+  - AKL Snack Pack — $16 / month
+  - EdgeDMS — $97 / month
+
+You can change plans, update your card, view invoices, or cancel at any time from Settings > Open Billing Portal. If a payment or upgrade doesn't show up right away, click "Refresh Subscription Status."
+
+
+3. UPLOAD YOUR CONTACTS
 ------------------------
-Navigate to the Contacts tab on your dashboard. Click "Choose File" or drag and drop a CSV file containing your customer data.
+Navigate to the Contacts tab on your dashboard. Click "Choose File" or drag and drop a .csv file containing your customer data.
 
-Required columns: First Name, Last Name, Address, City, State, Zip, Phone
+Columns the uploader looks for: First Name, Last Name, Address 1, Address 2, City, State, Zip, Phone, Email, Customer #, Rep #
 
-Optional columns: Business Name, Category, Lifetime Value, Last Order Date, Gift Count, Order Count, Relationship
+Also picked up when present: Business Name, Category, Lifetime Value, Last Order Date, Last Service Date, Gift Count, Order Count, Relationship, and the RLT / BIZ / CAT values.
 
-The system automatically detects common column name variations (e.g., "First" or "FirstName" both work). After upload, addresses are geocoded in batches — you'll see a progress indicator showing how many contacts have been processed.
+Common column-name variations are detected automatically (e.g., "First" or "FirstName" both work). Duplicate phone numbers are merged — the last row wins. PO Boxes are skipped, and Address 2 is stored but Address 1 is what gets mapped.
+
+After upload, addresses are processed in batches and you'll see a progress indicator. You can re-upload a newer file at any time, or use "Delete All Contacts" (with double confirmation) to clear everything.
 
 
-3. SEARCH FOR NEARBY CONTACTS
+4. SEARCH FOR NEARBY CONTACTS
 ------------------------------
-Go to the Search tab. Type any address, city, or ZIP code into the search bar. Select your search radius — 5, 10, 25, or 50 miles — and click Search.
+Type any address, city, or ZIP code into the search bar and choose your radius — 5, 10, 25, or 50 miles — then click Search. You can also paste raw coordinates (latitude, longitude), or tap the location button to search around where you are right now.
 
-Results appear as a scrollable list sorted by distance, and as color-coded pins on an interactive map. Pin colors indicate lifetime value: green for higher-value customers, yellow for mid-range, and red for lower-value.
+Results load 50 per page with Previous / Next controls, and you can sort by Distance, Lifetime Value, Orders, or Last Service. Use the RLT / BIZ / REG filter chips to narrow results to a single customer category.
+
+Switch between List and Map views at any time. On the map, nearby pins group into clusters as you zoom out, and pin color reflects lifetime value: green for $1,000 and up, amber for $300 and up, gray below that. The red pin is always the center of your search.
 
 
-4. VIEW CONTACT DETAILS
+5. VIEW CONTACT DETAILS
 ------------------------
-Click any contact in the results list or tap a pin on the map to open the Contact Detail card. This shows the contact's full address, distance from your search center, lifetime value, last order date, and sales metrics like gift count and order count.
+Click any contact in the results list or tap a pin on the map to open the Contact Detail card. It shows the full address and county, distance from your search center, lifetime value, last order date, last service date, and sales metrics including order count, gift count, and RLT / BIZ / CAT.
 
 
-5. QUICK ACTIONS
+6. QUICK ACTIONS
 ----------------
 Each contact card includes one-tap action buttons:
 
   - Call — opens your phone dialer with the contact's number
   - Text — opens your messaging app with a pre-filled introduction
-  - Directions — opens Google Maps with turn-by-turn directions to the contact's address
+  - Directions — opens Google Maps with turn-by-turn directions
+  - Delete — removes a single contact from your list after confirmation
 
 
-6. ACCOUNT SETTINGS
+7. SELECT & EXPORT RESULTS
+--------------------------
+Tick individual contacts, or use the checkbox in the results header to select the whole page. When your search has more results than one page, a banner appears offering "Select all N contacts across all pages" — one click selects every matching contact, not just the 50 in front of you.
+
+Click "Export CSV" to download your whole result set (every page, not just the current one). The file includes first and last name, phone, full address, distance, lifetime value, order and gift counts, last order and last service dates, RLT / BIZ / CAT values, and county.
+
+
+8. ACCOUNT SETTINGS
 -------------------
-Click Settings in the top navigation to manage your account. You can update your display name, view your rep number and subscription plan, and access billing management.
+Click Settings in the top navigation to update your display name, view your rep number and current plan with its renewal date, open the billing portal, and refresh your subscription status.
 
 
-7. DATA & SECURITY
+9. DATA & SECURITY
 ------------------
-Your contacts are stored securely with encryption at rest and in transit. Row-level security ensures that only you can see your own data — no other representative has access to your contacts. You can delete all your contacts at any time from the Contacts tab.
+Your contacts are stored securely with encryption at rest and in transit. Row-level security ensures only you can see your own data — no other representative has access to your contacts. You can delete individual contacts or all of them at any time from the Contacts tab.
+
+Need help? Email support@edgedms.com.
 
 
 ========== EDGE DMS INTEGRATION VERSION ==========
 
 1. GETTING STARTED
 ------------------
-EdgeLocalist is installed directly inside your Edge DMS account by your administrator. Once installed, you'll find it in your CRM's app menu. Simply click to open — no separate account or password is needed. The system automatically provisions your account using a secure single sign-on connection.
+EdgeLocalist is installed inside your Edge DMS account and appears in your CRM's app menu. Open it and you're signed in automatically through a secure single sign-on connection — no separate account or password is needed, and you won't be asked to fill in a profile.
 
 
-2. CONTACT SYNC
+2. CONNECTING YOUR CRM
+----------------------
+The app can be installed once at the agency (company) level and then used across every sub-account, or installed into an individual sub-account. Agency installs are the recommended setup — one authorization covers all of your locations.
+
+If a location is open but not yet authorized, the control panel shows a "CRM not authorized" notice with an "Install LocaList in GHL" button. Clicking it opens the authorization screen in a small popup window (your CRM blocks it from loading inline). Approve the permissions, and the popup closes and the app reconnects on its own. If your browser blocks popups, allow them for your CRM and try again.
+
+Authorization is renewed automatically in the background, so a working connection stays working.
+
+
+3. CONTACT SYNC
 ---------------
-When you first open EdgeLocalist, it automatically syncs all your CRM contacts. This includes fetching contact details, saving them securely, and geocoding addresses so they're searchable by location.
+When you first open EdgeLocalist it syncs all of your CRM contacts — fetching details, saving them securely, and mapping addresses so they're searchable by location. Large lists are pulled in chunks and can take several minutes.
 
-The sync progress dialog shows each step in real-time:
+The sync progress dialog shows each step in real time:
 
   1. Connecting to Edge DMS
   2. Fetching your contacts
   3. Saving to your account
-  4. Geocoding addresses
+  4. Processing addresses (including filling in county and sending coordinates back to your CRM)
   5. Preparing search results
 
-After the initial sync, contacts refresh automatically every 24 hours. Real-time webhook updates keep individual contact changes in sync instantly. You can also trigger a manual sync anytime with the Refresh button on your control panel.
+When it finishes you'll see a summary: total contacts, how many are searchable, and how many still need address processing. If a very large sync runs long, you may be asked to click "Refresh GHL Contacts" once more — your contacts keep saving in the background and the next run picks up where it left off.
+
+After the initial sync, changes made in your CRM flow through to LocaList automatically within a few seconds, and your contact count on the dashboard updates itself. You can start a full re-sync anytime with the "Refresh GHL Contacts" button on your control panel.
 
 
-3. NEARBY SEARCH
+4. NEARBY SEARCH
 ----------------
-Enter any address, city, or ZIP code into the search bar on the Search tab. Choose your radius — 5, 10, 25, or 50 miles — and hit Search.
+Type any address, city, or ZIP code into the search bar and choose your radius — 5, 10, 25, or 50 miles — then click Search. You can also paste raw coordinates, or tap the location button to search around your current position. Inside your CRM, if precise GPS isn't available, an approximate location based on your internet connection is used instead.
 
-Results are displayed as a sortable list and as color-coded pins on an interactive map. Use the map legend to understand pin colors, which reflect each contact's lifetime value.
+Results load 50 per page with Previous / Next controls, and you can sort by Distance, Lifetime Value, Orders, or Last Service. Use the RLT / BIZ / REG filter chips to narrow results to a single customer category.
+
+Switch between List and Map views at any time. On the map, nearby pins group into clusters as you zoom out, and pin color reflects lifetime value: green for $1,000 and up, amber for $300 and up, gray below that. The red pin is always the center of your search.
 
 
-4. CONTACT DETAILS & ACTIONS
+5. SELECT, EXPORT & ACT ON RESULTS
+----------------------------------
+Tick individual contacts, or use the checkbox in the results header to select the whole page. When your search has more results than one page, a banner appears offering "Select all N contacts across all pages."
+
+Click "Export CSV" to download your whole result set (every page). The file includes first and last name, phone, full address, distance, lifetime value, order and gift counts, last order and last service dates, RLT / BIZ / CAT values, and county.
+
+Your selection — including a cross-page "select all" — is what Group Text and Tag Contacts act on.
+
+
+6. CONTACT DETAILS & ACTIONS
 -----------------------------
-Click any contact to open their detail card. You'll see their full address, distance, revenue metrics, last order date, and sales data.
+Click any contact to open their detail card. You'll see their full address and county, distance, lifetime value, last order and last service dates, and sales data including order count, gift count, and RLT / BIZ / CAT.
 
 Quick action buttons let you:
 
   - Call — dial the contact directly
   - Text — send a pre-filled SMS
   - Directions — get Google Maps directions
-  - LC Call — initiate a call through your Edge DMS calling system (appears automatically in Edge DMS mode)
+  - LC Call — place the call through your Edge DMS calling system
+  - View in CRM — jump straight to that contact's record in Edge DMS
 
 
-5. GROUP SMS
+7. GROUP SMS
 ------------
-After running a nearby search, click "Group SMS" to send a personalized text message to multiple contacts at once.
+After running a nearby search, select your contacts and click "Group Text" to send a personalized message to all of them at once.
 
-Choose from pre-built templates (appointment follow-ups, service reminders, holiday greetings, new customer intros) or write your own custom message. Don't add "Hi [Name]" — your Edge DMS Workflow handles that automatically!
+Pick a ready-made template from the snippet library — choose a category, a snippet, and a send timing (Immediate, Morning Gap, or In Advance) — or write your own message, up to 1,600 characters. Don't add "Hi [Name]" — your Edge DMS Workflow adds it automatically.
 
 When you click "Save Message & Apply Tag", two things happen behind the scenes:
 
   1. Your message is saved as a Custom Value in Edge DMS
-  2. A trigger tag is applied to all selected contacts
+  2. A trigger tag (default "localist-sms", editable) is applied to all selected contacts, in batches of 500
 
-Your Edge DMS Workflow then fires automatically for each tagged contact, sending a personalized SMS that looks like:
+Your Edge DMS Workflow then fires for each tagged contact, sending an SMS that looks like:
 
   Hi [Contact's First Name],
 
   [Your Message]
 
-After sending, the Workflow removes the trigger tag so contacts can receive future messages. Only contacts with valid CRM IDs are included — CSV-only contacts are automatically filtered out.
+After sending, the Workflow removes the trigger tag so contacts can receive future messages. Only contacts with valid CRM IDs are included — contacts that came from a CSV are filtered out automatically. You'll see a confirmation with the number tagged and a sample of the message.
 
 
-6. TAG CONTACTS
+8. TAG CONTACTS
 ---------------
-Select contacts from your search results and click "Tag Contacts" to apply a custom tag. The tag syncs back to your Edge DMS CRM, making it easy to organize follow-up lists and build targeted campaign audiences.
+Select contacts from your search results and click "Tag Contacts" to apply a custom tag. Tags sync to your Edge DMS CRM using bulk tagging, staying fast even for very large selections (up to 2,000 contacts per batch).
 
-Tags are applied in batches for reliability, and you'll see a confirmation showing how many contacts were successfully tagged.
+Contacts without valid CRM IDs (for example, CSV-uploaded ones) are filtered out before tagging, and you'll see an accurate confirmation of how many were tagged.
 
 
-7. SECURITY & PRIVACY
----------------------
-All data is encrypted at rest and in transit. OAuth tokens are managed server-side and automatically refreshed — they're never exposed to your browser. Row-level security policies ensure complete data isolation between representatives.
+9. WHAT SYNCS BACK TO YOUR CRM
+------------------------------
+LocaList isn't one-way. During address processing it writes each contact's county and map coordinates back into Edge DMS, so you can build county-level segments and campaign audiences directly in your CRM. Tags you apply in LocaList appear on the contact record too.
 
-Webhook updates from your CRM are verified before processing. SMS sending is rate-limited to prevent abuse.
+
+10. SECURITY & PRIVACY
+----------------------
+All data is encrypted at rest and in transit. Authorization tokens are managed server-side and refreshed automatically — they're never exposed to your browser. Row-level security policies ensure complete data isolation between representatives.
+
+Updates coming from your CRM are verified before processing, and SMS sending is rate-limited to prevent abuse.
+
+Need help? Email support@edgedms.com.
