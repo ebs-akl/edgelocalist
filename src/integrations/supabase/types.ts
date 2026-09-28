@@ -616,6 +616,102 @@ export type Database = {
         }
         Relationships: []
       }
+      google_tokens: {
+        Row: {
+          access_token: string
+          expiry_date: number
+          refresh_token: string | null
+          scope: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          access_token: string
+          expiry_date: number
+          refresh_token?: string | null
+          scope?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          access_token?: string
+          expiry_date?: number
+          refresh_token?: string | null
+          scope?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      inbound_email_log: {
+        Row: {
+          attachment_count: number
+          id: string
+          matched_user_id: string | null
+          received_at: string
+          recipient: string | null
+          rescued_by_sender: boolean
+          sender: string | null
+          sender_domain: string | null
+          sender_normalized: string | null
+          slug: string | null
+          subject: string | null
+        }
+        Insert: {
+          attachment_count?: number
+          id?: string
+          matched_user_id?: string | null
+          received_at?: string
+          recipient?: string | null
+          rescued_by_sender?: boolean
+          sender?: string | null
+          sender_domain?: string | null
+          sender_normalized?: string | null
+          slug?: string | null
+          subject?: string | null
+        }
+        Update: {
+          attachment_count?: number
+          id?: string
+          matched_user_id?: string | null
+          received_at?: string
+          recipient?: string | null
+          rescued_by_sender?: boolean
+          sender?: string | null
+          sender_domain?: string | null
+          sender_normalized?: string | null
+          slug?: string | null
+          subject?: string | null
+        }
+        Relationships: []
+      }
+      known_billing_products: {
+        Row: {
+          created_at: string
+          is_current_ladder: boolean
+          monthly_price_cents: number
+          notes: string | null
+          stripe_product_id: string
+          tier_label: string
+        }
+        Insert: {
+          created_at?: string
+          is_current_ladder?: boolean
+          monthly_price_cents: number
+          notes?: string | null
+          stripe_product_id: string
+          tier_label: string
+        }
+        Update: {
+          created_at?: string
+          is_current_ladder?: boolean
+          monthly_price_cents?: number
+          notes?: string | null
+          stripe_product_id?: string
+          tier_label?: string
+        }
+        Relationships: []
+      }
       localist_contacts: {
         Row: {
           address: string | null
@@ -808,6 +904,36 @@ export type Database = {
         }
         Relationships: []
       }
+      notes: {
+        Row: {
+          body: string
+          color: string
+          id: string
+          source: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          body?: string
+          color?: string
+          id: string
+          source?: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          body?: string
+          color?: string
+          id?: string
+          source?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       oauth_states: {
         Row: {
           created_at: string | null
@@ -848,6 +974,7 @@ export type Database = {
           cpo_total: number | null
           created_at: string
           customer_type: string | null
+          engraver: string
           engraving_details: string | null
           event_name: string | null
           id: string
@@ -906,6 +1033,7 @@ export type Database = {
           cpo_total?: number | null
           created_at?: string
           customer_type?: string | null
+          engraver?: string
           engraving_details?: string | null
           event_name?: string | null
           id?: string
@@ -964,6 +1092,7 @@ export type Database = {
           cpo_total?: number | null
           created_at?: string
           customer_type?: string | null
+          engraver?: string
           engraving_details?: string | null
           event_name?: string | null
           id?: string
@@ -1008,6 +1137,114 @@ export type Database = {
           virtual_demo?: string | null
         }
         Relationships: []
+      }
+      payment_failure_events: {
+        Row: {
+          alerted_at: string | null
+          amount_due_cents: number | null
+          attempt_count: number | null
+          created_at: string
+          event_type: string
+          id: string
+          next_payment_attempt: string | null
+          profile_id: string | null
+          resolved_at: string | null
+          stripe_customer_id: string
+          stripe_invoice_id: string | null
+          stripe_product_id: string | null
+          stripe_subscription_id: string | null
+        }
+        Insert: {
+          alerted_at?: string | null
+          amount_due_cents?: number | null
+          attempt_count?: number | null
+          created_at?: string
+          event_type: string
+          id?: string
+          next_payment_attempt?: string | null
+          profile_id?: string | null
+          resolved_at?: string | null
+          stripe_customer_id: string
+          stripe_invoice_id?: string | null
+          stripe_product_id?: string | null
+          stripe_subscription_id?: string | null
+        }
+        Update: {
+          alerted_at?: string | null
+          amount_due_cents?: number | null
+          attempt_count?: number | null
+          created_at?: string
+          event_type?: string
+          id?: string
+          next_payment_attempt?: string | null
+          profile_id?: string | null
+          resolved_at?: string | null
+          stripe_customer_id?: string
+          stripe_invoice_id?: string | null
+          stripe_product_id?: string | null
+          stripe_subscription_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_failure_events_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_failure_events_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "rep_health_summary"
+            referencedColumns: ["profile_id"]
+          },
+        ]
+      }
+      payout_queue: {
+        Row: {
+          amount_cents: number
+          approved_by: string | null
+          created_at: string
+          id: string
+          paid_at: string | null
+          referrer_profile_id: string
+          status: string
+        }
+        Insert: {
+          amount_cents: number
+          approved_by?: string | null
+          created_at?: string
+          id?: string
+          paid_at?: string | null
+          referrer_profile_id: string
+          status?: string
+        }
+        Update: {
+          amount_cents?: number
+          approved_by?: string | null
+          created_at?: string
+          id?: string
+          paid_at?: string | null
+          referrer_profile_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payout_queue_referrer_profile_id_fkey"
+            columns: ["referrer_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payout_queue_referrer_profile_id_fkey"
+            columns: ["referrer_profile_id"]
+            isOneToOne: false
+            referencedRelation: "rep_health_summary"
+            referencedColumns: ["profile_id"]
+          },
+        ]
       }
       pending_confirmations: {
         Row: {
@@ -1143,6 +1380,7 @@ export type Database = {
           access_revoked: boolean
           archived_at: string | null
           created_at: string | null
+          edgedms_tier: string | null
           email: string | null
           first_name: string | null
           full_name: string | null
@@ -1150,7 +1388,9 @@ export type Database = {
           id: string
           last_name: string | null
           password_changed_at: string | null
+          pending_referral_code: string | null
           phone: string | null
+          stripe_customer_id: string | null
           subscription_tier: string | null
           user_id: string | null
           vector_rep_number: number | null
@@ -1159,6 +1399,7 @@ export type Database = {
           access_revoked?: boolean
           archived_at?: string | null
           created_at?: string | null
+          edgedms_tier?: string | null
           email?: string | null
           first_name?: string | null
           full_name?: string | null
@@ -1166,7 +1407,9 @@ export type Database = {
           id?: string
           last_name?: string | null
           password_changed_at?: string | null
+          pending_referral_code?: string | null
           phone?: string | null
+          stripe_customer_id?: string | null
           subscription_tier?: string | null
           user_id?: string | null
           vector_rep_number?: number | null
@@ -1175,6 +1418,7 @@ export type Database = {
           access_revoked?: boolean
           archived_at?: string | null
           created_at?: string | null
+          edgedms_tier?: string | null
           email?: string | null
           first_name?: string | null
           full_name?: string | null
@@ -1182,10 +1426,81 @@ export type Database = {
           id?: string
           last_name?: string | null
           password_changed_at?: string | null
+          pending_referral_code?: string | null
           phone?: string | null
+          stripe_customer_id?: string | null
           subscription_tier?: string | null
           user_id?: string | null
           vector_rep_number?: number | null
+        }
+        Relationships: []
+      }
+      project_templates: {
+        Row: {
+          client: string
+          id: string
+          name: string
+          progress: number
+          stage: string
+          team: string[]
+          used_at: string
+          user_id: string
+        }
+        Insert: {
+          client: string
+          id: string
+          name: string
+          progress?: number
+          stage: string
+          team?: string[]
+          used_at?: string
+          user_id: string
+        }
+        Update: {
+          client?: string
+          id?: string
+          name?: string
+          progress?: number
+          stage?: string
+          team?: string[]
+          used_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      projects: {
+        Row: {
+          client: string
+          created_at: string
+          due_date: string
+          id: string
+          name: string
+          progress: number
+          stage: string
+          team: string[]
+          user_id: string
+        }
+        Insert: {
+          client: string
+          created_at?: string
+          due_date: string
+          id: string
+          name: string
+          progress?: number
+          stage: string
+          team?: string[]
+          user_id: string
+        }
+        Update: {
+          client?: string
+          created_at?: string
+          due_date?: string
+          id?: string
+          name?: string
+          progress?: number
+          stage?: string
+          team?: string[]
+          user_id?: string
         }
         Relationships: []
       }
@@ -1293,6 +1608,146 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      referral_codes: {
+        Row: {
+          code: string
+          created_at: string
+          id: string
+          rep_profile_id: string
+          slug: string | null
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          id?: string
+          rep_profile_id: string
+          slug?: string | null
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          id?: string
+          rep_profile_id?: string
+          slug?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "referral_codes_rep_profile_id_fkey"
+            columns: ["rep_profile_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "referral_codes_rep_profile_id_fkey"
+            columns: ["rep_profile_id"]
+            isOneToOne: true
+            referencedRelation: "rep_health_summary"
+            referencedColumns: ["profile_id"]
+          },
+        ]
+      }
+      referrals: {
+        Row: {
+          created_at: string
+          id: string
+          referral_code: string | null
+          referred_mrr_cents: number
+          referred_profile_id: string
+          referred_subscription_id: string | null
+          referrer_profile_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          referral_code?: string | null
+          referred_mrr_cents?: number
+          referred_profile_id: string
+          referred_subscription_id?: string | null
+          referrer_profile_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          referral_code?: string | null
+          referred_mrr_cents?: number
+          referred_profile_id?: string
+          referred_subscription_id?: string | null
+          referrer_profile_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "referrals_referred_profile_id_fkey"
+            columns: ["referred_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "referrals_referred_profile_id_fkey"
+            columns: ["referred_profile_id"]
+            isOneToOne: false
+            referencedRelation: "rep_health_summary"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "referrals_referrer_profile_id_fkey"
+            columns: ["referrer_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "referrals_referrer_profile_id_fkey"
+            columns: ["referrer_profile_id"]
+            isOneToOne: false
+            referencedRelation: "rep_health_summary"
+            referencedColumns: ["profile_id"]
+          },
+        ]
+      }
+      referrer_credit_state: {
+        Row: {
+          credit_mode: string
+          current_tier: string | null
+          referrer_profile_id: string
+          updated_at: string
+        }
+        Insert: {
+          credit_mode?: string
+          current_tier?: string | null
+          referrer_profile_id: string
+          updated_at?: string
+        }
+        Update: {
+          credit_mode?: string
+          current_tier?: string | null
+          referrer_profile_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "referrer_credit_state_referrer_profile_id_fkey"
+            columns: ["referrer_profile_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "referrer_credit_state_referrer_profile_id_fkey"
+            columns: ["referrer_profile_id"]
+            isOneToOne: true
+            referencedRelation: "rep_health_summary"
+            referencedColumns: ["profile_id"]
+          },
+        ]
       }
       rep_forwarding_emails: {
         Row: {
@@ -1477,6 +1932,39 @@ export type Database = {
         }
         Relationships: []
       }
+      tasks: {
+        Row: {
+          created_at: string
+          done: boolean
+          due: string
+          id: string
+          priority: string
+          source: string
+          title: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          done?: boolean
+          due: string
+          id: string
+          priority: string
+          source: string
+          title: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          done?: boolean
+          due?: string
+          id?: string
+          priority?: string
+          source?: string
+          title?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       unmatched_inbound: {
         Row: {
           attachment_count: number | null
@@ -1611,6 +2099,16 @@ export type Database = {
       }
     }
     Views: {
+      duplicate_profile_flags: {
+        Row: {
+          match_key: string | null
+          matched_on: string | null
+          names: string[] | null
+          profile_ids: string[] | null
+          row_count: number | null
+        }
+        Relationships: []
+      }
       geography_columns: {
         Row: {
           coord_dimension: number | null
@@ -1650,6 +2148,30 @@ export type Database = {
           f_table_schema?: unknown
           srid?: number | null
           type?: string | null
+        }
+        Relationships: []
+      }
+      mrr_rollup_by_tier: {
+        Row: {
+          active_rep_count: number | null
+          estimated_mrr_cents: number | null
+          tier: string | null
+        }
+        Relationships: []
+      }
+      rep_health_summary: {
+        Row: {
+          access_revoked: boolean | null
+          archived_at: string | null
+          edgedms_tier: string | null
+          email: string | null
+          estimated_mrr_cents: number | null
+          full_name: string | null
+          is_active: boolean | null
+          last_failure_at: string | null
+          open_issue_count: number | null
+          profile_id: string | null
+          stripe_customer_id: string | null
         }
         Relationships: []
       }
@@ -1818,6 +2340,7 @@ export type Database = {
         | { Args: { table_name: string }; Returns: string }
       enablelongtransactions: { Args: never; Returns: string }
       equals: { Args: { geom1: unknown; geom2: unknown }; Returns: boolean }
+      generate_slug_base: { Args: { p_profile_id: string }; Returns: string }
       geometry: { Args: { "": string }; Returns: unknown }
       geometry_above: {
         Args: { geom1: unknown; geom2: unknown }
@@ -2226,6 +2749,15 @@ export type Database = {
       }
       postgis_version: { Args: never; Returns: string }
       postgis_wagyu_version: { Args: never; Returns: string }
+      record_referral: {
+        Args: {
+          p_code: string
+          p_referred_mrr_cents?: number
+          p_referred_profile_id: string
+          p_referred_subscription_id?: string
+        }
+        Returns: string
+      }
       smart_upsert_ghl_contacts: {
         Args: { p_contacts: Json; p_rep_id: string }
         Returns: number
@@ -2811,6 +3343,7 @@ export type Database = {
         Args: { geom: unknown; move: number; wrap: number }
         Returns: unknown
       }
+      tier_price_cents: { Args: { p_tier: string }; Returns: number }
       unlockrows: { Args: { "": string }; Returns: number }
       updategeometrysrid: {
         Args: {
