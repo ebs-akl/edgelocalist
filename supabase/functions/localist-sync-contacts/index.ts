@@ -210,6 +210,48 @@ function inferMetricFieldIdsFromContacts(
   return { ltvFieldId, lastOrdFieldId };
 }
 
+async function discoverFieldIdsFromLocation(accessToken: string, locationId: string) {
+  const r: Record<string, string | null> = {
+    latFieldId: null, lngFieldId: null, ltvFieldId: null, lastOrdFieldId: null,
+    orderCountFieldId: null, giftCountFieldId: null, rltFieldId: null, bizFieldId: null,
+    catFieldId: null, lastServiceFieldId: null,
+  };
+  try {
+    const res = await fetch(`https://services.leadconnectorhq.com/locations/${locationId}/customFields?model=contact`, {
+      headers: { Authorization: `Bearer ${accessToken}`, Version: "2021-07-28", Accept: "application/json" },
+      signal: AbortSignal.timeout(10000),
+    });
+    if (!res.ok) {
+      console.error(`Location custom field lookup failed: ${res.status}`);
+      return r;
+    }
+    const data = await res.json();
+    const defs = (data.customFields ?? []) as Array<{ id: string; fieldKey?: string; name?: string }>;
+    const exact: Record<string, string> = {
+      [LAT_FIELD_KEY]: "latFieldId", [LNG_FIELD_KEY]: "lngFieldId", [LTV_FIELD_KEY]: "ltvFieldId",
+      [LAST_ORD_FIELD_KEY]: "lastOrdFieldId", [ORDER_COUNT_FIELD_KEY]: "orderCountFieldId",
+      [GIFT_COUNT_FIELD_KEY]: "giftCountFieldId", [RLT_FIELD_KEY]: "rltFieldId", [BIZ_FIELD_KEY]: "bizFieldId",
+      [CAT_FIELD_KEY]: "catFieldId", [LAST_SERVICE_FIELD_KEY]: "lastServiceFieldId",
+    };
+    for (const d of defs) {
+      const slot = exact[(d.fieldKey ?? "").toLowerCase()];
+      if (slot && !r[slot]) r[slot] = d.id;
+    }
+    // Name-based fallback for LTV only if no exact key (e.g. "Lifetime $")
+    if (!r.ltvFieldId) {
+      const byName = defs.find((d) => {
+        const n = `${d.name ?? ""} ${d.fieldKey ?? ""}`.toLowerCase();
+        return n.includes("lifetime") && !/order|count|date|gift/.test(n);
+      });
+      if (byName) r.ltvFieldId = byName.id;
+    }
+    console.log(`Location field IDs: ${JSON.stringify(r)}`);
+  } catch (err) {
+    console.error("Location custom field lookup error:", getErrorMessage(err));
+  }
+  return r;
+}
+
 async function discoverFieldIdsFromContact(
   accessToken: string,
   contactId: string
@@ -248,7 +290,7 @@ async function discoverFieldIdsFromContact(
       const key = (f.fieldKey ?? f.key ?? "").toLowerCase();
       if (key === LAT_FIELD_KEY) result.latFieldId = f.id;
       if (key === LNG_FIELD_KEY) result.lngFieldId = f.id;
-      if (key === LTV_FIELD_KEY || key.includes("lifetime")) result.ltvFieldId = f.id;
+      if (key === LTV_FIELD_KEY) result.ltvFieldId = f.id;
       if (key === LAST_ORD_FIELD_KEY || key.includes("last_order")) result.lastOrdFieldId = f.id;
       if (key === ORDER_COUNT_FIELD_KEY || key.includes("order_count") || key.includes("orders")) result.orderCountFieldId = f.id;
       if (key === GIFT_COUNT_FIELD_KEY || key.includes("gift_count") || key.includes("gifts")) result.giftCountFieldId = f.id;
@@ -450,17 +492,28 @@ serve(async (req) => {
       });
     }
 
-    // Discover custom field IDs by fetching a single contact's full details
+    // Discover custom field IDs from the location's field definitions (authoritative),
+    // then fill any gaps from a single contact's details.
     const firstContactId = allContacts[0].id as string;
-    let { latFieldId, lngFieldId, ltvFieldId, lastOrdFieldId, orderCountFieldId, giftCountFieldId, rltFieldId, bizFieldId, catFieldId, lastServiceFieldId } = await discoverFieldIdsFromContact(accessToken, firstContactId);
+    const fromLocation = await discoverFieldIdsFromLocation(accessToken, ghlLocationId);
+    const fromContact = await discoverFieldIdsFromContact(accessToken, firstContactId);
+    let latFieldId = fromLocation.latFieldId ?? fromContact.latFieldId;
+    let lngFieldId = fromLocation.lngFieldId ?? fromContact.lngFieldId;
+    // LTV: never guess from a contact sample — a wrong guess produces huge bogus values.
+    let ltvFieldId = fromLocation.ltvFieldId ?? fromContact.ltvFieldId;
+    let lastOrdFieldId = fromLocation.lastOrdFieldId ?? fromContact.lastOrdFieldId;
+    const orderCountFieldId = fromLocation.orderCountFieldId ?? fromContact.orderCountFieldId;
+    const giftCountFieldId = fromLocation.giftCountFieldId ?? fromContact.giftCountFieldId;
+    const rltFieldId = fromLocation.rltFieldId ?? fromContact.rltFieldId;
+    const bizFieldId = fromLocation.bizFieldId ?? fromContact.bizFieldId;
+    const catFieldId = fromLocation.catFieldId ?? fromContact.catFieldId;
+    const lastServiceFieldId = fromLocation.lastServiceFieldId ?? fromContact.lastServiceFieldId;
 
-    // Fallback: infer IDs directly from contact values when GHL omits fieldKey metadata
-    if (!ltvFieldId || !lastOrdFieldId) {
+    if (!lastOrdFieldId) {
       const inferred = inferMetricFieldIdsFromContacts(allContacts);
-      if (!ltvFieldId) ltvFieldId = inferred.ltvFieldId;
-      if (!lastOrdFieldId) lastOrdFieldId = inferred.lastOrdFieldId;
-      console.log(`Post-fallback field IDs: ltv=${ltvFieldId}, lastOrd=${lastOrdFieldId}`);
+      lastOrdFieldId = inferred.lastOrdFieldId;
     }
+    console.log(`Final field IDs: ltv=${ltvFieldId}, lastOrd=${lastOrdFieldId}, orders=${orderCountFieldId}`);
 
     let coordCount = 0;
     const rows = allContacts.map((c) => {
