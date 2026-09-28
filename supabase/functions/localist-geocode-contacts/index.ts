@@ -146,12 +146,11 @@ serve(async (req) => {
     .not("address", "is", null)
     .not("address", "eq", "");
 
+  // Skip rows that already failed so they can't block the queue forever
   if (backfillCounty) {
-    // Target contacts that have coordinates but no county
-    query = query.not("latitude", "is", null).is("county", null);
+    query = query.not("latitude", "is", null).is("county", null).is("county_checked_at", null);
   } else {
-    // Normal mode: contacts without coordinates
-    query = query.is("latitude", null);
+    query = query.is("latitude", null).is("geocode_failed_at", null);
   }
 
   const { data: contacts, error: fetchErr } = await query.limit(maxContacts);
@@ -173,6 +172,7 @@ serve(async (req) => {
 
   // ── Geocode in batches ──
   let geocoded = 0;
+  let failed = 0;
 
   for (let i = 0; i < contacts.length; i += BATCH_SIZE) {
     const batch = contacts.slice(i, i + BATCH_SIZE);
@@ -191,13 +191,12 @@ serve(async (req) => {
     );
 
     // Update contacts with coordinates
+    const nowIso = new Date().toISOString();
     for (const r of results) {
-      if (r.coords) {
+      if (r.coords && (!backfillCounty || r.coords.county)) {
         const updateData = backfillCounty
-          ? { county: r.coords.county }
-          : { latitude: r.coords.lat, longitude: r.coords.lng, county: r.coords.county };
-
-        console.log(`[geocode] updating id=${r.id}, county=${r.coords.county}, backfill=${backfillCounty}`);
+          ? { county: r.coords.county, county_checked_at: nowIso }
+          : { latitude: r.coords.lat, longitude: r.coords.lng, county: r.coords.county, geocode_failed_at: null };
 
         const { error: updateErr } = await supabase
           .from("localist_contacts")
@@ -210,7 +209,12 @@ serve(async (req) => {
           geocoded++;
         }
       } else {
-        console.log(`[geocode] no coords for id=${r.id}`);
+        // Mark as attempted so the next round moves on to other contacts
+        await supabase
+          .from("localist_contacts")
+          .update(backfillCounty ? { county_checked_at: nowIso } : { geocode_failed_at: nowIso })
+          .eq("id", r.id);
+        failed++;
       }
     }
 
@@ -229,15 +233,15 @@ serve(async (req) => {
     .not("address", "eq", "");
 
   if (backfillCounty) {
-    remainingQuery = remainingQuery.not("latitude", "is", null).is("county", null);
+    remainingQuery = remainingQuery.not("latitude", "is", null).is("county", null).is("county_checked_at", null);
   } else {
-    remainingQuery = remainingQuery.is("latitude", null);
+    remainingQuery = remainingQuery.is("latitude", null).is("geocode_failed_at", null);
   }
 
   const { count: remaining } = await remainingQuery;
 
   return new Response(
-    JSON.stringify({ geocoded, remaining: remaining ?? 0 }),
+    JSON.stringify({ geocoded, failed, remaining: remaining ?? 0 }),
     { headers: { ...corsHeaders, "Content-Type": "application/json" } }
   );
 });

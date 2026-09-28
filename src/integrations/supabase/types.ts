@@ -721,8 +721,10 @@ export type Database = {
           contact_id: string | null
           coords_pushed_to_ghl: string | null
           county: string | null
+          county_checked_at: string | null
           county_pushed: boolean | null
           first_name: string | null
+          geocode_failed_at: string | null
           ghl_contact_id: string | null
           gift_count: number | null
           id: string
@@ -752,8 +754,10 @@ export type Database = {
           contact_id?: string | null
           coords_pushed_to_ghl?: string | null
           county?: string | null
+          county_checked_at?: string | null
           county_pushed?: boolean | null
           first_name?: string | null
+          geocode_failed_at?: string | null
           ghl_contact_id?: string | null
           gift_count?: number | null
           id?: string
@@ -783,8 +787,10 @@ export type Database = {
           contact_id?: string | null
           coords_pushed_to_ghl?: string | null
           county?: string | null
+          county_checked_at?: string | null
           county_pushed?: boolean | null
           first_name?: string | null
+          geocode_failed_at?: string | null
           ghl_contact_id?: string | null
           gift_count?: number | null
           id?: string
