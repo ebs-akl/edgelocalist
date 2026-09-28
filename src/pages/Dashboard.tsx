@@ -281,7 +281,7 @@ export default function Dashboard() {
           });
         }
 
-        if (geoData.geocoded === 0) break; // No progress, stop
+        if ((geoData.geocoded ?? 0) + (geoData.failed ?? 0) === 0) break; // Nothing attempted, stop
       }
 
       updateStep("geocode", {
@@ -314,7 +314,7 @@ export default function Dashboard() {
           });
         }
 
-        if (countyData.geocoded === 0) break;
+        if ((countyData.geocoded ?? 0) + (countyData.failed ?? 0) === 0) break;
       }
 
       if (countyBackfilled > 0) {
