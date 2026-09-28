@@ -172,6 +172,7 @@ serve(async (req) => {
 
   // ── Geocode in batches ──
   let geocoded = 0;
+  let failed = 0;
 
   for (let i = 0; i < contacts.length; i += BATCH_SIZE) {
     const batch = contacts.slice(i, i + BATCH_SIZE);
@@ -240,7 +241,7 @@ serve(async (req) => {
   const { count: remaining } = await remainingQuery;
 
   return new Response(
-    JSON.stringify({ geocoded, remaining: remaining ?? 0 }),
+    JSON.stringify({ geocoded, failed, remaining: remaining ?? 0 }),
     { headers: { ...corsHeaders, "Content-Type": "application/json" } }
   );
 });
