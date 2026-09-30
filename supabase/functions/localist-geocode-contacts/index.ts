@@ -139,6 +139,10 @@ serve(async (req) => {
     ? Math.min(body.limit as number, 500)
     : 500;
 
+  // Failed rows are skipped for 24h (so they can't block the queue), then retried —
+  // a one-off timeout or provider hiccup must never exclude a contact permanently.
+  const retryCutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+
   let query = supabase
     .from("localist_contacts")
     .select("id, address, city, state, zip")
@@ -146,11 +150,10 @@ serve(async (req) => {
     .not("address", "is", null)
     .not("address", "eq", "");
 
-  // Skip rows that already failed so they can't block the queue forever
-  if (backfillCounty) {
+    if (backfillCounty) {
     query = query.not("latitude", "is", null).is("county", null).is("county_checked_at", null);
   } else {
-    query = query.is("latitude", null).is("geocode_failed_at", null);
+    query = query.is("latitude", null).or(`geocode_failed_at.is.null,geocode_failed_at.lt.${retryCutoff}`);
   }
 
   const { data: contacts, error: fetchErr } = await query.limit(maxContacts);
@@ -235,7 +238,7 @@ serve(async (req) => {
   if (backfillCounty) {
     remainingQuery = remainingQuery.not("latitude", "is", null).is("county", null).is("county_checked_at", null);
   } else {
-    remainingQuery = remainingQuery.is("latitude", null).is("geocode_failed_at", null);
+    remainingQuery = remainingQuery.is("latitude", null).or(`geocode_failed_at.is.null,geocode_failed_at.lt.${retryCutoff}`);
   }
 
   const { count: remaining } = await remainingQuery;
