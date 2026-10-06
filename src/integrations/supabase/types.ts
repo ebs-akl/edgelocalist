@@ -712,6 +712,27 @@ export type Database = {
         }
         Relationships: []
       }
+      lesson_progress: {
+        Row: {
+          completed_lessons: number[]
+          started_lessons: number[]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          completed_lessons?: number[]
+          started_lessons?: number[]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          completed_lessons?: number[]
+          started_lessons?: number[]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       localist_contacts: {
         Row: {
           address: string | null
@@ -1396,6 +1417,7 @@ export type Database = {
           password_changed_at: string | null
           pending_referral_code: string | null
           phone: string | null
+          receives_cutco_assets: boolean
           stripe_customer_id: string | null
           subscription_tier: string | null
           user_id: string | null
@@ -1415,6 +1437,7 @@ export type Database = {
           password_changed_at?: string | null
           pending_referral_code?: string | null
           phone?: string | null
+          receives_cutco_assets?: boolean
           stripe_customer_id?: string | null
           subscription_tier?: string | null
           user_id?: string | null
@@ -1434,6 +1457,7 @@ export type Database = {
           password_changed_at?: string | null
           pending_referral_code?: string | null
           phone?: string | null
+          receives_cutco_assets?: boolean
           stripe_customer_id?: string | null
           subscription_tier?: string | null
           user_id?: string | null
