@@ -20,7 +20,7 @@ import {
   Map as MapIcon,
   Plug,
 } from "lucide-react";
-import localistLogo from "@/assets/Localist-Final-Logo.png";
+import { localistLogo } from "@/lib/branding";
 import Footer from "@/components/Footer";
 
 function Section({ icon: Icon, title, children }: { icon: React.ElementType; title: string; children: React.ReactNode }) {

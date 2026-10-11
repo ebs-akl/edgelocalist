@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Sparkles, Shield, Bug } from "lucide-react";
-import localistLogo from "@/assets/Localist-Final-Logo.png";
+import { localistLogo } from "@/lib/branding";
 import Footer from "@/components/Footer";
 
 type Entry = {
