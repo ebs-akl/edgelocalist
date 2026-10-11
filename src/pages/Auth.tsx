@@ -9,6 +9,7 @@ import { toast } from "@/hooks/use-toast";
 import { Loader2, HelpCircle } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { validatePasswordStrength } from "@/lib/password-validation";
+import { localistLogo } from "@/lib/branding";
 
 export default function Auth() {
   const [searchParams] = useSearchParams();
@@ -163,9 +164,9 @@ export default function Auth() {
           {/* Logo */}
           <div className="flex justify-center">
             <img
-              src="/lovable-uploads/localist-final-logo-2.png"
+              src={localistLogo}
               alt="AKL LocaList"
-              className="h-14 w-auto object-contain"
+              className="h-auto w-72 max-w-full object-contain"
             />
           </div>
 

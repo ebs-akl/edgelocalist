@@ -239,6 +239,42 @@ export type Database = {
         }
         Relationships: []
       }
+      cpo_rates: {
+        Row: {
+          bonus_points: number
+          cpo_value: number
+          created_at: string
+          id: string
+          order_type: string
+          rate_label: string
+          retail_price_usd: number | null
+          sku: string
+          wps_value_usd: number | null
+        }
+        Insert: {
+          bonus_points?: number
+          cpo_value: number
+          created_at?: string
+          id?: string
+          order_type: string
+          rate_label: string
+          retail_price_usd?: number | null
+          sku: string
+          wps_value_usd?: number | null
+        }
+        Update: {
+          bonus_points?: number
+          cpo_value?: number
+          created_at?: string
+          id?: string
+          order_type?: string
+          rate_label?: string
+          retail_price_usd?: number | null
+          sku?: string
+          wps_value_usd?: number | null
+        }
+        Relationships: []
+      }
       crave_leads: {
         Row: {
           consent: boolean
@@ -1348,6 +1384,30 @@ export type Database = {
         }
         Relationships: []
       }
+      product_catalog: {
+        Row: {
+          category: string
+          created_at: string
+          id: string
+          name: string
+          sku: string
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          id?: string
+          name: string
+          sku: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          id?: string
+          name?: string
+          sku?: string
+        }
+        Relationships: []
+      }
       product_directory: {
         Row: {
           base_url: string | null
@@ -1366,6 +1426,45 @@ export type Database = {
           created_at?: string | null
           id?: string
           product_name?: string | null
+        }
+        Relationships: []
+      }
+      product_photos: {
+        Row: {
+          color: string | null
+          created_at: string
+          format: string | null
+          id: string
+          is_primary: boolean
+          match_type: string | null
+          needs_review: boolean
+          sku: string | null
+          sort_order: number
+          storage_path: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          format?: string | null
+          id?: string
+          is_primary?: boolean
+          match_type?: string | null
+          needs_review?: boolean
+          sku?: string | null
+          sort_order?: number
+          storage_path: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          format?: string | null
+          id?: string
+          is_primary?: boolean
+          match_type?: string | null
+          needs_review?: boolean
+          sku?: string | null
+          sort_order?: number
+          storage_path?: string
         }
         Relationships: []
       }

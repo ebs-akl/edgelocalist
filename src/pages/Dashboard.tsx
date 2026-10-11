@@ -9,7 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useGhlSso } from "@/hooks/useGhlSso";
 import { toast } from "@/hooks/use-toast";
 import { LogOut, Menu, Settings, Loader2, BookOpen } from "lucide-react";
-import localistLogo from "@/assets/Localist-Final-Logo.png";
+import { localistLogo } from "@/lib/branding";
 import SearchTab from "@/components/dashboard/SearchTab";
 import CsvUploadTab from "@/components/dashboard/CsvUploadTab";
 import LocalistControlPanel from "@/components/dashboard/LocalistControlPanel";

@@ -9,6 +9,7 @@ import { toast } from "@/hooks/use-toast";
 import { Loader2, MapPin } from "lucide-react";
 import { validatePasswordStrength } from "@/lib/password-validation";
 import Footer from "@/components/Footer";
+import { localistLogo } from "@/lib/branding";
 
 export default function ResetPassword() {
   const [password, setPassword] = useState("");
@@ -76,7 +77,7 @@ export default function ResetPassword() {
         <Card className="w-full max-w-md">
           <CardHeader className="text-center">
             <div className="flex items-center justify-center mb-2">
-              <img src="/lovable-uploads/localist-final-logo-2.png" alt="AKL LocaList" className="h-14 w-auto object-contain" />
+              <img src={localistLogo} alt="AKL LocaList" className="h-auto w-72 max-w-full object-contain" />
             </div>
             <CardTitle className="text-base font-normal">Set your new password</CardTitle>
           </CardHeader>

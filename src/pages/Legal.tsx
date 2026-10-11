@@ -3,6 +3,7 @@ import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import Footer from "@/components/Footer";
+import { localistLogo } from "@/lib/branding";
 
 const EFFECTIVE_DATE = "March 4, 2026";
 const COMPANY = "Edge Branding Solutions LLC";
@@ -31,7 +32,7 @@ export default function Legal() {
             <img
               alt="AKL LocaList"
               className="h-10 w-auto object-contain"
-              src="/lovable-uploads/localist-final-logo-2.png"
+              src={localistLogo}
             />
           </div>
           <Link to="/">
