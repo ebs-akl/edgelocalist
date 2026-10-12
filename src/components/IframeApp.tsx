@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useGhlSso } from "@/hooks/useGhlSso";
-import { Loader2, AlertTriangle, RefreshCw } from "lucide-react";
+import { Loader2, AlertTriangle, RefreshCw, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter } from "react-router-dom";
@@ -180,6 +180,21 @@ export default function IframeApp() {
             <RefreshCw className="h-4 w-4" />
             Retry Connection
           </Button>
+          <Button
+            variant="outline"
+            className="min-h-[44px] gap-2"
+            onClick={() => {
+              // Break out of the GHL iframe so the rep lands on the
+              // standalone email sign-in page.
+              window.open("https://edgelocalist.app/auth", "_blank");
+            }}
+          >
+            <Mail className="h-4 w-4" />
+            Sign in with email instead
+          </Button>
+          <p className="text-xs text-muted-foreground">
+            Opens LocaList in a new tab where you can sign in with your email and password.
+          </p>
         </div>
       </div>
     );
