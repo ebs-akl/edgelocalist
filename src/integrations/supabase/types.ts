@@ -2226,6 +2226,164 @@ export type Database = {
         }
         Relationships: []
       }
+      vs_accessories: {
+        Row: {
+          name: string
+          price_list_id: string
+          price_note: string
+        }
+        Insert: {
+          name: string
+          price_list_id: string
+          price_note: string
+        }
+        Update: {
+          name?: string
+          price_list_id?: string
+          price_note?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vs_accessories_price_list_id_fkey"
+            columns: ["price_list_id"]
+            isOneToOne: false
+            referencedRelation: "vs_price_lists"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vs_item_skus: {
+        Row: {
+          color: string | null
+          item_id: string
+          sku: string
+        }
+        Insert: {
+          color?: string | null
+          item_id: string
+          sku: string
+        }
+        Update: {
+          color?: string | null
+          item_id?: string
+          sku?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vs_item_skus_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "vs_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vs_items: {
+        Row: {
+          collection: string
+          colors: string[]
+          id: string
+          includes_with: string | null
+          item_no: string
+          name: string
+          notes: string | null
+          page: number | null
+          price_list_id: string
+          sheath_addon_usd: number | null
+        }
+        Insert: {
+          collection: string
+          colors?: string[]
+          id?: string
+          includes_with?: string | null
+          item_no: string
+          name: string
+          notes?: string | null
+          page?: number | null
+          price_list_id: string
+          sheath_addon_usd?: number | null
+        }
+        Update: {
+          collection?: string
+          colors?: string[]
+          id?: string
+          includes_with?: string | null
+          item_no?: string
+          name?: string
+          notes?: string | null
+          page?: number | null
+          price_list_id?: string
+          sheath_addon_usd?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vs_items_price_list_id_fkey"
+            columns: ["price_list_id"]
+            isOneToOne: false
+            referencedRelation: "vs_price_lists"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vs_price_lists: {
+        Row: {
+          code: string
+          created_at: string
+          id: string
+          label: string
+          new_logo_fee_usd: number
+          source_note: string | null
+          valid_from: string
+          valid_through: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          id?: string
+          label: string
+          new_logo_fee_usd?: number
+          source_note?: string | null
+          valid_from: string
+          valid_through: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          id?: string
+          label?: string
+          new_logo_fee_usd?: number
+          source_note?: string | null
+          valid_from?: string
+          valid_through?: string
+        }
+        Relationships: []
+      }
+      vs_tier_prices: {
+        Row: {
+          item_id: string
+          min_qty: number
+          price_usd: number
+        }
+        Insert: {
+          item_id: string
+          min_qty: number
+          price_usd: number
+        }
+        Update: {
+          item_id?: string
+          min_qty?: number
+          price_usd?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vs_tier_prices_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "vs_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       duplicate_profile_flags: {
@@ -3500,6 +3658,7 @@ export type Database = {
         }
         Returns: string
       }
+      vs_tier_for: { Args: { qty: number }; Returns: number }
     }
     Enums: {
       app_role: "admin" | "moderator" | "user" | "super_admin"
