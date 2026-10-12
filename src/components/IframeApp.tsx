@@ -230,6 +230,16 @@ export default function IframeApp() {
             <RefreshCw className="h-4 w-4" />
             Retry Connection
           </Button>
+          <Button
+            variant="outline"
+            className="min-h-[44px] gap-2"
+            onClick={() => {
+              window.open("https://edgelocalist.app/auth", "_blank");
+            }}
+          >
+            <Mail className="h-4 w-4" />
+            Sign in with email instead
+          </Button>
         </div>
       </div>
     );
