@@ -39,6 +39,7 @@ serve(async (req) => {
   const ALLOWED_REDIRECTS = new Set([
     "https://edgelocalist.app/callback",
     "https://edgelocalist.lovable.app/callback",
+    "https://localist.automatedknifelife.com/callback",
     "https://localist.edgedms.com/callback",
     "https://the.automatedknifelife.com/callback",
   ]);

@@ -248,7 +248,7 @@ Deno.serve(async (req) => {
     }
 
     // Build confirmation URL
-    const siteUrl = email_data.site_url || "https://edgelocalist.lovable.app";
+    const siteUrl = email_data.site_url || "https://localist.automatedknifelife.com";
     const redirectTo = email_data.redirect_to || `${siteUrl}/dashboard`;
     const tokenHash = email_data.token_hash || "";
     const token = email_data.token || "";

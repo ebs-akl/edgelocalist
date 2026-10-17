@@ -16,7 +16,7 @@ const MUTED = "#666666";
 const LOGO_URL = "https://edgelocalist.lovable.app/__l5e/assets-v1/bdda5eec-7941-438d-a8b2-ddf04131c72d/akl-localist-logo.png";
 const APP_NAME = "AKL LocaList";
 const SUPPORT_EMAIL = "support@edgedms.com";
-const DASHBOARD_URL = "https://edgelocalist.lovable.app/dashboard";
+const DASHBOARD_URL = "https://localist.automatedknifelife.com/dashboard";
 
 const TIER_NAMES: Record<string, string> = {
   prod_U3ouP5GYR2UtCT: "LOCALIST",

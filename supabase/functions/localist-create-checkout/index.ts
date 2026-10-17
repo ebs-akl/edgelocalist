@@ -65,7 +65,7 @@ serve(async (req) => {
       customerId = customers.data[0].id;
     }
 
-    const origin = req.headers.get("origin") || "https://edgelocalist.lovable.app";
+    const origin = req.headers.get("origin") || "https://localist.automatedknifelife.com";
 
     // EdgeDMS ($97) gets a $7 setup fee instead of a free trial
     const EDGE_BASIC_PRICE_ID = "price_1SW5i4AecJc70Cb5GBytGbCf";
