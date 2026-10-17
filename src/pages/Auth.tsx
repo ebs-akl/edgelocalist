@@ -110,7 +110,7 @@ export default function Auth() {
     try {
       const { error } = await supabase.auth.signInWithOtp({
         email,
-        options: { emailRedirectTo: `https://edgelocalist.lovable.app/dashboard` },
+        options: { emailRedirectTo: `https://localist.automatedknifelife.com/dashboard` },
       });
       if (error) throw error;
       toast({ title: "Check your email!", description: "We sent you a secure login link." });
