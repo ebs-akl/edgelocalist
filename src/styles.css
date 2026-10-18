@@ -1,8 +1,17 @@
 @import url('https://fonts.googleapis.com/css2?family=Anton&family=Oswald:wght@300;400;500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap');
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss" source(none);
+@source "../src";
+@config "../tailwind.config.ts";
+
+@custom-variant dark (&:is(.dark *));
+
+/* Tailwind v4 compat: keep v3 default border color */
+@layer base {
+  *, ::after, ::before, ::backdrop, ::file-selector-button { border-color: var(--color-gray-200, currentcolor); }
+  button:not(:disabled), [role="button"]:not(:disabled) { cursor: pointer; }
+}
+
 
 @layer base {
   :root {

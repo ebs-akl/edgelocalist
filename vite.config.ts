@@ -1,57 +1,21 @@
-import { defineConfig } from "vite";
-import react from "@vitejs/plugin-react-swc";
-import path from "path";
-import { VitePWA } from "vite-plugin-pwa";
+// @leadconnector/vite-tanstack-config already includes the following — do NOT add them manually
+// or the app will break with duplicate plugins:
+//   - tanstackStart, viteReact, tailwindcss, tsConfigPaths, nitro (build-only using cloudflare as a default target),
+//     componentTagger (dev-only, jsxSource fallback + tailwind config), @tanstack/devtools-vite source injection (data-tsd-source, dev-only),
+//     HMR gate/flush, dev-server bridge controls, server diagnostics, lightningcss, and sandbox detection
+//     (secure host allowlist, port/strictPort, watch ignores, and HMR overlay policy).
+// You can pass additional config via defineConfig({ vite: { ... }, etc... }) if needed.
+import { defineConfig } from "@leadconnector/vite-tanstack-config";
 
-// https://vitejs.dev/config/
-export default defineConfig(() => ({
-  server: {
-    host: "::",
-    port: 8080,
-    hmr: {
-      overlay: false,
-    },
+export default defineConfig({
+  // Browser errors stay in the trusted parent-frame console-log flow;
+  // do not expose the bridge collector on the public sandbox tunnel.
+  devServerBridge: { errorCollector: false },
+  // Do not set server.hmr.timeout — Vite 8 deprecated those websocket fields
+  // (use server.ws.*). Overlay/host/port are package-owned; default WS timeout is 30s.
+  tanstackStart: {
+    // Redirect TanStack Start's bundled server entry to src/server.ts (our SSR error wrapper).
+    // nitro/vite builds from this
+    server: { entry: "server" },
   },
-  plugins: [
-    react(),
-    VitePWA({
-      registerType: "autoUpdate",
-      workbox: {
-        navigateFallbackDenylist: [/^\/~oauth/],
-        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
-      },
-      manifest: {
-        name: "AKL LocaList",
-        short_name: "LocaList",
-        description: "Your customers. Found in seconds.",
-        theme_color: "#1a1a2e",
-        background_color: "#1a1a2e",
-        display: "standalone",
-        start_url: "/",
-        icons: [
-          {
-            src: "/pwa-192x192.png",
-            sizes: "192x192",
-            type: "image/png",
-          },
-          {
-            src: "/pwa-512x512.png",
-            sizes: "512x512",
-            type: "image/png",
-          },
-          {
-            src: "/pwa-512x512.png",
-            sizes: "512x512",
-            type: "image/png",
-            purpose: "any maskable",
-          },
-        ],
-      },
-    }),
-  ].filter(Boolean),
-  resolve: {
-    alias: {
-      "@": path.resolve(__dirname, "./src"),
-    },
-  },
-}));
+});
